@@ -486,6 +486,70 @@ h1{font-size:26px;letter-spacing:-.025em}
 .btag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:500;background:var(--surface-2);border:1px solid var(--line-2);white-space:nowrap}
 .btag.ev{background:color-mix(in srgb,var(--pos) 10%,var(--surface));border-color:color-mix(in srgb,var(--pos) 25%,var(--surface));color:var(--pos)}
 @media (max-width:900px){.cmeta{grid-template-columns:1fr}.cmeta>div{border-right:0;border-bottom:1px solid var(--line-2)}.kvgrid{grid-template-columns:1fr}}
+
+/* v17: вкладки в стиле SashaAI */
+.tabs{display:inline-flex;align-self:flex-start;max-width:100%;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;border-bottom:1px solid var(--line-2)}
+.tab{min-height:36px;padding:0 14px;border-radius:8px;border-bottom:0!important;font-weight:500;color:var(--muted)}
+.tab svg{opacity:.8}
+.tab.on{background:var(--surface);color:var(--fg);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 1px var(--line-2)}
+/* диалог */
+.dlg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 32px);display:flex;flex-direction:column;background:var(--surface);border-radius:16px;box-shadow:var(--pop);z-index:72;overflow:hidden;animation:pp .18s cubic-bezier(.2,.8,.2,1)}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line-2);background:var(--surface-2)}.dlg-h h2{font-size:18px}
+.dlg-b{padding:20px 22px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--line-2)}
+.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:inherit;font-size:14px;resize:vertical}
+.pick{border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column}
+.pick-i{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;cursor:pointer}.pick-i:hover{background:var(--surface-2)}.pick-i b{font-size:15px}
+/* состояние */
+.hc2g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.hc2{padding:14px 18px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:6px}
+.hc2g .hc2:nth-child(odd){border-right:1px solid var(--line-2)}.hc2g .hc2:nth-child(-n+2){border-top:0}
+.hc2-t{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--fg-2)}
+.hc2-s{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--pos);white-space:nowrap}.hc2.off .hc2-s{color:var(--warn)}
+.hc2-v{font-size:22px;font-weight:600;letter-spacing:-.02em}.hc2-v small{font-size:12px;font-weight:400;color:var(--muted);letter-spacing:0}
+.hc2-bar{position:relative;height:4px;border-radius:2px;background:var(--line-2)}.hc2-bar i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--fg-2)}.hc2.off .hc2-bar i{background:var(--warn)}
+.hc2-bar b{position:absolute;top:-3px;width:2px;height:10px;background:var(--fg);transform:translateX(-1px)}
+.hc2-n{font-size:12px;color:var(--muted)}
+/* donut */
+.donut-w{display:grid;grid-template-columns:200px minmax(0,1fr);gap:18px;align-items:center;padding:18px;position:relative}
+.donut{width:200px;height:200px;overflow:visible}
+.donut .seg{transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .2s ease;transform-origin:100px 100px;transform-box:view-box;cursor:pointer;stroke:var(--surface);stroke-width:1}
+.donut-w.hl .seg{opacity:.22}.donut-w.hl .seg.on{opacity:1;transform:scale(1.08)}
+.dc{position:absolute;left:18px;top:18px;width:200px;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;padding:0 52px}
+.dc-l{font-size:12px;color:var(--muted);line-height:1.25}.dc-v{font-size:20px;font-weight:600}
+.dleg{display:flex;flex-direction:column}
+.dl-r{display:grid;grid-template-columns:10px minmax(0,1fr) auto 54px;gap:10px;align-items:center;padding:7px 6px;border-radius:8px;font-size:13px;cursor:default;transition:opacity .2s ease,background .2s ease}
+.dl-r i{width:10px;height:10px;border-radius:3px}.dl-r b{text-align:right}.dl-r .mono:not(b){color:var(--muted);text-align:right}
+.donut-w.hl .dl-r{opacity:.35}.donut-w.hl .dl-r.on{opacity:1;background:var(--surface-2)}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--line-2)}
+.logs{display:flex;flex-direction:column;padding:8px 0}
+.lg-l{display:grid;grid-template-columns:110px 170px minmax(0,1fr);gap:12px;padding:8px 20px;border-top:1px solid var(--line-2);font-size:13px}.lg-l:first-child{border-top:0}.lg-l>span:last-child{color:var(--fg-2)}
+.rowlink{display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.rowlink:hover{background:var(--surface-2)}.rowlink>span:first-child{flex:1;display:flex;flex-direction:column}.rowlink svg{color:var(--faint)}
+@media (max-width:640px){.donut-w{grid-template-columns:1fr;justify-items:center}.dc{left:50%;transform:translateX(-50%)}.dleg{width:100%}.hc2g{grid-template-columns:1fr}.hc2g .hc2:nth-child(odd){border-right:0}.hc2g .hc2:nth-child(2){border-top:1px solid var(--line-2)}.lg-l{grid-template-columns:1fr;gap:2px}.pager{flex-wrap:wrap}}
+
+/* v18 */
+.dc{top:50%;margin-top:-100px}
+.stx{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}.stx i{width:8px;height:8px;border-radius:50%;background:var(--pos);flex:none}.stx i.off{background:var(--bad)}
+.htypes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.htype{display:flex;flex-direction:column;gap:4px;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);font:inherit;cursor:pointer;transition:border-color .15s,background .15s}
+.htype:hover{border-color:var(--fg-2);background:var(--surface-2)}.htype b{font-size:15px}.htype .muted{font-size:13px;line-height:1.35}
+.cr1{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px;padding:0 6px 0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.wchip{display:inline-flex;align-items:center;gap:6px;cursor:default}.wchip button{display:inline-flex;border:0;background:none;color:inherit;padding:2px;cursor:pointer;border-radius:4px;opacity:.7}.wchip button:hover{opacity:1}
+.inp{min-height:38px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:inherit;font-size:14px;flex:1;min-width:0}
+.inp:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.stopg{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start}
+.calc{display:flex;flex-direction:column;gap:18px}
+.calc-in{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:16px;align-items:start}
+.calc-k{border:1px solid var(--line-2);border-radius:12px;overflow:hidden}
+.cmpb{display:flex;flex-direction:column;gap:10px}
+.cmpb-r{display:grid;grid-template-columns:200px minmax(0,1fr) 120px;gap:14px;align-items:center;font-size:14px;color:var(--fg-2)}
+.cmpb-r b{text-align:right}.cmpb-t{height:10px;border-radius:999px;background:var(--surface-2);overflow:hidden}.cmpb-t i{display:block;height:100%;background:var(--faint);border-radius:999px}
+.cmpb-r.on{color:var(--fg)}.cmpb-r.on .cmpb-t i{background:var(--fg)}
+.txt{white-space:nowrap;color:var(--fg-2)}.txt.pos,.mono.pos{color:var(--pos)}
+.kb p{margin:0 0 12px}.kb .steps-v li{margin-bottom:10px}
+@media (max-width:900px){.stopg{grid-template-columns:1fr}}
+@media (max-width:640px){.dc{top:18px;margin-top:0}.htypes{grid-template-columns:1fr}.calc-in{grid-template-columns:1fr}.cmpb-r{grid-template-columns:1fr auto;gap:6px 10px}.cmpb-t{grid-column:1/-1;grid-row:2}}
+.dlg pre.code{white-space:pre-wrap;overflow-wrap:anywhere}
 </style>
 </head><body><div id="app"></div><script>
 'use strict';
@@ -516,7 +580,7 @@ const COS = {
     full:'ООО «Ромашка»', short:'Ромашка', ini:'Р', color:'var(--fg)', inn:'7701234518', kpp:'770101001', ogrn:'1197746000018',
     addr:'г. Москва, ул. Тверская, д. 7, оф. 12', bank:'АО «Т-Банк»', acc:'40702810 ··· 4521', signer:'Мария Лебедева, генеральный директор', mail:'buh@romashka.ru',
     amo:'romashka.amocrm.ru', okved:'62.01 Разработка программного обеспечения', cat:'Продажи и услуги', fixed:3, spam:2, unmarked:6, sameop:72,
-    bal:84200, plan:'biz', seats:12, goal:70,
+    bal:21700, plan:'biz', seats:12, goal:70,
     hist: gen({seed:0,start:0,vol:1100,fs:91,sh1:{b:.64,m:.36,f:0},sh2:{b:.55,m:.30,f:.15},rb:56,rm:62,rf:52,dip:[120,128],n0:40,n1:58,ev:[[45,1.8],[91,1.2],[150,2.4],[205,2.6]]}),
     events:[[45,'Включены повторные наборы с нового номера'],[91,'Подключён свой транк «МегаФон · офис»'],[150,'+12 номеров в пул «Продажи»'],[205,'Включён звонок с номера оператора абонента']],
     pools:[{t:'Продажи',n:42,who:'Отдел продаж',rot:'call'},{t:'Повторные',n:12,who:'Ольга Новикова',rot:'min'}],
@@ -530,7 +594,7 @@ const COS = {
       {n:'Мария Лебедева',r:'Руководитель',dep:'Продажи',m:'fixed',num:'+7 903 755-18-45',dev:'Виджет amoCRM',g:'ok',live:['Ждёт соединения','info']},
       {n:'Дмитрий Соколов',r:'Менеджер',dep:'Продажи',m:'pool',num:'Пул «Продажи»',dev:'Виджет amoCRM',g:'wait',live:['Пауза · 3:20','warn']},
       {n:'Ольга Новикова',r:'Менеджер',dep:'Повторные продажи',m:'pool',num:'Пул «Повторные»',dev:'—',g:'sent',live:['Офлайн','neu']}],
-    hooks:[{url:'https://crm.romashka.ru/hooks/sashatel',desc:'CRM · звонки и записи',type:'api',ev:'call.ended, recording.ready',on:true,created:'12.05.2026',last:'сегодня 14:52',st:['Работает','ok']},{url:'https://bi.romashka.ru/ingest',desc:'BI · выгрузка звонков',type:'api',ev:'call.ended',on:true,created:'02.09.2026',last:'сегодня 09:10 · 502',st:['Ошибки 3 часа','bad']},{url:'https://hook.albato.ru/wh/38/1lffd2h/R3B34',desc:'Albato · перезвоны',type:'albato',ev:'call.missed',on:false,created:'15.09.2026',last:'—',st:['Выключен','neu']}],
+    hooks:[{url:'https://crm.romashka.ru/hooks/sashatel',desc:'CRM · звонки и записи',type:'api',ev:'call.ended, recording.ready, analysis.done',on:true,created:'12.05.2026',last:'сегодня 14:52',st:['Работает','ok']},{url:'https://bi.romashka.ru/ingest',desc:'BI · выгрузка звонков',type:'api',ev:'call.ended',on:true,created:'02.09.2026',last:'сегодня 09:10 · 502',st:['Ошибки 3 часа','bad']},{url:'https://hook.albato.ru/wh/38/1lffd2h/R3B34',desc:'Albato · перезвоны',type:'albato',ev:'call.missed',on:false,created:'15.09.2026',last:'—',st:['Выключен','neu']}],
     checks:[{id:'c1',t:'Первый звонок — отдел продаж',src:'Звонки через SashaTel',sel:'Отдел продаж · от 1 мин',cl:'«Первый звонок» · 6 пунктов',paused:false,share:.21},
             {id:'c2',t:'Повторные — выборка 20%',src:'amoCRM',sel:'Этап «КП отправлено» · 20%',cl:'Только саммари',paused:true,share:.05,noScore:true}],
     lists:[['Заявки с сайта — новые','amoCRM','этап «Новая заявка» · пополняется',1240,68,'Отдел продаж','run'],['Холодная база Q4','Файл','base_q4.xlsx',8600,41,'Анна, Игорь, Дмитрий','run'],['Повторные — КП отправлено','amoCRM','этап «КП отправлено»',312,90,'Ольга Н.','pause'],['Участники вебинара 10.10','Google Таблица','webinar_1010',540,100,'Отдел продаж','done']],
@@ -555,7 +619,7 @@ const COS = {
       {n:'Тимур Ахметов',r:'Менеджер',dep:'Региональный отдел',m:'pool',num:'Пул «Регионы»',dev:'Веб-телефон',g:'ok',live:['В разговоре · 0:20','ok']},
       {n:'Светлана Белова',r:'Менеджер',dep:'Продажи',m:'pool',num:'Пул «Продажи»',dev:'Виджет amoCRM',g:'ok',live:['Ждёт соединения','info']},
       {n:'Роман Ким',r:'Менеджер',dep:'Региональный отдел',m:'pool',num:'Пул «Регионы»',dev:'Мобильное приложение',g:'wait',live:['Офлайн','neu']}],
-    hooks:[{url:'https://crm.polezny.ru/hooks/sashatel',desc:'CRM · звонки и записи',type:'api',ev:'call.ended, recording.ready',on:true,created:'20.07.2026',last:'сегодня 15:03',st:['Работает','ok']}],
+    hooks:[{url:'https://crm.polezny.ru/hooks/sashatel',desc:'CRM · звонки и записи',type:'api',ev:'call.ended, recording.ready, analysis.done',on:true,created:'20.07.2026',last:'сегодня 15:03',st:['Работает','ok']}],
     checks:[{id:'k1',t:'Холодные звонки — все отделы',src:'Звонки через SashaTel',sel:'Все отделы · от 30 сек',cl:'«Холодный звонок» · 6 пунктов',paused:false,share:.15}],
     lists:[['Регионы — новые точки','Файл','regions_oct.xlsx',24000,37,'Региональный отдел','run'],['Входящие заявки','amoCRM','этап «Новая заявка» · пополняется',3900,72,'Отдел продаж','run']],
     live:[['9','в разговоре'],['3','ждут соединения'],['0','на паузе'],['4','списка в обзвоне']],
@@ -637,7 +701,7 @@ const LEGAL_FOOT = ['Оферта','Политика обработки ПДн',
 /* ===================== СОСТОЯНИЕ ===================== */
 const clone = o => JSON.parse(JSON.stringify(o));
 const S = {
-  co:'romashka', screen:'stats', tab:{stats:'dz',trunk:'nums',numbers:'all',trunks:'list',trunk:'ov',auto:'lists',calls:'all',integrations:'conn',billing:'pay',settings:'rotation'}, ft:'all', cmp:false, dim:'trunk', mkt:'labels',
+  co:'romashka', screen:'stats', tab:{stats:'dz',trunk:'nums',numbers:'all',trunks:'list',trunk:'ov',auto:'lists',calls:'all',integrations:'hooks',billing:'price',settings:'team',kb:'start'}, ft:'all', cmp:false, dim:'trunk', mkt:'labels',
   range:{a:TODAY-13,b:TODAY}, hidden:{b:true,m:true,f:true}, anim:true, sideOpen:false, pop:null, dp:null, drawer:null, confirm:null, toast:'',
   perCo:{}, form:{},
   sw:{goalAlert:true,cascade:true,opswitch:true,sticky:true,missedcb:true,amd:true,tz:true,spamrest:true,autoreplace:true,sameop:true,region:false,
@@ -757,11 +821,9 @@ function ctx(){
   const alerts = S.co === 'romashka' ? [
     ['Вебхук bi.romashka.ru не принимает события','3 часа ошибок 502','integrations:log','bad'],
     ['2 номера получили спам-метку','Kaspersky, Яндекс АОН · уже на отдыхе','numbers:all','warn'],
-    ['Т2 проверяет маркировку','6 номеров · заявка от 15.10','numbers:marking','warn'],
-    ['2 сотрудника не подтвердили Госуслуги','Не могут звонить','team:','warn']] : [
+    ['Т2 проверяет маркировку','6 номеров · заявка от 15.10','numbers:marking','warn']] : [
     ['Нагрузка на номера выше нормы','8,6 наборов на номер в день','numbers:pools','warn'],
-    ['Счёт № 2026-1017 ждёт оплаты','300 000 ₽','billing:topup','warn'],
-    ['Роман Ким не подтвердил Госуслуги','Не может звонить','team:','warn']];
+    ['Счёт № 2026-1017 ждёт оплаты','300 000 ₽','billing:balance','warn']];
   const feed = FEED[S.co] || [];
   return {feed, co, H, p, RA, RB, RN, TOT, rate, buckets, gran, trunks, tkByKey, n30, min30, have, monthVol, need, lack, load, goal, events, F, issues, alerts, sum, rateWin, perDay};
 }
@@ -875,11 +937,11 @@ function bindCharts(){
 const NAV = [
   ['stats','Статистика','dozvon'],['trunks','Транки','trunks'],['calls','История звонков','calls'],['integrations','Интеграции и API','integrations'],['settings','Настройки','settings'],['billing','Биллинг','billing']
 ];
-const NAMES = {call:'История звонков',stats:'Статистика',calls:'История звонков',auto:'Статистика',numbers:'Транки',label:'Транки',trunks:'Транки',trunk:'Транки',team:'Настройки',integrations:'Интеграции и API',billing:'Биллинг',settings:'Настройки'};
+const NAMES = {call:'История звонков',stats:'Статистика',calls:'История звонков',auto:'Статистика',numbers:'Транки',label:'Транки',trunks:'Транки',trunk:'Транки',team:'Настройки',integrations:'Интеграции и API',billing:'Биллинг',settings:'Настройки',kb:'Документация'};
 const PERIOD = ['stats','calls','auto','trunks','trunk'];
-const EVT = {spam:['Номер получил спам-метку','warn','numbers:all'], hook:['Ошибка доставки вебхука','bad','integrations:log'], markOk:['Маркировка одобрена','neu','numbers:marking'], markSent:['Заявка на маркировку отправлена','neu','numbers:marking'], trunkDown:['Транк был недоступен','warn','trunks:'], trunkOn:['Транк подключён','neu','trunks:'], numsAdded:['Номера подключены','neu','numbers:all'], invoice:['Счёт выставлен','neu','billing:topup'], payment:['Платёж зачислен','neu','billing:topup'], balLow:['Баланс заканчивается','warn','billing:topup'], release:['Вышло обновление','neu','stats']};
+const EVT = {spam:['Номер получил спам-метку','warn','numbers:all'], hook:['Ошибка доставки вебхука','bad','integrations:log'], markOk:['Маркировка одобрена','neu','numbers:marking'], markSent:['Заявка на маркировку отправлена','neu','numbers:marking'], trunkDown:['Транк был недоступен','warn','trunks:'], trunkOn:['Транк подключён','neu','trunks:'], numsAdded:['Номера подключены','neu','numbers:all'], invoice:['Счёт выставлен','neu','billing:balance'], payment:['Платёж зачислен','neu','billing:balance'], balLow:['Баланс заканчивается','warn','billing:balance'], release:['Вышло обновление','neu','stats']};
 const FEED = {romashka:[['14:02','spam','+7 916 755-41-27',1],['09:10','hook','bi.romashka.ru · 502',1],['вчера','markOk','Т2',0],['16.10','trunkDown','МегаФон · офис · 2 мин',0],['15.10','release','Версия 1.8',0]], polezny:[['11:40','numsAdded','+60 · пул «Регионы»',1],['вчера','invoice','№ 2026-1017',0],['15.10','release','Версия 1.8',0]], newco:[['10:15','trunkOn','Билайн · Продажи',1],['вчера','markSent','4 оператора',0],['15.10','payment','30 000 ₽',0]]};
-const SETUP = [['Подключить оператора','Билайн или МТС · договор на вашу компанию','trunks:'],['Добавить сотрудников','Подтверждение через Госуслуги','settings:team'],['Подключить CRM','Виджет и запись звонков в сделках','integrations:conn']];
+const SETUP = [['Подключить оператора','Билайн или МТС · договор на вашу компанию','trunks:'],['Добавить сотрудников','Роли и логины для приложения','settings:team'],['Подключить CRM','Виджет и запись звонков в сделках','integrations:hooks']];
 
 function sidebar(C){
   const done = Object.keys(P().setup).length, tot = SETUP.length;
@@ -891,6 +953,7 @@ function sidebar(C){
   ${NAV.map(([k, t, i]) => `<button type="button" class="nav${S.screen === k || (k === 'trunks' && (S.screen === 'trunk' || S.screen === 'label' || S.screen === 'numbers')) || (k === 'settings' && S.screen === 'team') || (k === 'calls' && S.screen === 'call') ? ' on' : ''}" ${A('go', k)}>${ic(i)}${t}${dots[k] ? '<span class="badge" aria-label="Есть проблемы">!</span>' : ''}</button>`).join('')}
   <div class="side-foot">
     ${false ? `<button type="button" class="setup" ${A('drawer','setup')}><span class="mono" style="font-weight:700">${done}/${tot}</span><span><b>Настройка кабинета</b><span>следующий шаг — ${SETUP.find((s, i) => !P().setup[i])[0].toLowerCase()}</span></span></button>` : ''}
+    <button type="button" class="nav${S.screen === 'kb' ? ' on' : ''}" ${A('go','kb')}>${ic('file')}Документация</button>
     <button type="button" class="nav" ${A('toast','Чат поддержки открыт')}>${ic('help')}Помощь</button>
   </div></aside>${S.sideOpen ? `<button type="button" class="scrim" style="z-index:79" aria-label="Закрыть меню" ${A('side', 0)}></button>` : ''}`;
 }
@@ -963,8 +1026,8 @@ function health(C){
   <div class="hgrid">${M.map(m => `<button type="button" class="hm ${m.st}" ${A('fact', m.go)}><span class="hm-top"><span class="hm-l">${m.t}</span><span class="hs ${m.st}">${W[m.st]}</span></span><span class="hm-v">${m.f}${m.dev ? `<em>${m.dev}</em>` : ''}</span><span class="hm-u">${m.u || '&nbsp;'}</span><span class="hm-bar" aria-hidden="true"><i style="width:${m.fill.toFixed(1)}%"></i><b style="left:${m.tick.toFixed(1)}%"></b></span><span class="hm-n">${m.nt}</span></button>`).join('')}</div></section>`;
 }
 function healthMini(C){
-  const M = healthData(C), okN = M.filter(m => m.st === 'ok').length, W = {ok:'в норме', warn:'отклонение', bad:'отклонение'};
-  return card(hdr('Состояние телефонии', okN + ' из ' + M.length + ' в норме'), `<div class="hmini">${M.map(m => `<button type="button" class="hrow ${m.st}" ${A('fact', m.go)}><span class="hn"><span>${m.t}</span><span class="sub">${m.nt}</span></span><span class="hv mono">${m.f}</span><span class="hst">${W[m.st]}</span>${ic('chev', 14)}</button>`).join('')}</div>`);
+  const M = healthData(C);
+  return card(hdr('Состояние телефонии', 'Сейчас · сравнение с нормой'), `<div class="hc2g">${M.map(m => { const st = m.st === 'ok' ? ['В норме','ok'] : [m.dev && m.dev[0] === '+' ? 'Выше нормы' : 'Ниже нормы', 'off']; return `<div class="hc2 ${st[1]}"><div class="hc2-t"><span>${m.t}</span><span class="hc2-s">${st[1] === 'ok' ? ic('check', 12) : ic('alert', 12)} ${st[0]}</span></div><div class="hc2-v mono">${m.f}<small>${m.u ? ' · ' + m.u : ''}</small></div><div class="hc2-bar"><i style="width:${m.fill.toFixed(1)}%"></i><b style="left:${m.tick.toFixed(1)}%"></b></div><div class="hc2-n">${m.nt}</div></div>`; }).join('')}</div>`);
 }
 function onboarding(C){
   const st = P().setup, done = Object.keys(st).length, k = C.TOT;
@@ -1019,7 +1082,10 @@ function scrStats(C){
   const TECH = [['Ответил человек','200','A','var(--c1)'],['Автоответчик','200','amd','var(--c2)'],['Не взяли трубку','480 / 408','na','var(--c3)'],['Занято или сброс','486','bz','var(--c4)'],['Абонент недоступен','480','un','var(--line)'],['Номер не существует','404','ne','var(--line-2)'],['Отклонено оператором','403 / 603','rj','var(--warn)'],['Ошибка транка','503','er','var(--bad)']].map(x => [x[0], x[1], sc(fc[x[2]]), fp[x[2]], x[3]]);
   const totT = sc(k.N) || 1, curN = totT;
   const bar = (rows, tot) => `<div class="sbar" aria-hidden="true">${rows.map(x => `<i style="width:${(x[2]/tot*100).toFixed(2)}%;background:${x[4]}"></i>`).join('')}</div>`;
-  const techT = () => card(hdr('Итог набора', 'Все наборы за период'), `<div class="card-b">${bar(TECH, totT)}</div>` + table([{t:'Итог',p:1},{t:'Наборов',r:1},{t:'Доля',r:1},{t:'К прошлому периоду',r:1}], TECH.map(x => ({cells:[`<span class="lgd"><i style="background:${x[4]}"></i><span><b>${x[0]}</b><span class="sub mono">код ${x[1]}</span></span></span>`, fmt(x[2]), pc(x[2]/totT*100), dlt(x[2]/curN*100, x[3]/pN*100, true)]}))));
+  const techT = () => { const tot = TECH.reduce((a, x) => a + x[2], 0) || 1, R0 = 80, R1 = 52, cx = 100, cy = 100; let a0 = -Math.PI/2;
+    const P = (r, a) => (cx + r*Math.cos(a)).toFixed(2) + ' ' + (cy + r*Math.sin(a)).toFixed(2);
+    const segs = TECH.map((x, k) => { const f = x[2]/tot, a1 = a0 + Math.max(f, .002)*Math.PI*2 - .012, big = a1 - a0 > Math.PI ? 1 : 0, d = `M${P(R0, a0)} A${R0} ${R0} 0 ${big} 1 ${P(R0, a1)} L${P(R1, a1)} A${R1} ${R1} 0 ${big} 0 ${P(R1, a0)} Z`; a0 = a1 + .012; return `<path class="seg" data-seg="${k}" data-l="${esc(x[0])}" data-v="${pc(f*100)}" d="${d}" style="fill:${x[4]}"/>`; }).join('');
+    return card(hdr('Итог набора', 'Все наборы за период · наведите на сегмент'), `<div class="donut-w" data-l0="Наборов" data-v0="${fmt(tot)}"><svg viewBox="0 0 200 200" class="donut" role="img" aria-label="Итог набора">${segs}</svg><div class="dc"><span class="dc-l">Наборов</span><b class="dc-v mono">${fmt(tot)}</b></div><div class="dleg">${TECH.map((x, k) => `<div class="dl-r" data-seg="${k}" data-l="${esc(x[0])}" data-v="${pc(x[2]/tot*100)}"><i style="background:${x[4]}"></i><span class="dl-n">${x[0]}<span class="sub mono" style="display:inline"> · ${x[1]}</span></span><span class="mono">${fmt(x[2])}</span><b class="mono">${pc(x[2]/tot*100)}</b></div>`).join('')}</div></div>`); };
   return head + filters + dzPart() ;
 }
 function diagnostics(C){
@@ -1052,7 +1118,7 @@ function scrCalls(C){
   const playing = x => S.play && S.play.i === x.idx && !S.play.paused;
   return `<div class="ph"><div><h1>История звонков</h1></div></div>` +
     `<div class="filters fl-chips"><label class="srch">${ic('search', 14)}<input id="cq" data-f="cq" type="search" placeholder="Поиск по телефону" value="${esc(S.form.cq || '')}" aria-label="Поиск по телефону"></label>${dd('cT', '', fT, ['Все транки'].concat(C.trunks.map(t => t.name)).map(o => [o, o]))}${dd('cM', '', fM, ['Все менеджеры'].concat(team.map(m => m.n)).map(o => [o, o]))}${dd('cR', '', fR, ['Все','С разговором','Без разговора'].map(o => [o, o]))}${any ? `<button type="button" class="btn ghost sm" ${A('callsReset')}>Сбросить ${ic('x', 12)}</button>` : ''}<button type="button" class="btn sm" ${A('toast','Выгрузка запущена: ' + rows.length + ' звонков')}>${ic('down', 14)} Экспорт</button></div>` +
-    card('', table([{t:'Телефон',p:1},{t:'Начало звонка'},{t:'Статус'},{t:'Длительность'},{t:'Причина завершения'},{t:'Менеджер'},{t:'Транк'},{t:''}], rows.map(x => ({a:'call', v:x.idx, cells:[`<b class="mono">${x.c.n}</b>`, `<span class="mono">${dm(S.range.b)}, ${x.start}</span>`, pill(x.status[0], x.status[1]), `<span class="row" style="flex-wrap:nowrap;gap:10px"><span class="mono">${x.dur}</span>${x.c.talk ? `<button type="button" class="listen${playing(x) ? ' on' : ''}" ${A('play', x.idx)}>${playing(x) ? '❚❚ Пауза' : '▶ Слушать'}</button>` : ''}</span>`, esc(x.end), esc(x.m.n), esc(x.tk.name), `<button type="button" class="btn ghost icon sm" aria-label="Открыть звонок" ${A('call', x.idx)}>${ic('eye', 16)}</button>`]})), 'Ничего не нашли. Проверьте номер или сбросьте фильтры.'));
+    card('', table([{t:'Телефон',p:1},{t:'Начало звонка'},{t:'Статус'},{t:'Длительность'},{t:'Причина завершения'},{t:'Менеджер'},{t:'Транк'},{t:''}], rows.map(x => ({a:'call', v:x.idx, cells:[`<b class="mono">${x.c.n}</b>`, `<span class="mono">${dm(S.range.b)}, ${x.start}</span>`, pill(x.status[0], x.status[1]), `<span class="row" style="flex-wrap:nowrap;gap:10px"><span class="mono">${x.dur}</span>${x.c.talk ? `<button type="button" class="playb${playing(x) ? ' on' : ''}" aria-label="${playing(x) ? 'Пауза' : 'Слушать'}" ${A('play', x.idx)}>${playing(x) ? '❚❚' : '▶'}</button>` : ''}</span>`, esc(x.end), esc(x.m.n), esc(x.tk.name), `<button type="button" class="btn ghost icon sm" aria-label="Открыть звонок" ${A('call', x.idx)}>${ic('eye', 16)}</button>`]})), 'Ничего не нашли. Проверьте номер или сбросьте фильтры.'));
 }
 function scrCall(C){
   const i = S.selCall || 0, x = callMeta(C, i), c = x.c, tab = S.ctab === 'contact' || S.ctab === 'tech' ? S.ctab : 'dlg', ini = x.m.n.split(' ').map(w => w[0]).join('');
@@ -1061,12 +1127,13 @@ function scrCall(C){
   let body;
   if (tab === 'dlg') body = c.talk ? `<div class="chat">${(TRANS[i] || []).map(l => { const me = l[1] === 'М'; return `<div class="msg${me ? ' me' : ''}"><span class="av">${me ? ini : 'К'}</span><div><div class="who">${me ? esc(x.m.n) : 'Клиент'} <span class="mono sub" style="display:inline">${l[0]}</span></div><div class="bub">${esc(l[2])}</div></div></div>`; }).join('')}</div>` : '<div class="empty">Разговора не было — ' + esc(x.end.toLowerCase()) + '</div>';
   else if (tab === 'contact') body = `<div class="card-b kvgrid"><div class="muted">Сделка в CRM</div>${json({lead_id: String(x.lead), crm: 'amoCRM', responsible: x.m.n})}<div class="muted">Абонент</div>${json({phone: c.n, type: 'Мобильный', provider: x.op, region: x.reg, country: 'Россия', timezone: 'UTC+3', city_code: c.n.slice(3, 6)})}</div>`;
-  else body = `<div class="card-b">${kv([['Транк', esc(x.tk.name)], ['С номера', `<span class="mono">${c.from}</span>`], ['Оператор абонента', x.op], ['Ответ оператора', `<span class="mono">${x.code}</span>`], ['Время до ответа', c.talk ? '6,2 с' : '—'], ['Задержка набора', '1,1 с'], ['Кодек', 'G.711 A-law'], ['Маркировка', pill('Активна','ok')]])}</div>`;
-  return `<div class="ph" style="align-items:center"><div class="row"><button type="button" class="btn" ${A('go','calls')}>← Назад к списку</button><button type="button" class="btn" ${A('toast','Открываем сделку в amoCRM')}>Открыть в amoCRM</button></div><div class="row"><span class="tag">↗ Исходящий</span>${pill(x.status[0], x.status[1])}</div></div>` +
+  else { const L = [[x.start + '.010','INVITE','→ ' + c.n.replace(/\D/g, '') + ' · с номера ' + c.from.replace(/\D/g, '') + ' · транк ' + x.tk.name], [x.start + '.240','100 Trying','← оператор ' + x.op], [x.start + '.910','183 Session Progress','← ранний медиапоток, G.711 A-law'], [x.start + '.930','180 Ringing','← абонент вызывается']].concat(c.talk ? [[x.conn + '.120','200 OK','← ответ абонента'], [x.conn + '.140','ACK','→ подтверждение'], [x.conn + '.400','RTP','⇄ звук в обе стороны · потерь 0,1%'], [x.fin + '.050','BYE', (i % 2 ? '← ' : '→ ') + x.end.toLowerCase()], [x.fin + '.090','200 OK','запись сохранена · rec_' + (30778400 + i*37) + '.mp3']] : [[x.fin + '.000', x.c.r[0] === 'Автоответчик' ? '200 OK · АО' : '480', x.c.r[0] === 'Автоответчик' ? 'автоответчик распознан, вызов сброшен' : 'абонент не ответил за 28 с']]);
+    body = `<div class="logs">${L.map(l => `<div class="lg-l"><span class="mono">${l[0]}</span><b class="mono">${esc(l[1])}</b><span>${esc(l[2])}</span></div>`).join('')}</div>`; }
+  return `<div class="ph" style="align-items:center"><div class="row"><button type="button" class="btn" ${A('go','calls')}>← Назад к списку</button><button type="button" class="btn" ${A('dlg','complain')}>⚑ Пожаловаться на звонок</button></div><div class="row"><span class="tag">↗ Исходящий</span>${pill(x.status[0], x.status[1])}</div></div>` +
     `<section class="card"><div class="card-h"><div><h2 style="font-size:20px">Звонок ${c.n}</h2><div class="muted">${dm(S.range.b)} 2026 в ${x.start}</div></div>${c.talk ? `<button type="button" class="btn pri" ${A('play', i)}>${S.play && S.play.i === i && !S.play.paused ? '❚❚ Пауза' : '▶ Прослушать запись'}</button>` : ''}</div>` +
     `<div class="cmeta"><div><h3>Основная информация</h3>${kv([['Телефон', `<span class="mono">${c.n}</span>`], ['Статус', pill(x.status[0], x.status[1])], ['Тип звонка', 'Исходящий'], ['Менеджер', esc(x.m.n)]])}</div><div><h3>Время</h3>${kv([['Начало', `<span class="mono">${x.start}</span>`], ['Соединение', `<span class="mono">${x.conn}</span>`], ['Завершение', `<span class="mono">${x.fin}</span>`], ['Длительность', `<span class="mono">${x.dur}</span>`]])}</div><div><h3>Завершение</h3>${kv([['Причина', esc(x.end)], ['Код ответа', `<span class="mono">${x.code}</span>`], ['Транк', esc(x.tk.name)], ['С номера', `<span class="mono">${c.from}</span>`]])}</div></div></section>` +
-    `<div class="seg" style="align-self:flex-start">${[['dlg','История диалога'],['contact','О контакте'],['tech','Техника']].map(([v, t]) => `<button type="button" class="${tab === v ? 'on' : ''}" ${A('ctab', v)}>${t}</button>`).join('')}</div>` +
-    card(hdr({dlg:'История диалога', contact:'О контакте', tech:'Техника звонка'}[tab], {dlg:'Расшифровка разговора', contact:'Данные из CRM и об абоненте', tech:'Как прошёл вызов'}[tab], tab === 'dlg' && c.talk ? `<button type="button" class="btn sm" ${A('toast','Скопировано')}>Скопировать текст</button>` : ''), body);
+    `<div class="seg" style="align-self:flex-start">${[['dlg','История диалога'],['contact','О контакте'],['tech','Логи звонка']].map(([v, t]) => `<button type="button" class="${tab === v ? 'on' : ''}" ${A('ctab', v)}>${t}</button>`).join('')}</div>` +
+    card(hdr({dlg:'История диалога', contact:'О контакте', tech:'Логи звонка'}[tab], {dlg:'Расшифровка разговора', contact:'Данные из CRM и об абоненте', tech:'SIP-события по времени'}[tab], tab === 'dlg' && c.talk ? `<button type="button" class="btn sm" ${A('toast','Скопировано')}>Скопировать текст</button>` : ''), body);
 }
 
 /* ===================== АВТОДОЗВОН ===================== */
@@ -1142,14 +1209,26 @@ const tkShare = (C, t) => t.key && C.TOT.N ? C.TOT.dl[t.key]/C.TOT.N : 0;
 const tkRate = (C, t) => t.key && C.TOT.dl[t.key] ? pc(C.TOT.an[t.key]/C.TOT.dl[t.key]*100) : '—';
 const numRow = (C, n) => ({a:'num', v:NUMS.indexOf(n), cells:[`<b class="mono">${n.num}</b>`, esc(tkOf(C, n).name), esc(n.use), pill(n.mk[0], n.mk[1]), pill(n.sp[0], n.sp[1]), n.calls, pill(n.h[0], n.h[1])]});
 const NUMCOLS = [{t:'Номер',p:1},{t:'Транк'},{t:'Использование'},{t:'Маркировка'},{t:'Спам-метки'},{t:'Наборов сегодня',r:1},{t:'Состояние'}];
-function stopList(){
-  const stops = [['+7 985 253-31-77','Попросил не звонить','Автоматически'],['+7 916 923-04-52','Тег «Не звонить» в amoCRM','Синхронизация'],['+7 921 422-88-13','Жалоба','Мария Л.'],['+7 903 283-71-09','Действующий клиент','Игорь П.']];
-  return `<div class="grid2">${card(hdr('Стоп-лист · 1 284 номера', 'Все транки', `<button type="button" class="btn sm" ${A('toast','Номер добавлен в стоп-лист')}>Добавить</button>`), table([{t:'Номер',p:1},{t:'Причина'},{t:'Кто добавил'}], stops.map(r => ({cells:[`<b class="mono">${r[0]}</b>`, esc(r[1]), `<span class="sub" style="display:inline">${esc(r[2])}</span>`]}))))}${card(hdr('Правила',''), setRow('Синхронизировать с CRM', 'Контакты с тегом «Не звонить»', sw('stopcrm','Синхронизация')) + setRow('Запрещать ручной набор', 'Менеджер увидит предупреждение', sw('stophard','Запрет')))}</div>`;
-}
 function scrTrunks(C){
-  const rows = C.trunks.map(tk => ({a:'trunk', v:tk.id, cells:[`<b>${esc(tk.name)}</b><span class="sub">${esc(tk.op === '—' ? 'Свой оператор' : tk.op)}</span>`, tk.contract === 'na' ? '' : (tk.contract === 'на подписании' ? pill('Договор на подписании','warn') : pill('Работает', 'ok')), tk.nums, (() => { const lk = Math.max(0, Math.ceil(C.monthVol*tkShare(C, tk)/22/NORM[P().cmode || 'bal']) - tk.nums); return lk ? `<span style="color:var(--warn);font-weight:500">+${lk}</span>` : '<span class="muted">—</span>'; })(), Math.round(tk.lines*.17) + ' из ' + tk.lines]}));
+  const rows = C.trunks.map(tk => ({a:'trunk', v:tk.id, cells:[`<b>${esc(tk.name)}</b><span class="sub">${esc(tk.op === '—' ? 'Свой оператор' : tk.op)}</span>`, tk.contract === 'na' ? '' : (tk.contract === 'на подписании' ? pill('Договор на подписании','warn') : pill('Работает', 'ok')), tk.nums, (() => { const lk = Math.max(0, Math.ceil(C.monthVol*tkShare(C, tk)/22/NORM[P().cmode || 'bal']) - tk.nums); return lk ? `<span style="color:var(--warn);font-weight:500">+${lk}</span>` : '<span class="muted">—</span>'; })(), tkRate(C, tk), Math.round(tk.lines*.17) + ' из ' + tk.lines]}));
   return `<div class="ph"><div><h1>Транки</h1></div><button type="button" class="btn pri" ${A('trunkNew')}>Подключить оператора</button></div>` +
-    (C.trunks.length ? card('', table([{t:'Транк',p:1},{t:'Состояние'},{t:'Номеров',r:1},{t:'Докупить',r:1},{t:'Линий занято',r:1}], rows)) : card('', `<div class="empty">Подключите Билайн или МТС — договор и номера на вашу компанию<div style="margin-top:12px"><button type="button" class="btn pri" ${A('trunkNew')}>Подключить оператора</button></div></div>`));
+    (C.trunks.length ? card('', table([{t:'Транк',p:1},{t:'Состояние'},{t:'Номеров',r:1},{t:'Докупить',r:1},{t:'Дозвон',r:1},{t:'Линий занято',r:1}], rows)) : card('', `<div class="empty">Подключите Билайн или МТС — договор и номера на вашу компанию<div style="margin-top:12px"><button type="button" class="btn pri" ${A('trunkNew')}>Подключить оператора</button></div></div>`));
+}
+const OPP = {'Билайн':['903','905','909','960','961','962'],'МТС':['910','915','916','985','917'],'МегаФон':['925','926','929','999']};
+function trunkNumsData(C, t){
+  let seed = [...(S.co + t.id)].reduce((a, ch) => a*31 + ch.charCodeAt(0), 7) >>> 0; const rnd = () => (seed = (seed*1103515245 + 12345) >>> 0) / 4294967296;
+  const pre = OPP[t.op] || OPP['МегаФон'], first = t.id === (C.trunks[0] || {}).id;
+  return Array.from({length:t.nums}, (_, k) => { const p = pre[Math.floor(rnd()*pre.length)], n = `+7 ${p} ${100 + Math.floor(rnd()*900)}-${String(Math.floor(rnd()*100)).padStart(2,'0')}-${String(Math.floor(rnd()*100)).padStart(2,'0')}`;
+    const spam = first && (k === 1 || k === 7) ? (k === 1 ? 'Kaspersky' : 'Яндекс АОН') : '', reserve = k >= t.nums - 3, init = reserve ? 0 : 60 + Math.floor(rnd()*340), rate = spam ? .18 + rnd()*.08 : .56 + rnd()*.16;
+    const mark = t.kind === 'own' ? '—' : (C.co.unmarked && k % 9 === 4 ? '—' : C.co.short + ' · Продажи'), mm = Math.floor(rnd()*600);
+    return {n, mark, spam, init, ans:Math.round(init*rate), rate: init ? rate*100 : null, st: spam ? ['Карантин','warn'] : (reserve ? ['Резерв','neu'] : ['Активен','ok']), last: init ? (mm < 300 ? '21.10 ' : '20.10 ') + String(9 + Math.floor(mm/60) % 11).padStart(2,'0') + ':' + String(mm % 60).padStart(2,'0') : '—'};
+  });
+}
+function trunkNumsTable(C, t, own){
+  const q = (S.form.nq || '').replace(/\D/g, ''), all = trunkNumsData(C, t), rows = q ? all.filter(r => r.n.replace(/\D/g, '').includes(q)) : all, PG = 12, pages = Math.max(1, Math.ceil(rows.length/PG)), pg = Math.min(S.npg || 0, pages - 1), sl = rows.slice(pg*PG, pg*PG + PG);
+  return card(`<div class="filters" style="width:100%"><label class="srch">${ic('search', 14)}<input id="nq" data-f="nq" type="search" placeholder="Поиск по номеру" value="${esc(S.form.nq || '')}" aria-label="Поиск по номеру"></label><button type="button" class="btn sm" ${A('toast','Выгрузка ' + rows.length + ' номеров · CSV')}>${ic('down', 14)} Скачать CSV</button></div>`,
+    table([{t:'Номер',p:1},{t:'Маркировка'},{t:'Спам-метка'},{t:'Инициаций',r:1},{t:'Ответов',r:1},{t:'Дозвон',r:1},{t:'Статус'},{t:'Последняя инициация'}], sl.map(r => ({cells:[`<b class="mono">${r.n}</b>`, r.mark === '—' ? '<span class="muted">—</span>' : esc(r.mark), r.spam ? pill(r.spam + ': спам', 'bad') : '<span class="muted">Чисто</span>', fmt(r.init), fmt(r.ans), r.rate == null ? '—' : pc(r.rate), pill(r.st[0], r.st[1]), `<span class="mono">${r.last}</span>`]})), 'Ничего не нашли') +
+    `<div class="pager"><span class="muted">${rows.length ? (pg*PG + 1) + '–' + Math.min(rows.length, pg*PG + PG) : 0} из ${rows.length}</span><div class="row" style="gap:6px"><button type="button" class="btn sm" ${pg ? A('npg', pg - 1) : 'disabled'}>← Назад</button><span class="mono sub" style="display:inline">${pg + 1} / ${pages}</span><button type="button" class="btn sm" ${pg < pages - 1 ? A('npg', pg + 1) : 'disabled'}>Вперёд →</button></div></div>`);
 }
 function trunkLog(C, t, own){
   const log = own ? [['Потеря регистрации','2 мин','16.10 12:10','warn'],['Подключён','','01.06 11:30','ok']] : [['Договор подписан','','12.05','ok']];
@@ -1157,16 +1236,18 @@ function trunkLog(C, t, own){
 }
 function scrTrunk(C){
   const t = C.trunks.find(x => x.id === S.selT) || C.trunks[0]; if (!t) return scrTrunks(C);
-  const own = t.kind === 'own', tab = ['nums','rot','conn'].includes(S.tab.trunk) ? S.tab.trunk : 'nums', busy = Math.round(t.lines*.17), norm = NORM[P().cmode || 'bal'];
+  const own = t.kind === 'own', tab = ['nums','req','rot','conn'].includes(S.tab.trunk) ? S.tab.trunk : 'nums', busy = Math.round(t.lines*.17), norm = NORM[P().cmode || 'bal'];
   const head = `<div class="ph"><div><button type="button" class="link" ${A('go','trunks')}>← Транки</button><h1 style="margin-top:6px">${esc(t.name)}</h1><div class="row" style="margin-top:8px"><span class="tag">${own ? 'свой оператор' : 'оформлен через SashaTel'}</span>${pill('Работает','ok')}</div></div><div class="row"><button type="button" class="btn" ${A('tkTest')}>Тестовый звонок</button><button type="button" class="btn" ${A('trunkEdit', t.id)}>Изменить</button><button type="button" class="btn danger" ${A('confirm','delTrunk')}>Удалить</button></div></div>` +
-    tabs('trunk', [['nums','Номера'],['rot','Карусель'],['conn','Подключение']]);
+    tabs('trunk', [['nums', ic('numbers', 15) + ' Номера'],['req', ic('file', 15) + ' Заявки'],['rot', ic('dial', 15) + ' Карусель'],['conn', ic('trunks', 15) + ' Подключение']]);
   if (tab === 'nums'){
     const need = Math.ceil(C.monthVol*tkShare(C, t)/22/norm), lack = Math.max(0, need - t.nums), mine = NUMS.filter(n => tkOf(C, n).id === t.id);
     const st = C.trunks.filter(x => x.kind !== 'own'), pools = C.co.pools.filter((p, i) => !own && st.length && st[i % st.length].id === t.id), prem = P().premium;
     return head + card(hdr('Номера под объём', 'Формула: наборы ÷ 22 дня ÷ ' + norm + ' наборов с номера', own ? `<button type="button" class="btn sm" ${A('toast','Добавление номеров')}>Указать номера</button>` : `<button type="button" class="btn sm" ${A('buy', lack || 10)}>Заказать номера</button>`), `<div class="nstat"><div><span class="muted">Наборов в месяц</span><b>${fmt(Math.round(C.monthVol*tkShare(C, t)))}</b></div><div><span class="muted">Нужно номеров</span><b>${need}</b></div><div><span class="muted">На транке</span><b>${t.nums}</b></div><div><span class="muted">Докупить</span><b${lack ? ' style="color:var(--warn)"' : ''}>${lack ? '+' + lack : '—'}</b></div></div>`) +
-      (() => { const rq = (P().reqs || []).filter(r => r.tk === t.id); return card(hdr('Заявки оператору', 'Подключение, заказ и замена номеров'), table([{t:'Дата',p:1},{t:'Тип'},{t:'Заявка'},{t:'Статус'}], rq.map(r => ({cells:[`<b class="mono">${r.at}</b>`, r.type, esc(r.d), pill(r.st[0], r.st[1])]})), 'Заявок пока нет')); })() +
-      (own ? '' : card(hdr('Пулы транка', '', `<button type="button" class="btn sm" ${A('toast','Создание пула')}>Новый пул</button>`), table([{t:'Пул',p:1},{t:'Номеров',r:1},{t:'Кто звонит'},{t:'Смена номера'}], pools.map(p => ({a:'pool', v:C.co.pools.indexOf(p), cells:[`<b>${esc(p.t)}</b>`, Math.min(p.n, t.nums), esc(p.who), {call:'Каждый звонок',min:'Каждые 5 минут',lim:'По лимиту'}[p.rot] || 'Каждый звонок']})), 'Пулов нет'))) +
-      card(hdr('Номера транка', mine.length + ' из ' + t.nums + ' показаны'), table(NUMCOLS.filter(c => c.t !== 'Транк'), mine.map(n => { const r = numRow(C, n); r.cells.splice(1, 1); return r; }), 'Номеров пока нет'));
+      trunkNumsTable(C, t, own);
+  }
+  if (tab === 'req'){
+    const rq = (P().reqs || []).filter(r => r.tk === t.id);
+    return head + card(hdr('Заявки оператору', 'Подключение, заказ и замена номеров', own ? '' : `<button type="button" class="btn sm pri" ${A('buy', 10)}>Заказать номера</button>`), table([{t:'Дата',p:1},{t:'Тип'},{t:'Заявка'},{t:'Статус'}], rq.map(r => ({cells:[`<b class="mono">${r.at}</b>`, r.type, esc(r.d), pill(r.st[0], r.st[1])]})), 'Заявок пока нет'));
   }
   if (tab === 'rot'){
     const vol = C.monthVol*tkShare(C, t), MODE = [['care','Бережный',5,'низкий'],['bal','Сбалансированный',8,'средний'],['max','Максимум',12,'высокий']], cm = P().cmode || 'bal';
@@ -1177,6 +1258,7 @@ function scrTrunk(C){
     const cp = v => `<button type="button" class="btn ghost sm icon" aria-label="Копировать" ${A('copy', v)}>${ic('copy', 14)}</button>`;
     const host = t.host || (t.op === 'МТС' ? 'sip.mts.ru:5060' : 'sip.beeline.ru:5060'), login = t.login || ('7' + C.co.inn.slice(0, 6) + '01');
     return head + `<div class="grid2">` + card(hdr('Регистрация у оператора', '', pill('Зарегистрирован','ok')), `<div class="card-b"><dl class="cred"><dt>Сервер</dt><dd>sip:${esc(host)}</dd><span></span><dt>Логин</dt><dd>${esc(login)}</dd><span></span><dt>Пароль</dt><dd>••••••••••••</dd><span></span><dt>Транспорт</dt><dd>UDP</dd><span></span><dt>Линий</dt><dd>${t.lines} · занято ${busy}</dd><span></span><dt>Основной номер</dt><dd>${t.main}</dd><span></span></dl><div class="row" style="margin-top:14px"><button type="button" class="btn sm" ${A('trunkEdit', t.id)}>Изменить доступ</button></div></div>`) +
+      card(hdr('Договор с оператором', ''), own ? setRow('Договор у вашего оператора', 'SashaTel к нему не подключён', '') : `<button type="button" class="rowlink" ${A('dlg', 'contract:' + t.id)}><span><b>№ ${esc(t.contract)}</b><span class="sub">${esc(t.op)} · абонент ${esc(C.co.full)}</span></span>${pill(t.contract === 'на подписании' ? 'На подписании' : 'Действует', t.contract === 'на подписании' ? 'warn' : 'ok')}${ic('chev', 14)}</button>`) +
       card(hdr('Наш IP для белого списка', ''), `<div class="card-b"><dl class="cred"><dt>IP</dt><dd>178.72.162.244</dd>${cp('178.72.162.244')}<dt>Входящие</dt><dd>sip:sip.sashatel.ru:5060</dd>${cp('sip:sip.sashatel.ru:5060')}</dl></div>`) + `</div>` + trunkLog(C, t, own);
   }
   return head;
@@ -1184,94 +1266,249 @@ function scrTrunk(C){
 
 /* ===================== СОТРУДНИКИ ===================== */
 function scrTeam(C){ return scrSettings(C); }
-function teamCard(C){
-  const G = {ok:['Подтверждён','ok'],wait:['Ждём подтверждения','warn'],sent:['Приглашение отправлено','neu']};
-  return card(hdr('Сотрудники · ' + C.co.team.length, 'Звонки — после подтверждения через Госуслуги', `<button type="button" class="btn pri sm" ${A('drawer','invite')}>Пригласить</button>`), table([{t:'Сотрудник',p:1},{t:'Звонит с'},{t:'Где звонит'},{t:'Госуслуги'}], C.co.team.map((m, i) => ({a:'person', v:i, cells:[`<b>${esc(m.n)}</b><span class="sub">${esc(m.r)} · ${esc(m.dep)}</span>`, `${m.m === 'fixed' ? 'Личный номер' : 'Пул'}<span class="sub mono">${esc(m.num)}</span>`, esc(m.dev), pill(G[m.g][0], G[m.g][1])]}))));
-}
+
+/* ===================== ОБЩЕЕ ===================== */
+const rng = seed => { let s = seed >>> 0; return () => (s = (s*1664525 + 1013904223) >>> 0) / 4294967296; };
+const pager = (act, total, pg, PG) => { const pages = Math.max(1, Math.ceil(total/PG)); return `<div class="pager"><span class="muted">${total ? (pg*PG + 1) + '–' + Math.min(total, pg*PG + PG) : 0} из ${fmt(total)}</span><div class="row" style="gap:6px"><button type="button" class="btn sm" ${pg ? A(act, pg - 1) : 'disabled'}>← Назад</button><span class="mono sub" style="display:inline">${pg + 1} / ${pages}</span><button type="button" class="btn sm" ${pg < pages - 1 ? A(act, pg + 1) : 'disabled'}>Вперёд →</button></div></div>`; };
+const page = (rows, key, PG) => { const pages = Math.max(1, Math.ceil(rows.length/PG)), pg = Math.min(S[key] || 0, pages - 1); return {pg, sl: rows.slice(pg*PG, pg*PG + PG)}; };
+const stx = (on, t) => `<span class="stx"><i class="${on ? '' : 'off'}"></i>${t}</span>`;
+const srch = (id, ph) => `<label class="srch">${ic('search', 14)}<input id="${id}" data-f="${id}" type="search" placeholder="${ph}" value="${esc(S.form[id] || '')}" aria-label="${ph}"></label>`;
+const TODAY_D = new Date(2026, 9, 21);
+const dstr = (d, withY) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + (withY ? '.' + d.getFullYear() : '');
+const hm = (h, m, s) => String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + (s != null ? ':' + String(s).padStart(2, '0') : '');
+const TR = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+const login = n => { const [f, l] = n.toLowerCase().split(' '); const t = s => (s || '').split('').map(c => TR[c] != null ? TR[c] : c).join(''); return t(f)[0] + '.' + t(l); };
+const genPw = seed => { const r = rng(seed * 7919 + Date.now() % 1000), cs = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 12; i++) s += cs[Math.floor(r()*cs.length)]; return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8); };
 
 /* ===================== ИНТЕГРАЦИИ ===================== */
+const HTYPES = [
+  ['api','API','Уведомления на ваш сервер через HTTP-запросы'],
+  ['telegram','Telegram','Уведомления в группу Telegram'],
+  ['max','MAX','Уведомления в канал MAX'],
+  ['email','Email','Уведомления на почту'],
+  ['bitrix','Битрикс24','Звонки, записи и лиды в CRM после звонка'],
+  ['amocrm','amoCRM','Звонки, записи и сделки в CRM после звонка']];
+const HTN = Object.fromEntries(HTYPES.map(x => [x[0], x[1]])); HTN.albato = 'Albato';
+const HEV = [['call.started','Начало звонка'],['call.answered','Абонент ответил'],['call.ended','Звонок завершён'],['call.missed','Пропущенный входящий'],['recording.ready','Запись готова'],['analysis.done','Готово саммари звонка'],['number.quarantined','Номер ушёл на отдых'],['number.spam','Номер получил спам-метку'],['balance.low','Баланс ниже порога']];
+const SUMS = [
+  ['Назначена демонстрация','Клиент — отдел продаж на 20 человек, ведут сделки в amoCRM, половина звонков идёт с мобильных мимо CRM. Договорились о демо в четверг в 11:00, ссылку отправить на почту.'],
+  ['Перезвонить','Попросили перезвонить после 15:00, на встрече. Интерес к записи звонков и интеграции с Битрикс24.'],
+  ['Отказ','Не актуально: телефония закрыта годовым контрактом до марта. Разрешили связаться в феврале.'],
+  ['Отправить КП','Нужен расчёт на 35 номеров и 12 сотрудников. КП на почту до пятницы, решение принимает коммерческий директор.'],
+  ['Назначена встреча','Встреча в офисе клиента во вторник в 14:00. Обсудить перенос номеров и маркировку.']];
+function hookLog(C){
+  const p = P(); if (p._log && p._logN === p.hooks.length) return p._log;
+  const r = rng(C.co.inn.length * 977 + p.hooks.length), out = [], hs = p.hooks.map((h, i) => [h, i]).filter(([h]) => h.last && h.last !== '—');
+  if (!hs.length){ p._log = []; p._logN = p.hooks.length; return p._log; }
+  let t = (TODAY_D.getTime() + (14*3600 + 52*60 + 9)*1000);
+  for (let k = 0; k < 64; k++){
+    const [h, hi] = hs[Math.floor(r()*hs.length)], evs = h.ev.split(', '), ev = evs[Math.floor(r()*evs.length)];
+    const d = new Date(t), bad = h.st[1] === 'bad' && d.getDate() === 21 && d.getHours() >= 9 && d.getHours() < 15;
+    const ph = '+7 9' + String(Math.floor(r()*90) + 10) + ' ' + String(Math.floor(r()*900) + 100) + '-' + String(Math.floor(r()*90) + 10) + '-' + String(Math.floor(r()*90) + 10);
+    const code = bad ? (r() < .7 ? 502 : 504) : (r() < .015 ? 500 : 200), ms = code === 504 ? 30000 : (code === 502 ? Math.floor(r()*80) + 20 : Math.floor(r()*120) + 70);
+    const cid = 'c_' + Math.floor(r()*16777215).toString(16).padStart(6, '0'), sm = SUMS[Math.floor(r()*SUMS.length)], m = C.co.team[Math.floor(r()*Math.min(4, C.co.team.length))];
+    const dur = Math.floor(r()*280) + 25;
+    out.push({id:'dlv_' + Math.floor(r()*4294967295).toString(16).padStart(8, '0'), at:dstr(d) + ' ' + hm(d.getHours(), d.getMinutes(), d.getSeconds()), iso:'2026-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + hm(d.getHours(), d.getMinutes(), d.getSeconds()) + '+03:00', h, hi, ev, ph, code, ms, cid, sm, m, dur, att: code === 200 ? 1 : Math.min(5, Math.floor(r()*3) + 1)});
+    t -= Math.floor(r()*55 + 6) * 60000;
+  }
+  p._log = out; p._logN = p.hooks.length; return out;
+}
+function payload(e, C){
+  const tk = (C.trunks[0] || {}).name || 'Транк', from = '+7 925 818-39-90', base = {event:e.ev, delivery_id:e.id, sent_at:e.iso, call_id:e.cid};
+  const emp = {name:e.m.n, login:login(e.m.n)};
+  const map = {
+    'call.started':{direction:'outbound', from, to:e.ph, employee:emp, trunk:tk},
+    'call.answered':{direction:'outbound', from, to:e.ph, employee:emp, trunk:tk, ring_time:7},
+    'call.ended':{direction:'outbound', from, to:e.ph, employee:emp, trunk:tk, duration:e.dur, talk_time:Math.max(0, e.dur - 9), result:'answered', sip_code:200, hangup_by:'employee', recording_url:'https://rec.sashatel.ru/' + e.cid + '.mp3'},
+    'call.missed':{direction:'inbound', from:e.ph, to:from, employee:emp, ring_time:25},
+    'recording.ready':{to:e.ph, duration:e.dur, format:'mp3', size_kb:Math.round(e.dur*16), recording_url:'https://rec.sashatel.ru/' + e.cid + '.mp3'},
+    'analysis.done':{to:e.ph, employee:emp, duration:e.dur, result:e.sm[0], summary:e.sm[1], stop_list:false, transcript_url:'https://app.sashatel.ru/calls/' + e.cid + '/transcript'},
+    'number.quarantined':{number:from, reason:'answer_rate_drop', until:'2026-10-24T09:00:00+03:00'},
+    'number.spam':{number:from, source:'Kaspersky Who Calls', action:'quarantine'},
+    'balance.low':{balance:12400, threshold:15000, currency:'RUB'}};
+  return Object.assign(base, map[e.ev] || {});
+}
+function hookDetail(C, hk, i){
+  const on = hk.on !== false, crm = hk.type === 'amocrm' || hk.type === 'bitrix', L = hookLog(C).filter(e => e.hi === i).slice(0, 8);
+  const tgt = hk.type === 'telegram' || hk.type === 'max' ? 'Чат' : (hk.type === 'email' ? 'Почта' : (crm ? 'Портал' : 'Адрес'));
+  return `<div><button type="button" class="link" ${A('inView','list')}>← Вебхуки</button></div>` +
+    card(`<div style="min-width:0"><h2>${esc(hk.desc || HTN[hk.type] || 'Вебхук')}</h2><div class="muted mono" style="overflow-wrap:anywhere">${esc(hk.url)}</div></div><div class="row"><button type="button" class="btn" ${A('hookTest')}>Отправить тест</button><button type="button" class="btn" ${A('hookClone', i)}>${ic('copy',14)} Клонировать</button><button type="button" class="btn danger" ${A('confirm','hookOff')}>Удалить</button></div>`,
+      setRow('Статус', on ? 'Отправляем события' : 'События не отправляются', `<span class="row" style="flex-wrap:nowrap;gap:10px">${stx(on, on ? 'Активен' : 'Выключен')}<button type="button" class="sw${on ? ' on' : ''}" role="switch" aria-checked="${on}" aria-label="Вебхук активен" ${A('hookOn', i)}></button></span>`) +
+      `<div class="card-b"><dl class="dl"><dt>Тип</dt><dd>${esc(HTN[hk.type] || hk.type)}</dd><dt>${tgt}</dt><dd class="mono" style="overflow-wrap:anywhere">${esc(hk.url)}</dd><dt>События</dt><dd class="mono">${esc(hk.ev)}</dd>${hk.type === 'api' || hk.type === 'albato' ? '<dt>Метод</dt><dd class="mono">POST · application/json</dd><dt>Подпись</dt><dd class="mono">X-SashaTel-Signature: HMAC-SHA256</dd>' : ''}<dt>Повторы</dt><dd>5 попыток в течение часа</dd><dt>Создан</dt><dd class="mono">${esc(hk.created || '—')}</dd><dt>Последняя отправка</dt><dd class="mono">${esc(hk.last || '—')}</dd></dl></div>`) +
+    (S.hookTested ? card(hdr('Тест: call.ended', '', pill('200 OK','ok')), `<div class="card-b"><pre class="code">${esc(JSON.stringify({event:'call.ended',call_id:'c_8f2a91',direction:'outbound',to:'+7 912 000-08-41',duration:252,sip_code:200,recording_url:'https://rec.sashatel.ru/c_8f2a91.mp3'}, null, 2))}</pre></div>`) : '') +
+    (crm ? crmMap(C, hk.type) : '') +
+    card(hdr('Последние отправки', '', `<button type="button" class="btn ghost sm" ${A('tab','integrations:log')}>Весь журнал</button>`), logTable(L, 'Отправок ещё не было'));
+}
+function crmMap(C, type){
+  const crmN = type === 'bitrix' ? 'Битрикс24' : 'amoCRM', opts = [['—','Не выбран']].concat(C.co.team.map(m => [m.n, m.n]));
+  return card(hdr('Ответственные в ' + crmN, 'Звонок сотрудника попадает в CRM на выбранного пользователя', `<button type="button" class="btn sm" ${A('toast','Сопоставлено по почте')}>Сопоставить по почте</button>`),
+    table([{t:'Сотрудник SashaTel',p:1},{t:'Пользователь ' + crmN},{t:''}], C.co.team.map((m, i) => { const id = 'map_' + S.co + '_' + type + '_' + i, cur = S.form[id] || (i === 3 ? '—' : m.n); return {cells:[`<b>${esc(m.n)}</b><span class="sub">${esc(m.dep)}</span>`, dd(id, '', cur, opts), cur === '—' ? pill('Не сопоставлен','warn') : '']}; })));
+}
+function logTable(L, empty){
+  return table([{t:'Время',p:1},{t:'Событие'},{t:'Получатель'},{t:'Номер'},{t:'Ответ'},{t:'Время ответа',r:1}], L.map(e => ({a:'dlg', v:'log:' + e.id, cells:[`<span class="mono">${e.at}</span>`, `<span class="mono">${e.ev}</span>`, `${esc(HTN[e.h.type] || e.h.type)}<span class="sub mono" style="overflow-wrap:anywhere">${esc(e.h.url.replace(/^https?:\/\//, '').slice(0, 34))}</span>`, `<span class="mono">${e.ph}</span>`, pill(e.code + (e.code === 200 ? ' OK' : ''), e.code === 200 ? 'ok' : 'bad'), `<span class="mono">${fmt(e.ms)} мс</span>`]})), empty);
+}
 function scrIntegrations(C){
-  const t = S.tab.integrations, p = P(), err = p.hooks.filter(h => h.st[1] === 'bad').length;
-  let h = `<div class="ph"><div><h1>Интеграции и API</h1></div><button type="button" class="btn pri" ${A('drawer','conn')}>Добавить подключение</button></div>` + tabs('integrations', [['conn','Подключения'],['log','Журнал событий'],['api','API']]);
-  if (t === 'conn'){
-    if (S.inView === 'amo' && p.amoOn){
-      const MAP = C.co.team.map((m, i) => [m.n, i === 3 ? '—' : m.n, i === 3 ? ['Не сопоставлен','warn'] : ['Сопоставлен','ok']]);
-      return h + `<div><button type="button" class="link" ${A('inView','list')}>← Подключения</button></div>` + card(`<div><h2>amoCRM</h2><div class="muted">${C.co.amo}</div></div><div class="row"><button type="button" class="btn" ${A('crmTest')}>Тестовый звонок</button><button type="button" class="btn danger" ${A('confirm','amoOff')}>Отключить</button></div>`, S.crmTested ? `<div class="card-b"><div class="checklist">${['Звонок создан в amoCRM','Привязан к сделке #48211','Ответственный — ' + C.co.team[0].n,'Запись в карточке'].map(x => `<div>${esc(x)}</div>`).join('')}</div></div>` : '') +
-        `<div class="grid2">${card(hdr('Что делаем в CRM',''), `<div class="card-b"><div class="field">Привязывать звонок к${seg('bind', S.bind, [['deal','Сделке'],['contact','Контакту']])}</div></div>` + setRow('Создавать сделку на неизвестный номер', '', sw('newdeal','Создавать сделку')) + setRow('Виджет звонков в карточке', '', sw('widget','Виджет')) + (P().sumOn ? setRow('Саммари и итог в примечание', '', sw('note','Итог в примечание')) : ''))}${card(hdr('Сотрудники в amoCRM','', `<button type="button" class="btn sm" ${A('toast','Сотрудники сопоставлены')}>По почте</button>`), table([{t:'Сотрудник',p:1},{t:'В amoCRM'},{t:''}], MAP.map(r => ({cells:[`<b>${esc(r[0])}</b>`, esc(r[1]), pill(r[2][0], r[2][1])]}))))}</div>`;
-    }
-    if (S.inView === 'hook' && p.hooks[S.selHook]){
-      const hk = p.hooks[S.selHook];
-      return h + `<div><button type="button" class="link" ${A('inView','list')}>← Подключения</button></div>` + card(`<div style="min-width:0"><h2>Вебхук</h2><div class="muted mono" style="overflow-wrap:anywhere">${esc(hk.url)}</div></div><div class="row"><button type="button" class="btn" ${A('hookTest')}>Отправить тест</button><button type="button" class="btn danger" ${A('confirm','hookOff')}>Удалить</button></div>`, `<div class="card-b"><dl class="dl"><dt>События</dt><dd class="mono">${esc(hk.ev)}</dd><dt>Подпись</dt><dd class="mono">X-SashaTel-Signature</dd><dt>Повторы</dt><dd>5 раз за час</dd><dt>Состояние</dt><dd>${pill(hk.st[0], hk.st[1])}</dd></dl></div>`) + (S.hookTested ? card(hdr('Тест: call.ended', '', pill('200 OK','ok')), `<div class="card-b"><pre class="code">${esc(JSON.stringify({event:'call.ended',call_id:'c_8f2a91',trunk:(C.trunks[0] || {}).name,to:'+79120000841',duration:252,sip_code:200,recording_url:'https://rec.sashatel.ru/c_8f2a91.mp3'}, null, 2))}</pre></div>`) : '');
-    }
-    const EVN = {'call.ended':'Результат звонка','recording.ready':'Запись готова','call.missed':'Пропущенный'};
-    const crm = card(hdr('CRM', ''), setRow('amoCRM', p.amoOn ? C.co.amo + ' · звонки, записи, виджет' : 'Не подключена', p.amoOn ? `<div class="row" style="gap:10px">${pill('Работает','ok')}<button type="button" class="btn sm" ${A('inView','amo')}>Настроить</button></div>` : `<button type="button" class="btn pri sm" ${A('connAmo')}>Подключить</button>`) + setRow('Битрикс24', 'Не подключён', `<button type="button" class="btn sm" ${A('toast','Подключение Битрикс24')}>Подключить</button>`));
-    const hk = card(hdr('Вебхуки', 'События звонков в вашу систему', `<button type="button" class="btn pri sm" ${A('drawer','hook')}>Создать вебхук</button>`), table([{t:'Цель',p:1},{t:'Тип'},{t:'События'},{t:'Статус'},{t:'Создан'},{t:''}], p.hooks.map((h0, i) => ({cells:[`<button type="button" class="link" style="text-align:left" ${A('hookOpen', i)}><b class="mono" style="overflow-wrap:anywhere">${esc(h0.url)}</b></button><span class="sub">${esc(h0.desc || '')}</span>`, `<span class="btag">${esc(h0.type || 'api')}</span>`, h0.ev.split(', ').map(e => `<span class="btag ev">${EVN[e] || e}</span>`).join(' '), `<span class="row" style="flex-wrap:nowrap;gap:8px"><button type="button" class="sw${h0.on !== false ? ' on' : ''}" role="switch" aria-checked="${h0.on !== false}" aria-label="Вебхук включён" ${A('hookOn', i)}></button><span>${h0.on !== false ? (h0.st[1] === 'bad' ? '<span style="color:var(--bad)">Ошибки</span>' : 'Активен') : 'Выключен'}</span></span>`, `<span class="mono">${esc(h0.created || '—')}</span>`, `<span class="row" style="flex-wrap:nowrap;gap:4px"><button type="button" class="btn ghost sm" ${A('toast','Тестовый запрос отправлен · 200 OK')}>Тестовый запрос</button><button type="button" class="btn ghost icon sm" aria-label="Клонировать" ${A('hookClone', i)}>${ic('copy', 14)}</button><button type="button" class="btn ghost icon sm" aria-label="Удалить" ${A('hookDel', i)}>${ic('x', 14)}</button></span>`]})), 'Вебхуков нет'));
-    return h + crm + hk;
-  }
-  if (t === 'log'){
-    const LOG = [['14:52:08','amoCRM','call.ended','200','112 мс'],['14:52:09','Вебхук crm','recording.ready','200','98 мс']].concat(err ? [['09:10:02','Вебхук bi','analysis.done','502','30 000 мс'],['08:40:01','Вебхук bi','analysis.done','502','30 000 мс']] : []).concat([['08:12:44','amoCRM','call.ended','200','131 мс']]).filter(r => S.lf === 'all' || r[3] !== '200');
-    return h + card(seg('lf', S.lf, [['all','Все'],['err','Ошибки']]) + '<span class="muted">Повторяем 5 раз за час</span>', table([{t:'Время',p:1},{t:'Куда'},{t:'Событие'},{t:'Ответ'},{t:'Время ответа',r:1},{t:''}], LOG.map(r => ({cells:[`<b class="mono">${r[0]}</b>`, esc(r[1]), `<span class="mono">${r[2]}</span>`, pill(r[3], r[3] === '200' ? 'ok' : 'bad'), r[4], r[3] !== '200' ? `<button type="button" class="btn ghost sm" ${A('toast','Повторная отправка запущена')}>Повторить</button>` : '']})), 'Ошибок нет'));
-  }
-  return h + card(hdr('Ключи API', '', `<button type="button" class="btn pri sm" ${A('drawer','key')}>Создать ключ</button>`), table([{t:'Название',p:1},{t:'Права'},{t:'Использован'},{t:''}], [['Сайт — заявки','sk_live_4f1a···9c0e','Звонки: создавать','сегодня 14:40'],['BI-выгрузка','sk_live_77b2···e113','Звонки, статистика: читать','сегодня 06:00']].map(k => ({cells:[`<b>${k[0]}</b><span class="sub mono">${k[1]}</span>`, k[2], `<span class="mono">${k[3]}</span>`, `<button type="button" class="btn ghost sm danger" ${A('toast','Ключ отозван')}>Отозвать</button>`]})))) + card(hdr('Быстрый старт', '', `<button type="button" class="btn ghost sm" ${A('toast','Открываем документацию')}>Документация</button>`), `<div class="card-b"><pre class="code">curl -X POST https://api.sashatel.ru/v1/calls \\
+  const t = S.tab.integrations === 'log' ? 'log' : 'hooks', p = P();
+  const h = `<div class="ph"><div><h1>Интеграции и API</h1></div><button type="button" class="btn pri" ${A('dlg','hookType')}>Создать вебхук</button></div>` + tabs('integrations', [['hooks', ic('integrations',15) + ' Вебхуки'],['log', ic('file',15) + ' Журнал событий']]);
+  if (t === 'hooks'){
+    if (S.inView === 'hook' && p.hooks[S.selHook]) return h + hookDetail(C, p.hooks[S.selHook], S.selHook);
+    const hk = card(hdr('Вебхуки · ' + p.hooks.length, ''), table([{t:'Получатель',p:1},{t:'Тип'},{t:'События'},{t:'Статус'},{t:'Последняя отправка'},{t:'Создан'}], p.hooks.map((h0, i) => ({a:'hookOpen', v:i, cells:[`<b class="mono" style="overflow-wrap:anywhere">${esc(h0.url)}</b><span class="sub">${esc(h0.desc || '')}</span>`, esc(HTN[h0.type] || h0.type), `<span class="mono" style="font-size:12.5px;overflow-wrap:anywhere">${esc(h0.ev)}</span>`, stx(h0.on !== false, h0.on !== false ? 'Активен' : 'Выключен'), `<span class="mono">${esc(h0.last || '—')}</span>`, `<span class="mono">${esc(h0.created || '—')}</span>`]})), 'Вебхуков пока нет'));
+    const keys = card(hdr('Ключи API', 'Для запросов к API SashaTel', `<button type="button" class="btn sm" ${A('drawer','key')}>Создать ключ</button>`), table([{t:'Название',p:1},{t:'Права'},{t:'Использован'},{t:''}], [['Сайт — заявки','sk_live_4f1a···9c0e','Звонки: создавать','сегодня 14:40'],['BI-выгрузка','sk_live_77b2···e113','Звонки, статистика: читать','сегодня 06:00']].map(k => ({cells:[`<b>${k[0]}</b><span class="sub mono">${k[1]}</span>`, k[2], `<span class="mono">${k[3]}</span>`, `<button type="button" class="btn ghost sm danger" ${A('toast','Ключ отозван')}>Отозвать</button>`]}))));
+    const qs = card(hdr('Быстрый старт', '', `<button type="button" class="btn ghost sm" ${A('go','kb')}>Документация</button>`), `<div class="card-b"><pre class="code">curl -X POST https://api.sashatel.ru/v1/calls \\
   -H "Authorization: Bearer $SASHATEL_KEY" \\
   -d '{"employee":"a.kuznetsova","to":"+79120000841"}'</pre></div>`);
+    return h + hk + `<div class="grid2">${keys}${qs}</div>`;
+  }
+  const all = hookLog(C), q = (S.form.lq || '').trim().toLowerCase(), qd = q.replace(/\D/g, ''), lf = S.lf2 || 'all', ev = S.form.lev || 'all';
+  const rows = all.filter(e => (lf === 'all' || (lf === 'err') === (e.code !== 200)) && (ev === 'all' || e.ev === ev) && (!q || e.id.includes(q) || e.cid.includes(q) || e.ev.includes(q) || (qd.length > 2 && e.ph.replace(/\D/g, '').includes(qd)) || e.h.url.toLowerCase().includes(q)));
+  const {pg, sl} = page(rows, 'lpg', 15), errs = all.filter(e => e.code !== 200).length;
+  const evs = [['all','Все события']].concat([...new Set(all.map(e => e.ev))].map(x => [x, x]));
+  return h + card(`<div class="filters" style="width:100%">${srch('lq','Номер, ID звонка или доставки')}${seg('lf2', lf, [['all','Все'],['ok','Успешные'],['err','Ошибки' + (errs ? ' · ' + errs : '')]])}${dd('lev', '', ev, evs)}<button type="button" class="btn sm" ${A('toast','Выгрузка ' + rows.length + ' записей · CSV')}>${ic('down', 14)} CSV</button></div>`,
+    logTable(sl, all.length ? 'Ничего не нашли' : 'Событий пока нет') + pager('lpg', rows.length, pg, 15));
 }
-
-/* ===================== БАЛАНС И ДОКУМЕНТЫ ===================== */
-function scrBilling(C){
-  const t = S.tab.billing, p = P(), Q = priceCalc(C), perDay = Math.max(1, Q.pay/30);
-  let h = `<div class="ph"><div><h1>Биллинг</h1></div><button type="button" class="btn pri" ${A('tab','billing:topup')}>Пополнить</button></div>` + tabs('billing', [['pay','Платёж'],['price','Цены'],['topup','Пополнение'],['docs','Документы']]);
-  if (t === 'pay'){
-    const rows = [['Номера в ротации', Q.nums + ' × ' + Q.tier.rate + ' ₽ · тариф «' + Q.tier.n + '»', Q.lic.num]];
-    if (Q.lic.top) rows.push(['До минимального платежа', '', Q.lic.top]);
-    return h + `<section class="card kpis k2"><div class="kpi"><span class="l">Баланс</span><span class="v">${rub(p.bal)}</span></div><div class="kpi"><span class="l">Хватит примерно на</span><span class="v">${Math.floor(p.bal/perDay)} ${plural(Math.floor(p.bal/perDay),'день','дня','дней')}</span></div></section>` +
-      card('', `<div class="total"><div><h2>Лицензия SashaTel за 30 дней</h2><div class="muted">Без НДС · ПО в реестре российского ПО</div></div><b>${rub(Q.pay)}</b></div><div class="card-b">${rows.map(r => `<div class="brow"><span>${r[0]}</span><span class="muted">${r[1]}</span><span>${rub(r[2])}</span></div>`).join('')}</div>`);
-  }
-  if (t === 'price'){
-    const inc = ['ВАТС и веб-телефон','Карусель номеров и антиспам','Сотрудники без ограничений','Виджет amoCRM и Битрикс24','API и вебхуки','Статистика и история звонков'];
-    return h + `<div class="tiers">${PRICE.tiers.map((x, i) => { const cur = Q.tier.n === x.n, lo = i ? PRICE.tiers[i-1].max + 1 : 1; return `<section class="card tier${cur ? ' on' : ''}"><div class="row" style="justify-content:space-between"><h2>${x.n}</h2>${cur ? pill('Ваш тариф','ok') : ''}</div><div><span class="big mono">${x.rate} ₽</span><div class="muted">за номер в ротации в месяц</div></div><dl class="dl"><dt>Номеров</dt><dd>${x.max > 1e8 ? 'от ' + lo : lo + '–' + x.max}</dd><dt>Записи</dt><dd>${x.rec}</dd><dt>Поддержка</dt><dd>${x.sup}</dd><dt>Минимум</dt><dd>${rub(x.min)} в месяц</dd></dl></section>`; }).join('')}</div>` +
-      card(hdr('Во всех тарифах', ''), `<div class="card-b"><ul class="feat" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 24px">${inc.map(x => `<li>${x}</li>`).join('')}</ul></div>`) +
-      card(hdr('Связь', 'По тарифу оператора, счёт выставляет оператор'), setRow('Билайн или МТС', 'Договор на вашу компанию через SashaTel', `<button type="button" class="btn sm" ${A('trunkNew')}>Подключить</button>`) + setRow('Свой оператор', 'UIS, Mango Office, OnlinePBX, Sipuni и др.', `<button type="button" class="btn sm" ${A('trunkNew','own')}>Подключить</button>`)) +
-      `<div class="note"><div><b>Пилот · 14 дней</b><p>Лицензия 0 ₽ · тариф меняется сам по числу номеров</p></div></div>`;
-  }
-  if (t === 'topup') return h + `<div class="grid2">${card(hdr('Пополнение', ''), `<div class="card-b" style="display:flex;flex-direction:column;gap:14px">${opt('pay','inv', S.pay === 'inv', 'Счёт по договору', '1–2 рабочих дня')}${opt('pay','card', S.pay === 'card', 'Картой компании', 'Сразу')}<div class="chips">${[30000,50000,100000,200000].map(a => `<button type="button" class="chip${S.amt === a ? ' on' : ''}" ${A('amt', a)}>${rub(a)}</button>`).join('')}</div><span class="help">Хватит примерно на ${Math.floor(S.amt/perDay)} ${plural(Math.floor(S.amt/perDay),'день','дня','дней')}</span><div class="row" style="justify-content:space-between"><span>Счёт на ${esc(C.co.mail)}</span>${sw('mailInv','Счёт на почту')}</div><div class="row" style="justify-content:space-between;border-top:1px solid var(--line-2);padding-top:14px"><b class="mono" style="font-size:18px">${rub(S.amt)}</b><button type="button" class="btn pri" ${A('payGo')}>${S.pay === 'inv' ? 'Сформировать счёт' : 'Оплатить'}</button></div></div>`)}${card(hdr('Автопополнение', '', sw('autotop','Автопополнение')), `<div class="card-b" style="display:flex;flex-direction:column;gap:12px">${fld('atMin','Когда баланс ниже, ₽','15 000','number')}${fld('atSum','Пополнить на, ₽','50 000','number')}</div>` + setRow('Сообщить, если баланса меньше чем на 3 дня', '', sw('nbal','Низкий баланс')))}</div>` + card(hdr('Платежи',''), table([{t:'Дата',p:1},{t:'Документ'},{t:'Сумма',r:1},{t:'Статус'}], C.co.pays.map(r => ({cells:[`<b class="mono">${r[0]}</b>`, r[1], rub(r[2]), pill(r[3], r[4])]}))));
-  if (t === 'docs') return h + DOCS.map(g => card(hdr(g.g, ''), g.items.map(d => `<div class="doc"><span class="ic">${ic('file',18)}</span><div style="min-width:0"><div style="font-weight:500">${esc(d[0])}</div><div class="muted">${esc(d[2])}</div></div><button type="button" class="btn sm" ${A('doc', d[0])}>Открыть</button></div>`).join(''))).join('');
-  return h;
+function dlgHookForm(C, type){
+  const crm = type === 'amocrm' || type === 'bitrix', nm = HTN[type];
+  const evs = HEV.filter(e => !crm || ['call.ended','call.missed','recording.ready','analysis.done'].includes(e[0]));
+  const evSel = `<div class="field">События${evs.map(e => opt('chipOpt','hev:' + e[0], !!S.chipSets.hev[e[0]], `<span class="mono" style="font-size:13px">${e[0]}</span>`, e[1], true)).join('')}</div>`;
+  let b = '';
+  if (type === 'api') b = fld('hUrl','Адрес (URL)','https://crm.company.ru/hooks/sashatel','url','POST · application/json') + fld('hDesc','Название','Например, BI-выгрузка') + evSel + `<div class="field">Секрет для подписи<div class="cr1"><span class="mono">whsec_3b9f0c1e7a54d2</span><button type="button" class="btn ghost sm" ${A('toast','Скопировано')}>${ic('copy',14)}</button></div><span class="help">Заголовок X-SashaTel-Signature, HMAC-SHA256</span></div>`;
+  if (type === 'telegram' || type === 'max') b = `<ol class="steps-v"><li>Добавьте ${type === 'max' ? 'бота @sashatel в канал MAX' : 'бота @SashaTelBot в группу'} и дайте права на отправку сообщений</li><li>Отправьте в ${type === 'max' ? 'канал' : 'группу'} команду <span class="mono">/connect</span> — бот пришлёт ID</li></ol>` + fld('hUrl', 'ID ' + (type === 'max' ? 'канала' : 'группы'), type === 'max' ? '-73019455' : '-1002318845120') + fld('hDesc','Название','Например, Отдел продаж') + evSel + `<div class="field">В сообщении${[['tSum','Саммари звонка'],['tRec','Ссылка на запись'],['tEmp','Сотрудник и номер']].map(x => opt('chipOpt','hev:' + x[0], !!S.chipSets.hev[x[0]], x[1], '', true)).join('')}</div>`;
+  if (type === 'email') b = fld('hUrl','Почта','sales@company.ru','email','Несколько адресов — через запятую') + fld('hDesc','Название','Например, Руководителю') + evSel + sel('hDig','Как отправлять',['Каждое событие отдельным письмом','Сводка раз в час','Сводка раз в день']);
+  if (crm) b = fld('hUrl', type === 'bitrix' ? 'Адрес портала' : 'Адрес аккаунта', type === 'bitrix' ? 'company.bitrix24.ru' : 'company.amocrm.ru') + `<div class="field">После звонка${[['cCall','Добавлять звонок в карточку', 'Длительность, результат, запись'],['cLead', type === 'bitrix' ? 'Создавать лид на неизвестный номер' : 'Создавать сделку на неизвестный номер',''],['cSum','Саммари в примечание',''],['cTask','Задача ответственному при недозвоне','']].map(x => opt('chipOpt','hev:' + x[0], !!S.chipSets.hev[x[0]], x[1], x[2], true)).join('')}</div>` + evSel + `<div class="field">Ответственные<span class="help">После подключения сопоставьте сотрудников SashaTel с пользователями ${nm}</span></div>`;
+  return ['Новый вебхук · ' + nm, b, `<button type="button" class="btn" ${A('dlg','hookType')}>← Назад</button><button type="button" class="btn pri" ${A('hookCreate', type)}>${crm ? 'Подключить' : 'Создать'}</button>`];
 }
 
 /* ===================== НАСТРОЙКИ ===================== */
-function companyCard(C){
-  return `<div>${card(hdr(esc(C.co.full), '', `<button type="button" class="btn sm" ${A('drawer','req')}>Изменить</button>`), `<div class="card-b"><dl class="dl"><dt>ИНН / КПП</dt><dd class="mono">${C.co.inn} / ${C.co.kpp}</dd><dt>ОГРН</dt><dd class="mono">${C.co.ogrn}</dd><dt>Адрес</dt><dd>${esc(C.co.addr)}</dd><dt>Банк</dt><dd>${esc(C.co.bank)}</dd><dt>Счёт</dt><dd class="mono">${C.co.acc}</dd><dt>Подписант</dt><dd>${esc(C.co.signer)}</dd><dt>Почта для счетов</dt><dd>${esc(C.co.mail)}</dd></dl></div>`)}</div>`;
+const ROLES = [['admin','Администратор'],['head','Руководитель'],['mgr','Менеджер'],['acc','Бухгалтер']];
+const roleOf = (m, i) => S.form['role_' + S.co + '_' + i] || (i === 2 ? 'admin' : (m.r === 'Руководитель' ? 'head' : 'mgr'));
+const accOf = (m, i) => { const p = P(); if (!p.acc) p.acc = {}; return p.acc[i] != null ? p.acc[i] : !(m.g === 'sent'); };
+function teamCard(C){
+  const T = C.co.team, on = T.filter((m, i) => accOf(m, i)).length;
+  const LAST = ['сегодня 09:12','сегодня 08:47','сегодня 10:03','вчера 18:20','сегодня 09:30','20.10 17:55','сегодня 08:59','19.10 12:10'];
+  return card(hdr('Сотрудники · ' + T.length, on + ' с доступом', `<button type="button" class="btn pri sm" ${A('dlg','addEmp')}>Добавить сотрудника</button>`),
+    table([{t:'Сотрудник',p:1},{t:'Роль'},{t:'Логин'},{t:'Последний вход'},{t:'Доступ'},{t:''}], T.map((m, i) => { const a = accOf(m, i); return {cells:[`<b>${esc(m.n)}</b><span class="sub">${esc(m.dep)}${m.num && m.num !== '—' ? ' · <span class="mono">' + esc(m.num) + '</span>' : ''}</span>`, dd('role_' + S.co + '_' + i, '', roleOf(m, i), ROLES), `<span class="mono">${login(m.n)}</span>`, `<span class="mono">${a ? LAST[i % LAST.length] : '—'}</span>`, `<span class="row" style="flex-wrap:nowrap;gap:10px"><button type="button" class="sw${a ? ' on' : ''}" role="switch" aria-checked="${a}" aria-label="Доступ ${esc(m.n)}" ${A('empAcc', i)}></button><span>${a ? 'Включён' : 'Выключен'}</span></span>`, `<button type="button" class="btn ghost sm" ${A('dlg','creds:' + i)}>Логин и пароль</button>`]}; }))) +
+    card(hdr('Роли', ''), table([{t:'Доступ',p:1},{t:'Администратор'},{t:'Руководитель'},{t:'Менеджер'},{t:'Бухгалтер'}], [['Звонки из приложения и веб-телефона','✓','✓','✓','—'],['Статистика и история звонков','✓','✓','свои','—'],['Транки, номера, карусель','✓','—','—','—'],['Интеграции и API','✓','—','—','—'],['Сотрудники и роли','✓','свой отдел','—','—'],['Биллинг и документы','✓','—','—','✓']].map(r => ({cells:r}))));
 }
-function opsTab(C){
-  const ops = [...new Set(C.trunks.filter(t => t.kind !== 'own' && t.op && t.op !== '—').map(t => t.op))];
-  return (ops.length ? ops.map(o => { const tk = C.trunks.filter(t => t.op === o && t.kind !== 'own'); return card(hdr(o, 'Абонент — ' + esc(C.co.full), pill(tk.some(t => t.contract === 'на подписании') ? 'На подписании' : 'Договор действует', tk.some(t => t.contract === 'на подписании') ? 'warn' : 'ok')), `<div class="card-b"><dl class="dl"><dt>Договор</dt><dd class="mono">№ ${esc(tk[0].contract)}</dd><dt>Оформлен</dt><dd>Через SashaTel</dd><dt>Транков</dt><dd>${tk.length} · ${tk.map(t => esc(t.name)).join(', ')}</dd></dl></div>` + setRow('Доступ к кабинету оператора', 'Заказ и замена номеров из SashaTel', sw('opapi_' + o, 'Доступ к кабинету')) + setRow('Кабинет оператора', 'Счета, тарифы, подтверждение сотрудников', `<button type="button" class="btn sm" ${A('toast','Открываем кабинет оператора')}>Открыть</button>`)); }).join('') : '') + `<div class="row"><button type="button" class="btn" ${A('trunkNew')}>Подключить оператора</button></div>`;
+function companyCard(C){
+  return card(hdr(esc(C.co.full), '', `<button type="button" class="btn sm" ${A('drawer','req')}>Изменить</button>`), `<div class="card-b"><dl class="dl"><dt>ИНН / КПП</dt><dd class="mono">${C.co.inn} / ${C.co.kpp}</dd><dt>ОГРН</dt><dd class="mono">${C.co.ogrn}</dd><dt>Адрес</dt><dd>${esc(C.co.addr)}</dd><dt>Банк</dt><dd>${esc(C.co.bank)}</dd><dt>Счёт</dt><dd class="mono">${C.co.acc}</dd><dt>Подписант</dt><dd>${esc(C.co.signer)}</dd><dt>Почта для счетов</dt><dd>${esc(C.co.mail)}</dd></dl></div>`);
+}
+function stopData(){
+  const p = P(); if (p.stops) return p.stops;
+  const SRC = [['Просил не звонить','ИИ · расшифровка'],['Слово «не звоните»','Фильтр слов'],['Тег «Не звонить»','amoCRM'],['Жалоба','Мария Лебедева'],['Действующий клиент','Игорь Петров'],['Угроза жалобы в РКН','ИИ · расшифровка'],['Ошибочный номер','ИИ · расшифровка'],['Слово «удалите мой номер»','Фильтр слов']];
+  const r = rng(4242 + S.co.length), out = [];
+  for (let i = 0; i < 46; i++){ const s = SRC[Math.floor(r()*SRC.length)], d = new Date(TODAY_D.getTime() - Math.floor(i*1.6 + r()*2)*86400000); out.push({n:'+7 9' + String(Math.floor(r()*90) + 10) + ' ' + String(Math.floor(r()*900) + 100) + '-' + String(Math.floor(r()*90) + 10) + '-' + String(Math.floor(r()*90) + 10), why:s[0], src:s[1], at:dstr(d, true)}); }
+  return p.stops = out;
+}
+function stopTab(C){
+  const p = P(); if (!p.stopW) p.stopW = ['не звоните','удалите мой номер','больше не звонить','отпишите','жалоба'];
+  const all = stopData(), qd = (S.form.stq || '').replace(/\D/g, ''), rows = qd ? all.filter(s => s.n.replace(/\D/g, '').includes(qd)) : all, {pg, sl} = page(rows, 'spg', 10);
+  const AI = [['no','Просьба не звонить'],['rkn','Угроза жалобы'],['client','Уже клиент'],['wrong','Ошибочный номер']];
+  if (!S.chipSets.aiT) S.chipSets.aiT = {no:true, rkn:true, wrong:true};
+  const rules = card(hdr('Правила', 'Номер попадает в стоп-лист автоматически'),
+    setRow('ИИ-анализ расшифровок', 'Проверяем каждый разговор', sw('stopai','ИИ-анализ')) +
+    (S.sw.stopai ? `<div class="card-b" style="display:flex;flex-direction:column;gap:12px"><div class="field">Причины${chips('aiT', AI)}</div><div class="field">Что делать${seg('stopAct', S.stopAct || 'auto', [['auto','Сразу в стоп-лист'],['check','На проверку руководителю']])}</div></div>` : '') +
+    setRow('Фильтр по словам', 'В речи абонента', sw('stopwords','Фильтр по словам')) +
+    (S.sw.stopwords ? `<div class="card-b" style="display:flex;flex-direction:column;gap:10px"><div class="chips">${p.stopW.map((w, i) => `<span class="chip on wchip">${esc(w)}<button type="button" aria-label="Удалить" ${A('stopWDel', i)}>${ic('x', 12)}</button></span>`).join('')}</div><div class="row" style="flex-wrap:nowrap"><input class="inp" id="stw" data-f="stw" placeholder="Слово или фраза" value="${esc(S.form.stw || '')}" aria-label="Слово или фраза"><button type="button" class="btn sm" ${A('stopWAdd')}>Добавить</button></div></div>` : '') +
+    setRow('Синхронизация с CRM', 'Контакты с тегом «Не звонить»', sw('stopcrm','Синхронизация')) +
+    setRow('Запрещать ручной набор', 'Менеджер увидит предупреждение', sw('stophard','Запрет')) +
+    `<div class="card-b">${sel('stopTerm','Срок в стоп-листе',['Бессрочно','12 месяцев','6 месяцев'])}</div>`);
+  const list = card(`<div class="filters" style="width:100%">${srch('stq','Поиск по номеру')}<button type="button" class="btn sm" ${A('dlg','stopAdd')}>Добавить номер</button><button type="button" class="btn sm" ${A('toast','Выгрузка стоп-листа · CSV')}>${ic('down', 14)} CSV</button></div>`,
+    table([{t:'Номер',p:1},{t:'Причина'},{t:'Источник'},{t:'Добавлен'},{t:''}], sl.map(s => ({cells:[`<b class="mono">${s.n}</b>`, esc(s.why), `<span class="sub" style="display:inline">${esc(s.src)}</span>`, `<span class="mono">${s.at}</span>`, `<button type="button" class="btn ghost icon sm" aria-label="Убрать из стоп-листа" ${A('stopDel', s.n)}>${ic('x', 14)}</button>`]})), 'Ничего не нашли') + pager('spg', rows.length, pg, 10));
+  return `<div class="grid2 stopg">${list}${rules}</div>`;
 }
 function scrSettings(C){
-  const t = ['team','ops','company','calls','sec'].includes(S.tab.settings) ? S.tab.settings : 'team';
-  let h = `<div class="ph"><div><h1>Настройки</h1></div></div>` + tabs('settings', [['team','Сотрудники'],['ops','Операторы'],['company','Компания'],['calls','Звонки'],['sec','Безопасность']]);
+  const t = ['team','company','stop'].includes(S.tab.settings) ? S.tab.settings : 'team'; S.tab.settings = t;
+  const h = `<div class="ph"><div><h1>Настройки</h1></div></div>` + tabs('settings', [['team', ic('team',15) + ' Сотрудники'],['company', ic('file',15) + ' Компания'],['stop', ic('x',15) + ' Стоп-лист']]);
   if (t === 'team') return h + teamCard(C);
-  if (t === 'ops') return h + opsTab(C);
   if (t === 'company') return h + companyCard(C);
-  if (t === 'calls') return h + callsSettings(C);
-  return h + secSettings(C);
+  return h + stopTab(C);
 }
-function callsSettings(C){
-  const h = '', t = 'rotation';
-  if (t === 'rotation'){
-    const AT = ['сразу','через 30 мин','через 2 ч','на след. день','через 2 дня'];
-    return h + `<div class="grid2">` + card(hdr('Повторные наборы', 'Если не взяли трубку или сбросили'), setRow('Попыток на абонента', '', stepper('retries', S.retries, 'попытки')) + setRow('Каждая попытка — с нового номера', '', sw('cascade','Каскад')) + setRow('Последняя — с другого оператора', '', sw('opswitch','Смена оператора')) + `<div class="card-b"><div class="note"><div>${AT.slice(0, S.retries).map((w, i) => `<div class="row" style="flex-wrap:nowrap"><span class="mono sub" style="display:inline;width:110px;flex:none">${w}</span><span>${i === 0 ? 'Номер из пула' : (i === S.retries-1 && S.sw.opswitch ? 'Номер другого оператора' : (S.sw.cascade ? 'Новый номер' : 'Тот же номер'))}</span></div>`).join('')}</div></div></div>`) +
-      card(hdr('Перезвоны клиентов', ''), setRow('Звонок на номер пула — тому, кто звонил', '', sw('sticky','Перезвон тому, кто звонил')) + (S.sw.sticky ? `<div class="card-b" style="display:flex;flex-direction:column;gap:12px">${sel('fb1','Если менеджер занят',['Ждать 20 сек, затем — свободному','Сразу свободному','На входящую линию'])}${sel('fb2','Если менеджер офлайн',['Задача в CRM и SMS клиенту','Свободному в отделе'])}</div>` : '') + setRow('Перезванивать по пропущенным', '', sw('missedcb','Пропущенные'))) +
-      card(hdr('Распределение по транкам', '', seg('dist', S.dist || 'auto', [['auto','Авто'],['manual','Вручную']])), `<div class="card-b">${(S.dist || 'auto') === 'auto' ? '<p class="muted">Авто: по дозвону транка на оператора абонента</p>' : C.trunks.map(t => { const v = P().split[t.id] != null ? P().split[t.id] : (t.key && C.TOT.N ? Math.round(C.TOT.dl[t.key]/C.TOT.N*100) : 0); return setRow(esc(t.name), '', stepper('split:' + t.id, v + '%', t.name)); }).join('')}</div>`) + `</div>` + recSettings(C) + stopList();
+
+/* ===================== БИЛЛИНГ ===================== */
+const MARKET = [['UIS', 310], ['Mango Office', 275]];
+function txData(C){
+  const p = P(), Q = priceCalc(C), key = Q.pay + ':' + p.bal; if (p._tx && p._txK === key) return p._tx;
+  const day = Math.round(Q.pay/30), out = []; let cur = p.bal;
+  for (let i = 0; i < 75; i++){
+    const d = new Date(TODAY_D.getTime() - i*86400000);
+    if (i === 7 || i === 37 || i === 66){ const T = Math.min(300000, Math.floor((cur - day*3)/10000)*10000); if (T >= 10000){ out.push({d:dstr(d, true) + ' 11:4' + (i % 10), type:'in', why:'Пополнение', desc:'Оплата по счёту № 2026-' + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0'), sum:T, after:cur}); cur -= T; } }
+    out.push({d:dstr(d, true) + ' 00:05', type:'out', why:'Лицензия', desc:'Лицензия · тариф «' + Q.tier.n + '» · ' + Q.nums + ' ' + plural(Q.nums,'номер','номера','номеров'), sum:-day, after:cur});
+    cur += day;
   }
+  p._tx = out; p._txK = key; return out;
 }
-function recSettings(C){
-  const h = '';
-  return h + `<div class="grid2">${card(hdr('Где хранить записи',''), `<div class="card-b" style="display:flex;flex-direction:column;gap:10px">${opt('store','cloud', S.store === 'cloud', 'Облако SashaTel', 'Серверы в России')}${opt('store','s3', S.store === 's3', 'Ваше S3-хранилище', 'Копию не храним')}${opt('store','crm', S.store === 'crm', 'Только в сделке CRM', '')}${sel('recTerm','Срок хранения',['12 месяцев','6 месяцев','3 года'])}</div>`)}${S.store === 's3' ? card(hdr('S3', '', `<button type="button" class="btn sm" ${A('toast','Подключение проверено')}>Проверить</button>`), `<div class="card-b" style="display:flex;flex-direction:column;gap:12px">${fld('s3e','Адрес','https://storage.yandexcloud.net','url')}${fld('s3b','Бакет','romashka-calls')}${fld('s3k','Access key','YCAJE…')}${fld('s3s','Secret key','••••••••','password')}</div>`) : card(hdr('Объём',''), `<div class="card-b"><dl class="dl"><dt>Занято</dt><dd class="mono">${(C.TOT.min/1024).toFixed(1).replace('.', ',')} ГБ</dd></dl></div>`)}</div>`;
+function balanceTab(C){
+  const p = P(), Q = priceCalc(C), day = Math.round(Q.pay/30), all = txData(C), q = (S.form.tq || '').trim().toLowerCase(), ty = S.form.tty || 'all';
+  const rows = all.filter(x => (ty === 'all' || x.type === ty) && (!q || x.desc.toLowerCase().includes(q) || x.d.includes(q))), {pg, sl} = page(rows, 'tpg', 15);
+  return `<section class="card kpis k3"><div class="kpi"><span class="l">Баланс</span><span class="v">${rub(p.bal)}</span></div><div class="kpi"><span class="l">Списание в день</span><span class="v">${rub(day)}</span></div><div class="kpi"><span class="l">Хватит примерно на</span><span class="v">${Math.floor(p.bal/Math.max(1, day))} ${plural(Math.floor(p.bal/Math.max(1, day)),'день','дня','дней')}</span></div></section>` +
+    `<div class="row"><button type="button" class="btn pri" ${A('dlg','topup')}>Пополнить баланс</button><button type="button" class="btn" ${A('dlg','autotop')}>Автопополнение${S.sw.autotop ? ' · вкл' : ''}</button></div>` +
+    card(`<div style="width:100%;display:flex;flex-direction:column;gap:12px"><div><h2>История транзакций</h2><div class="muted">Найдено ${fmt(rows.length)} ${plural(rows.length,'запись','записи','записей')}</div></div><div class="filters">${srch('tq','Поиск по описанию')}${dd('tty', '', ty, [['all','Все типы'],['out','Списание'],['in','Пополнение']])}<button type="button" class="btn sm" ${A('toast','Выгрузка ' + rows.length + ' записей · CSV')}>${ic('down', 14)} CSV</button></div></div>`,
+      table([{t:'Дата',p:1},{t:'Тип'},{t:'Причина'},{t:'Описание'},{t:'Сумма',r:1},{t:'Баланс после',r:1}], sl.map(x => ({cells:[`<span class="mono">${x.d}</span>`, x.type === 'out' ? '<span class="txt">↓ Списание</span>' : '<span class="txt pos">↑ Пополнение</span>', `<span class="btag">${x.why}</span>`, `<span style="overflow-wrap:anywhere">${esc(x.desc)}</span>`, `<b class="mono${x.sum > 0 ? ' pos' : ''}">${x.sum > 0 ? '+' : '−'}${fmt(Math.abs(x.sum))} ₽</b>`, `<span class="mono">${fmt(x.after)} ₽</span>`]})), 'Ничего не нашли') + pager('tpg', rows.length, pg, 15));
 }
-function secSettings(C){
-  const h = '';
-  return h + `<div class="grid2">${card(hdr('Вход', ''), setRow('Двухфакторный вход для всех', '', sw('tfa','2FA')) + `<div class="card-b">${sel('idle','Выходить после бездействия',['8 часов','1 час','24 часа'])}</div>` + setRow('Вход через корпоративный аккаунт', '', '<span class="tag soon">скоро</span>') + setRow('Журнал действий', 'Кто менял номера, транки, выгружал записи', `<button type="button" class="btn sm" ${A('toast','Открываем журнал')}>Открыть</button>`))}${card(hdr('Роли', ''), table([{t:'Доступ',p:1},{t:'Админ'},{t:'Руководитель'},{t:'Бухгалтер'}], [['Статистика, звонки','✓','✓','—'],['Номера, транки, настройки','✓','—','—'],['Сотрудники','✓','свой отдел','—'],['Баланс и документы','✓','—','✓']].map(r => ({cells:r}))))}</div>`;
+function tariffsTab(C){
+  const Q = priceCalc(C), inc = ['Карусель номеров и антиспам','Маркировка звонков','Сотрудники без ограничений','Мобильное приложение и веб-телефон','amoCRM, Битрикс24, API и вебхуки','Статистика, записи и расшифровки'];
+  if (S.form.calcN == null) S.form.calcN = String(C.monthVol);
+  const N = Math.max(0, +String(S.form.calcN != null ? S.form.calcN : C.monthVol).replace(/\D/g, '') || 0), md = S.calcM || P().cmode || 'bal', load = NORM[md];
+  const nums = Math.max(1, Math.ceil(N/22/load)), tier = PRICE.tiers.find(t => nums <= t.max), lic = Math.max(tier.min, nums*tier.rate);
+  const cmp = [['SashaTel · «' + tier.n + '»', lic]].concat(MARKET.map(m => [m[0], nums*m[1]])), mx = Math.max(...cmp.map(c => c[1]));
+  return `<div class="tiers">${PRICE.tiers.map((x, i) => { const cur = Q.tier.n === x.n, lo = i ? PRICE.tiers[i-1].max + 1 : 1; return `<section class="card tier${cur ? ' on' : ''}"><div class="row" style="justify-content:space-between"><h2>${x.n}</h2>${cur ? pill('Ваш тариф','ok') : ''}</div><div><span class="big mono">${x.rate} ₽</span><div class="muted">за номер в ротации в месяц</div></div><dl class="dl"><dt>Номеров</dt><dd>${x.max > 1e8 ? 'от ' + lo : lo + '–' + x.max}</dd><dt>Минимум</dt><dd>${rub(x.min)} в месяц</dd><dt>Записи</dt><dd>${x.rec}</dd><dt>Поддержка</dt><dd>${x.sup}</dd></dl></section>`; }).join('')}</div>` +
+    card(hdr('Калькулятор', 'Лицензия SashaTel под ваш объём'), `<div class="card-b calc"><div class="calc-in">${fld('calcN','Наборов в месяц', '12 000', 'text')}<div class="field">Нагрузка на номер${seg('calcM', md, [['care','Бережно · 5'],['bal','Баланс · 8'],['max','Максимум · 12']])}<span class="help">Наборов с номера в день</span></div></div>` +
+      `<div class="kpis k4 calc-k"><div class="kpi"><span class="l">Номеров</span><span class="v">${fmt(nums)}</span></div><div class="kpi"><span class="l">Тариф</span><span class="v">${tier.n}</span></div><div class="kpi"><span class="l">Лицензия в месяц</span><span class="v">${rub(lic)}</span></div><div class="kpi"><span class="l">За номер</span><span class="v">${rub(lic/nums)}</span></div></div>` +
+      `<div class="cmpb">${cmp.map((c, i) => `<div class="cmpb-r${i ? '' : ' on'}"><span>${esc(c[0])}</span><div class="cmpb-t"><i style="width:${Math.max(3, c[1]/mx*100)}%"></i></div><b class="mono">${rub(c[1])}</b></div>`).join('')}</div><p class="help">Расчёт: наборы ÷ 22 рабочих дня ÷ нагрузка = номера. ${tier.min > nums*tier.rate ? 'Применён минимальный платёж тарифа. ' : ''}UIS и Mango Office — абонентская плата за номер по публичным прайсам. Связь и номера у всех — по тарифу оператора, счёт выставляет оператор.</p></div>`) +
+    `<div class="grid2">${card(hdr('Во всех тарифах', ''), `<div class="card-b"><ul class="feat">${inc.map(x => `<li>${x}</li>`).join('')}</ul></div>`)}${card(hdr('Как списываем', ''), `<div class="card-b"><dl class="dl"><dt>Лицензия</dt><dd>Каждый день 1/30 месячной стоимости</dd><dt>Номер в ротации</dt><dd>Номер на транке, с которого шли наборы в этот день</dd><dt>Тариф</dt><dd>Меняется сам по числу номеров</dd><dt>Связь</dt><dd>По договору с Билайном или МТС, напрямую</dd><dt>Пилот</dt><dd>14 дней, лицензия 0 ₽</dd></dl></div>`)}</div>`;
+}
+function docsTab(C){
+  const ops = C.trunks.filter(t => t.kind !== 'own' && t.op && t.op !== '—');
+  const opCard = card(hdr('Договоры с операторами', 'Заключены на вашу компанию'), ops.length ? ops.map(t => `<div class="doc"><span class="ic">${ic('file',18)}</span><div style="min-width:0"><div style="font-weight:500">Договор об оказании услуг связи — ${esc(t.op)}</div><div class="muted">№ ${esc(t.contract)} · ${esc(t.name)}</div></div><div class="row" style="flex-wrap:nowrap;gap:12px">${pill(t.contract === 'на подписании' ? 'На подписании' : 'Действует', t.contract === 'на подписании' ? 'warn' : 'ok')}<button type="button" class="btn sm" ${A('dlg','contract:' + t.id)}>Открыть</button></div></div>`).join('') + `<div class="card-b"><button type="button" class="btn sm" ${A('trunkNew')}>Подключить оператора</button></div>` : `<div class="empty">Договоров пока нет<div style="margin-top:10px"><button type="button" class="btn sm" ${A('trunkNew')}>Подключить оператора</button></div></div>`);
+  const G = DOCS.map(g => g.g === 'Связь и операторы' ? Object.assign({}, g, {items:g.items.filter(d => !/^Договор об оказании|Сведения о пользователях/.test(d[0]))}) : g);
+  return opCard + G.map(g => card(hdr(g.g, ''), g.items.map(d => `<div class="doc"><span class="ic">${ic('file',18)}</span><div style="min-width:0"><div style="font-weight:500">${esc(d[0])}</div><div class="muted">${esc(d[2])}</div></div><button type="button" class="btn sm" ${A('doc', d[0])}>Открыть</button></div>`).join(''))).join('');
+}
+function scrBilling(C){
+  const t = ['price','balance','docs'].includes(S.tab.billing) ? S.tab.billing : 'price'; S.tab.billing = t;
+  const h = `<div class="ph"><div><h1>Биллинг</h1></div><button type="button" class="btn pri" ${A('dlg','topup')}>Пополнить</button></div>` + tabs('billing', [['price', ic('numbers',15) + ' Тарифы'],['balance', ic('billing',15) + ' Баланс'],['docs', ic('file',15) + ' Документы']]);
+  if (t === 'balance') return h + balanceTab(C);
+  if (t === 'docs') return h + docsTab(C);
+  return h + tariffsTab(C);
+}
+
+/* ===================== ДОКУМЕНТАЦИЯ ===================== */
+function scrKb(C){
+  const t = ['start','api','hooks','nums'].includes(S.tab.kb) ? S.tab.kb : 'start'; S.tab.kb = t;
+  const h = `<div class="ph"><div><h1>Документация</h1></div></div>` + tabs('kb', [['start','Начало работы'],['nums','Номера и карусель'],['hooks','Вебхуки'],['api','API']]);
+  const art = (title, items) => card(hdr(title, ''), `<div class="card-b kb">${items}</div>`);
+  if (t === 'start') return h + art('Подключение за 4 шага', `<ol class="steps-v"><li><b>Договор с оператором.</b> Транки → Подключить оператора. Договор с Билайном или МТС заключается на вашу компанию, номера и связь оплачиваете оператору.</li><li><b>Номера.</b> Транк → Заявки → Заказать номера. Количество считаем по объёму наборов.</li><li><b>Карусель.</b> Транк → Карусель: режим нагрузки, отдых номеров, повторные наборы.</li><li><b>Сотрудники и CRM.</b> Настройки → Сотрудники: роли и логины для приложения. Интеграции → Создать вебхук → amoCRM или Битрикс24.</li></ol>`) +
+    art('Частые вопросы', `<dl class="dl"><dt>Можно ли свои номера</dt><dd>Да, через SIP-транк любого оператора: Транки → Подключить → Свой оператор</dd><dt>Как списывается оплата</dt><dd>Ежедневно 1/30 месячной лицензии, история — Биллинг → Баланс</dd><dt>Где записи звонков</dt><dd>История звонков → звонок → запись и расшифровка</dd><dt>Почему номер на отдыхе</dt><dd>Упал дозвон или появилась спам-метка. Номер возвращается в ротацию сам</dd></dl>`);
+  if (t === 'nums') return h + art('Статусы номеров', `<dl class="dl"><dt>Активен</dt><dd>Номер в ротации, наборы идут</dd><dt>Карантин</dt><dd>Номер на отдыхе после падения дозвона или спам-метки</dd><dt>Прогрев</dt><dd>Новый номер, нагрузка растёт постепенно</dd><dt>Отключён</dt><dd>Номер выведен из ротации вручную</dd></dl>`) + art('Режимы карусели', `<dl class="dl"><dt>Бережно</dt><dd>до 5 наборов с номера в день</dd><dt>Баланс</dt><dd>до 8 наборов с номера в день</dd><dt>Максимум</dt><dd>до 12 наборов с номера в день</dd></dl>`);
+  if (t === 'hooks') return h + art('События', `<div class="tw"><table class="t"><thead><tr><th>Событие</th><th>Когда</th></tr></thead><tbody>${HEV.map(e => `<tr><td data-l="Событие" class="p"><span class="mono">${e[0]}</span></td><td data-l="Когда">${e[1]}</td></tr>`).join('')}</tbody></table></div>`) + art('Пример: analysis.done', `<pre class="code">${esc(JSON.stringify({event:'analysis.done',delivery_id:'dlv_4f1a09c2',call_id:'c_8f2a91',to:'+7 912 000-08-41',employee:{name:'Анна Кузнецова',login:'a.kuznetsova'},duration:252,result:'Назначена демонстрация',summary:'Договорились о демо в четверг в 11:00.',transcript_url:'https://app.sashatel.ru/calls/c_8f2a91/transcript'}, null, 2))}</pre><p class="help">Подпись — заголовок X-SashaTel-Signature (HMAC-SHA256 тела запроса). Ответ 2xx — доставлено, иначе 5 повторов в течение часа.</p>`);
+  return h + art('API', `<p>Базовый адрес <span class="mono">https://api.sashatel.ru/v1</span> · авторизация <span class="mono">Authorization: Bearer &lt;ключ&gt;</span></p><div class="tw"><table class="t"><thead><tr><th>Метод</th><th>Путь</th><th>Что делает</th></tr></thead><tbody>${[['POST','/calls','Начать звонок'],['GET','/calls','Список звонков'],['GET','/calls/{id}','Звонок, запись, расшифровка'],['GET','/numbers','Номера и статусы'],['GET','/stats','Статистика за период'],['POST','/stop-list','Добавить номер в стоп-лист'],['GET','/balance','Баланс и списания']].map(r => `<tr><td data-l="Метод" class="p"><span class="btag">${r[0]}</span></td><td data-l="Путь"><span class="mono">${r[1]}</span></td><td data-l="Что делает">${r[2]}</td></tr>`).join('')}</tbody></table></div>`);
+}
+
+/* ===================== ДИАЛОГИ ===================== */
+function dialogMore(C, d){
+  const k = d.k, arg = d.a || '';
+  if (k === 'hookType') return ['Новый вебхук', `<p class="muted">Выберите тип получателя</p><div class="htypes">${HTYPES.map(x => `<button type="button" class="htype" ${A('dlg','hookForm:' + x[0])}><b>${x[1]}</b><span class="muted">${x[2]}</span></button>`).join('')}</div>`, `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button>`];
+  if (k === 'hookForm') return dlgHookForm(C, arg);
+  if (k === 'log'){
+    const e = hookLog(C).find(x => x.id === arg); if (!e) return null; const ok = e.code === 200, req = payload(e, C);
+    const resp = ok ? {status:'ok'} : (e.code === 504 ? 'timeout after 30000 ms' : '<html><head><title>502 Bad Gateway</title></head>…');
+    return ['Доставка ' + e.id, `<dl class="dl"><dt>Время</dt><dd class="mono">${e.at}</dd><dt>Событие</dt><dd class="mono">${e.ev}</dd><dt>Получатель</dt><dd>${esc(HTN[e.h.type] || e.h.type)} · <span class="mono" style="overflow-wrap:anywhere">${esc(e.h.url)}</span></dd><dt>Звонок</dt><dd class="mono">${e.cid} · ${e.ph}</dd><dt>Ответ</dt><dd>${pill(e.code + (ok ? ' OK' : ''), ok ? 'ok' : 'bad')} <span class="mono sub" style="display:inline">${fmt(e.ms)} мс · попытка ${e.att} из 5</span></dd></dl>` +
+      `<div class="field">Запрос<pre class="code">POST ${esc(e.h.url)}\nContent-Type: application/json\nX-SashaTel-Event: ${e.ev}\nX-SashaTel-Signature: sha256=${e.id.slice(4)}9b1e…\n\n${esc(JSON.stringify(req, null, 2))}</pre></div><div class="field">Ответ сервера<pre class="code">${esc(typeof resp === 'string' ? 'HTTP ' + e.code + '\n' + resp : 'HTTP 200\n' + JSON.stringify(resp, null, 2))}</pre></div>`,
+      `<button type="button" class="btn" ${A('toast','JSON скопирован')}>${ic('copy',14)} Копировать JSON</button>${ok ? `<button type="button" class="btn pri" ${A('dlgClose')}>Закрыть</button>` : `<button type="button" class="btn pri" ${A('dlgSend','Повторная отправка запущена')}>Повторить отправку</button>`}`];
+  }
+  if (k === 'creds'){
+    const m = C.co.team[+arg]; if (!m) return null; if (!d.pw) d.pw = genPw(+arg + 1);
+    return ['Логин и пароль', `<p class="muted">${esc(m.n)} · вход в приложение SashaTel для iOS и Android и в веб-телефон</p><div class="field">Логин<div class="cr1"><span class="mono">${login(m.n)}</span><button type="button" class="btn ghost sm" ${A('toast','Логин скопирован')}>${ic('copy',14)}</button></div></div><div class="field">Новый пароль<div class="cr1"><span class="mono">${d.pw}</span><button type="button" class="btn ghost sm" ${A('toast','Пароль скопирован')}>${ic('copy',14)}</button></div><span class="help">Пароль показываем один раз. Старый пароль перестанет работать</span></div>`,
+      `<button type="button" class="btn" ${A('dlgSend','Доступ отправлен на почту сотрудника')}>Отправить на почту</button><button type="button" class="btn pri" ${A('dlgSend','Пароль обновлён')}>Готово</button>`];
+  }
+  if (k === 'addEmp') return ['Новый сотрудник', fld('eName','Имя и фамилия','Иван Смирнов') + fld('eMail','Почта','i.smirnov@company.ru','email') + fld('eDep','Отдел','Продажи') + dd('eRole', 'Роль', S.form.eRole || 'mgr', ROLES), `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button><button type="button" class="btn pri" ${A('empAdd')}>Создать и выдать доступ</button>`];
+  if (k === 'stopAdd') return ['Добавить в стоп-лист', fld('stN','Номер','+7 900 000-00-00','tel') + sel('stWhy','Причина',['Просил не звонить','Жалоба','Действующий клиент','Ошибочный номер','Другое']), `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button><button type="button" class="btn pri" ${A('stopAddGo')}>Добавить</button>`];
+  if (k === 'topup'){
+    const Q = priceCalc(C), day = Math.max(1, Q.pay/30), amt = S.amt || 50000;
+    return ['Пополнить баланс', `<div style="display:flex;flex-direction:column;gap:10px">${opt('pay','inv', S.pay !== 'card', 'Счёт по договору', '1–2 рабочих дня')}${opt('pay','card', S.pay === 'card', 'Картой компании', 'Сразу')}</div><div class="field">Сумма<div class="chips">${[30000,50000,100000,200000].map(a => `<button type="button" class="chip${amt === a ? ' on' : ''}" ${A('amt', a)}>${rub(a)}</button>`).join('')}</div><span class="help">Хватит примерно на ${Math.floor(amt/day)} ${plural(Math.floor(amt/day),'день','дня','дней')}</span></div>${S.pay !== 'card' ? `<p class="muted">Счёт придёт на ${esc(C.co.mail)}</p>` : ''}`,
+      `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button><button type="button" class="btn pri" ${A('dlgSend', S.pay === 'card' ? 'Переходим к оплате' : 'Счёт сформирован и отправлен на почту')}>${S.pay === 'card' ? 'Оплатить ' + rub(amt) : 'Сформировать счёт'}</button>`];
+  }
+  if (k === 'autotop') return ['Автопополнение', setRow('Автопополнение', 'Счёт или списание с карты', sw('autotop','Автопополнение')) + `<div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">${fld('atMin','Когда баланс ниже, ₽','15 000','number')}${fld('atSum','Пополнить на, ₽','50 000','number')}</div>` + setRow('Сообщить, если баланса меньше чем на 3 дня', '', sw('nbal','Низкий баланс')), `<button type="button" class="btn pri" ${A('dlgSend','Сохранено')}>Сохранить</button>`];
+  return null;
 }
 /* ===================== ПАНЕЛИ ===================== */
 function drawer(C){
@@ -1340,19 +1577,19 @@ function modal(C){
 }
 
 /* ===================== РЕНДЕР ===================== */
-const SCR = {call:scrCall, stats:scrStats, calls:scrCalls, auto:scrStats, numbers:scrNumbers, label:scrLabel, trunks:scrTrunks, trunk:scrTrunk, team:scrTeam, integrations:scrIntegrations, billing:scrBilling, settings:scrSettings};
+const SCR = {kb:scrKb, call:scrCall, stats:scrStats, calls:scrCalls, auto:scrStats, numbers:scrNumbers, label:scrLabel, trunks:scrTrunks, trunk:scrTrunk, team:scrTeam, integrations:scrIntegrations, billing:scrBilling, settings:scrSettings};
 const root = document.getElementById('app');
 function render(){
   const C = ctx();
   const ae = document.activeElement, fid = ae && ae.dataset ? ae.dataset.f : null, selStart = fid && ae.selectionStart;
   const db = document.querySelector('.drawer-b'), dbScroll = db ? db.scrollTop : 0;
-  root.innerHTML = `<div class="app">${sidebar(C)}<div class="main">${topbar(C)}<main class="page" id="main">${SCR[S.screen](C)}</main></div></div>${drawer(C)}${modal(C)}${S.dirty ? `<div class="applybar${S.play ? ' up' : ''}" role="region" aria-label="Несохранённые изменения"><span>Есть несохранённые изменения</span><div class="row" style="gap:8px;flex-wrap:nowrap"><button type="button" class="btn sm" ${A('telCancel')}>Отменить</button><button type="button" class="btn pri sm" ${A('telApply')}${S.saving ? ' disabled' : ''}>${S.saving ? 'Сохраняем…' : 'Применить'}</button></div></div>` : ''}${playerBar()}${S.toast ? `<div class="toast${S.toastErr ? ' err' : ''}${S.dirty || S.play ? ' up' : ''}" role="status" aria-live="polite">${esc(S.toast)}</div>` : ''}`;
+  root.innerHTML = `<div class="app">${sidebar(C)}<div class="main">${topbar(C)}<main class="page" id="main">${SCR[S.screen](C)}</main></div></div>${drawer(C)}${dialog(C)}${modal(C)}${S.dirty ? `<div class="applybar${S.play ? ' up' : ''}" role="region" aria-label="Несохранённые изменения"><span>Есть несохранённые изменения</span><div class="row" style="gap:8px;flex-wrap:nowrap"><button type="button" class="btn sm" ${A('telCancel')}>Отменить</button><button type="button" class="btn pri sm" ${A('telApply')}${S.saving ? ' disabled' : ''}>${S.saving ? 'Сохраняем…' : 'Применить'}</button></div></div>` : ''}${playerBar()}${S.toast ? `<div class="toast${S.toastErr ? ' err' : ''}${S.dirty || S.play ? ' up' : ''}" role="status" aria-live="polite">${esc(S.toast)}</div>` : ''}`;
   bindCharts();
   if (fid){ const el = document.querySelector('[data-f="' + fid + '"]'); if (el){ el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
   const db2 = document.querySelector('.drawer-b'); if (db2 && dbScroll) db2.scrollTop = dbScroll;
 }
 let toastT = null;
-const telScreen = () => (S.screen === 'trunk' && S.tab.trunk === 'rot') || (S.screen === 'settings' && S.tab.settings === 'calls');
+const telScreen = () => (S.screen === 'trunk' && S.tab.trunk === 'rot') || (S.screen === 'settings' && S.tab.settings === 'stop');
 const telSnap = () => JSON.stringify({cmode:P().cmode, qz:S.qz, retries:S.retries, sw:S.sw, prot:S.prot, dist:S.dist, split:P().split});
 function telRestore(){ if (!S.snap) return; const o = JSON.parse(S.snap); P().cmode = o.cmode; S.qz = o.qz; S.retries = o.retries; S.sw = o.sw; S.prot = o.prot; S.dist = o.dist; P().split = o.split; }
 const mmssS = x => Math.floor(x/60) + ':' + ('0' + Math.floor(x%60)).slice(-2);
@@ -1362,11 +1599,25 @@ function playerBar(){
 }
 setInterval(() => { const p = S.play; if (!p || p.paused) return; p.t = Math.min(p.dur, p.t + .25*p.speed); const tm = document.getElementById('pl-time'), sk = document.getElementById('plseek'); if (tm) tm.textContent = mmssS(p.t) + ' / ' + mmssS(p.dur); if (sk && document.activeElement !== sk) sk.value = Math.floor(p.t); if (p.t >= p.dur){ p.paused = true; p.t = 0; render(); } }, 250);
 document.addEventListener('input', e => { if (!S.play) return; if (e.target.id === 'plseek'){ S.play.t = +e.target.value; const tm = document.getElementById('pl-time'); if (tm) tm.textContent = mmssS(S.play.t) + ' / ' + mmssS(S.play.dur); } if (e.target.id === 'plvol') S.play.vol = +e.target.value; });
+function dialog(C){
+  const d = S.dlg; if (!d) return ''; let t = '', b = '', f = `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button>`;
+  if (d.k === 'complain'){ t = 'Пожаловаться на звонок'; const R0 = ['Плохая связь, эхо или задержка','Звонок оборвался','У абонента отобразился не тот номер','Нет записи или расшифровки','Другое'];
+    b = `<div class="field">С чем связана ошибка${R0.map(r => opt('cmpR', r, (S.form.cmpR || R0[0]) === r, r, '')).join('')}</div><label class="field" for="cmpT">Опишите ошибку<textarea id="cmpT" data-f="cmpT" rows="4" placeholder="Что произошло и в какой момент разговора">${esc(S.form.cmpT || '')}</textarea></label>${fld('cmpC','Контакты для связи','Телефон или Telegram')}`;
+    f += `<button type="button" class="btn pri" ${A('dlgSend','Жалоба отправлена · ответим в течение часа')}>Отправить</button>`; }
+  if (d.k === 'contract'){ const tk = C.trunks.find(x => x.id === d.a) || C.trunks[0]; t = 'Договор с оператором';
+    b = `<dl class="dl"><dt>Номер</dt><dd class="mono">№ ${esc(tk.contract)}</dd><dt>Оператор</dt><dd>${esc(tk.op)}</dd><dt>Абонент</dt><dd>${esc(C.co.full)} · ИНН ${C.co.inn}</dd><dt>Оформлен</dt><dd>Через SashaTel, ЭДО</dd><dt>Дата</dt><dd class="mono">12.05.2026</dd><dt>Транк</dt><dd>${esc(tk.name)} · ${tk.lines} линий</dd><dt>Статус</dt><dd>${pill(tk.contract === 'на подписании' ? 'На подписании' : 'Действует', tk.contract === 'на подписании' ? 'warn' : 'ok')}</dd></dl>`;
+    f = `<button type="button" class="btn" ${A('toast','Открываем кабинет оператора')}>Кабинет оператора</button><button type="button" class="btn pri" ${A('toast','Скачиваем PDF')}>Скачать PDF</button>`; }
+  if (typeof dialogMore === 'function'){ const r = dialogMore(C, d); if (r){ t = r[0]; b = r[1]; f = r[2] || f; } }
+  return `<button type="button" class="scrim" aria-label="Закрыть" ${A('dlgClose')}></button><div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(t)}"><div class="dlg-h"><h2>${esc(t)}</h2><button type="button" class="icon-btn" aria-label="Закрыть" ${A('dlgClose')}>${ic('x')}</button></div><div class="dlg-b">${b}</div><div class="dlg-f">${f}</div></div>`;
+}
+document.addEventListener('mouseover', e => { const w = e.target.closest && e.target.closest('.donut-w'); document.querySelectorAll('.donut-w.hl').forEach(x => { if (x !== w){ x.classList.remove('hl'); x.querySelectorAll('.on').forEach(n => n.classList.remove('on')); x.querySelector('.dc-l').textContent = x.dataset.l0; x.querySelector('.dc-v').textContent = x.dataset.v0; } }); if (!w) return; const sg = e.target.closest('[data-seg]');
+  if (!sg){ w.classList.remove('hl'); w.querySelectorAll('.on').forEach(n => n.classList.remove('on')); w.querySelector('.dc-l').textContent = w.dataset.l0; w.querySelector('.dc-v').textContent = w.dataset.v0; return; }
+  w.classList.add('hl'); w.querySelectorAll('[data-seg]').forEach(n => n.classList.toggle('on', n.dataset.seg === sg.dataset.seg)); w.querySelector('.dc-l').textContent = sg.dataset.l; w.querySelector('.dc-v').textContent = sg.dataset.v; });
 function toast(m, err){ S.toast = m; S.toastErr = !!err; clearTimeout(toastT); toastT = setTimeout(() => { S.toast = ''; render(); }, 2800); render(); }
 function go(scr, tab){ S.screen = scr; if (tab) S.tab[scr === 'trunk' ? 'trunks' : scr] = tab; S.drawer = null; S.pop = null; S.sideOpen = false; S.dp = null; if (scr === 'ai') S.aiView = 'list'; window.scrollTo(0, 0); kickAnim(); render(); }
 function nav(target){ const [scr, tab] = target.split(':');
-  if (scr === 'team') return go('settings', 'team'); if (scr === 'billing' && tab === 'req') return go('settings', 'company'); if (scr === 'settings' && (tab === 'rotation' || tab === 'rec')) return go('settings', 'calls'); if (scr === 'auto') return go('stats'); if (scr === 'stats' && tab === 'res') return go('stats', 'dz');
-  if (scr === 'numbers'){ if (!tab || tab === 'all' || tab === 'stop'){ S.tab.trunks = tab === 'stop' ? 'stop' : 'nums'; return go('trunks'); } const st = ctx().trunks.find(t => t.kind !== 'own') || ctx().trunks[0]; S.selT = st.id; S.tkTest = false; S.tab.trunk = 'nums'; if (tab === 'marking') S.mkt = target.endsWith('apps') ? 'apps' : S.mkt; return go('trunk'); } if (scr === 'integrations') S.inView = 'list'; if (scr === 'numbers' && tab === 'marking') S.mkt = target.endsWith('apps') ? 'apps' : S.mkt; if (scr === 'billing' && tab === 'topup') S.tab.billing = 'topup'; if (scr === 'integrations' && tab === 'log') S.lf = 'err'; go(scr, tab || null); }
+  if (scr === 'team') return go('settings', 'team'); if (scr === 'billing' && tab === 'req') return go('settings', 'company'); if (scr === 'settings' && ['rotation','rec','calls','sec'].includes(tab)) return go('settings', 'stop'); if (scr === 'settings' && tab === 'ops') return go('billing', 'docs'); if (scr === 'billing' && (tab === 'pay' || tab === 'topup')) return go('billing', 'balance'); if (scr === 'integrations' && (tab === 'conn' || tab === 'api')){ S.inView = 'list'; return go('integrations', 'hooks'); } if (scr === 'auto') return go('stats'); if (scr === 'stats' && tab === 'res') return go('stats', 'dz');
+  if (scr === 'numbers'){ if (!tab || tab === 'all' || tab === 'stop'){ S.tab.trunks = tab === 'stop' ? 'stop' : 'nums'; return go('trunks'); } const st = ctx().trunks.find(t => t.kind !== 'own') || ctx().trunks[0]; S.selT = st.id; S.tkTest = false; S.tab.trunk = 'nums'; if (tab === 'marking') S.mkt = target.endsWith('apps') ? 'apps' : S.mkt; return go('trunk'); } if (scr === 'integrations') S.inView = 'list'; if (scr === 'numbers' && tab === 'marking') S.mkt = target.endsWith('apps') ? 'apps' : S.mkt; if (scr === 'integrations' && tab === 'log') S.lf2 = 'err'; go(scr, tab || null); }
 function newRange(a, b){ S.range = {a, b}; S.dp = null; S.pop = null; kickAnim(); render(); }
 
 /* ===================== ДЕЙСТВИЯ ===================== */
@@ -1382,7 +1633,7 @@ const ACT = {
   series: v => { S.hidden[v] = !S.hidden[v]; render(); },
   drawer: v => { S.drawer = {k:v}; S.pop = null; S.sideOpen = false; render(); },
   close: () => { S.drawer = null; render(); },
-  save: v => { const k = S.drawer && S.drawer.k; if (k === 'trunk') return saveTrunk(); if (k === 'buy' && S.screen === 'trunk'){ P().reqs.unshift({tk:S.selT, type:'Номера', d:'Заказ ' + S.buyQty + ' ' + plural(S.buyQty,'номера','номеров','номеров'), st:['Отправлена','neu'], at:'сегодня'}); } if (k === 'hook'){ const p = P(); p.hooks.push({url:S.form.hUrl || 'https://crm.company.ru/hooks/sashatel', ev:Object.keys(S.chipSets.hev).filter(x => S.chipSets.hev[x]).join(', '), last:'только что', st:['Работает','ok']}); S.drawer = null; S.tab.integrations = 'conn'; S.inView = 'list'; return toast('Вебхук добавлен'); } S.drawer = null; if (v) toast(v); else render(); },
+  save: v => { const k = S.drawer && S.drawer.k; if (k === 'trunk') return saveTrunk(); if (k === 'buy' && S.screen === 'trunk'){ P().reqs.unshift({tk:S.selT, type:'Номера', d:'Заказ ' + S.buyQty + ' ' + plural(S.buyQty,'номера','номеров','номеров'), st:['Отправлена','neu'], at:'сегодня'}); } if (k === 'hook'){ const p = P(); p.hooks.push({url:S.form.hUrl || 'https://crm.company.ru/hooks/sashatel', ev:Object.keys(S.chipSets.hev).filter(x => S.chipSets.hev[x]).join(', '), last:'только что', st:['Работает','ok']}); S.drawer = null; S.tab.integrations = 'hooks'; S.inView = 'list'; return toast('Вебхук добавлен'); } S.drawer = null; if (v) toast(v); else render(); },
   confirm: v => { S.confirm = v || null; render(); },
   confirmYes: () => { const p = P(), k = S.confirm; S.confirm = null;
     if (k === 'applyTel'){ S.saving = true; render(); return setTimeout(() => { S.saving = false; const fail = Math.random() < .15; if (!fail) S.dirty = false; toast(fail ? 'Ошибка сохранения · попробуйте ещё раз' : 'Настройки сохранены', fail); }, 700); }
@@ -1424,9 +1675,15 @@ const ACT = {
   hookClone: v => { const h = P().hooks[+v]; if (!h) return; P().hooks.splice(+v + 1, 0, Object.assign({}, h, {desc:(h.desc || '') + ' · копия', on:false, created:'сегодня', st:['Выключен','neu']})); toast('Вебхук скопирован'); },
   hookDel: v => { S.selHook = +v; S.confirm = 'hookOff'; render(); },
   q: v => { S.q = v || null; S.cf = 'all'; render(); },
-  trunk: v => { S.selT = v; S.tkTest = false; S.showPw = false; S.tab.trunk = 'nums'; go('trunk'); },
+  trunk: v => { S.npg = 0; S.form.nq = ''; S.selT = v; S.tkTest = false; S.showPw = false; S.tab.trunk = 'nums'; go('trunk'); },
   tkStats: v => { S.ft = v; S.tab.stats = 'dz'; S.dim = 'callee'; kickAnim(); go('stats'); },
   ddPick: v => { const k = v.indexOf('|'), id = v.slice(0, k), val = v.slice(k+1); S.pop = null; if (id === 'ft'){ S.ft = val; kickAnim(); } else if (id === 'dim') S.dim = val; else S.form[id] = val; render(); },
+  dlg: v => { const [k, a] = String(v).split(':'); S.dlg = {k, a}; S.pop = null; render(); },
+  dlgClose: () => { S.dlg = null; render(); },
+  dlgSet: v => { const [k, val] = v.split(':'); S.dlg[k] = val; render(); },
+  dlgSend: v => { S.dlg = null; toast(v || 'Отправлено'); },
+  cmpR: v => { S.form.cmpR = v; render(); },
+  npg: v => { S.npg = +v; render(); },
   cmode: v => { P().cmode = v; render(); },
   telCancel: () => { telRestore(); S.dirty = false; render(); },
   telApply: () => { S.confirm = 'applyTel'; render(); },
@@ -1446,7 +1703,7 @@ const ACT = {
   dialMode: v => { S.dial = v; render(); },
   inView: v => { S.inView = v; S.crmTested = false; render(); }, hookOpen: v => { S.selHook = +v; S.inView = 'hook'; S.hookTested = false; render(); },
   crmTest: () => { S.crmTested = true; toast('Тестовый звонок прошёл'); }, hookTest: () => { S.hookTested = true; toast('Тестовое событие доставлено'); },
-  connAmo: () => { P().amoOn = true; S.drawer = null; S.tab.integrations = 'conn'; S.inView = 'amo'; toast('amoCRM подключена'); },
+  connAmo: () => { P().amoOn = true; S.drawer = null; S.tab.integrations = 'hooks'; S.inView = 'amo'; toast('amoCRM подключена'); },
   store: v => { S.store = v; render(); },
   plan: v => { P().plan = v; toast('Тариф ' + PLANS[v].name + ' с 1 ноября. Разницу пересчитаем в акте'); },
   seats: v => { P().seats = Math.max(1, P().seats + (+v)); render(); },
@@ -1497,7 +1754,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){ if (S.confirm) S.confirm = null; else if (S.drawer) S.drawer = null; else if (S.dp) S.dp = null; else if (S.pop) S.pop = null; else if (S.sideOpen) S.sideOpen = false; else return; render(); }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('tr[data-a]')){ e.preventDefault(); e.target.click(); }
 });
-document.addEventListener('input', e => { const f = e.target.dataset && e.target.dataset.f; if (!f) return; S.form[f] = e.target.value; if (f === 'cq' || f === 'sq') return render(); if (f === 'lblText' || f === 'lblCat'){ const ph = document.querySelector('.phone b'); if (ph && f === 'lblText') ph.textContent = e.target.value || ''; } });
+document.addEventListener('input', e => { const f = e.target.dataset && e.target.dataset.f; if (!f) return; S.form[f] = e.target.value; if (f === 'cq' || f === 'sq') return render(); if (f === 'lq' || f === 'tq' || f === 'stq'){ S.lpg = 0; S.tpg = 0; S.spg = 0; return render(); } if (f === 'calcN') return render(); if (f === 'nq'){ S.npg = 0; return render(); } if (f === 'lblText' || f === 'lblCat'){ const ph = document.querySelector('.phone b'); if (ph && f === 'lblText') ph.textContent = e.target.value || ''; } });
 document.addEventListener('change', e => { const f = e.target.dataset && e.target.dataset.f; if (f){ S.form[f] = e.target.value; if (f === 'ft'){ S.ft = e.target.value; kickAnim(); return render(); } if (f === 'dim'){ S.dim = e.target.value; return render(); } if (f === 'rseg'){ S.rseg = e.target.value; return render(); } if (f === 'cT' || f === 'cR') return render(); if (f === 'qtext'){ const q = Object.keys(QS).find(k => e.target.value.toLowerCase().includes(k.split(' ')[0])); S.q = q || null; render(); } } });
 document.addEventListener('mouseover', e => { const d = e.target.closest('[data-hv]'); if (!d || !S.dp || S.dp.b != null) return; const i = +d.dataset.hv; if (S.dp.hv !== i){ S.dp.hv = i; const lo = Math.min(S.dp.a, i), hi = Math.max(S.dp.a, i); document.querySelectorAll('.dp [data-hv]').forEach(x => { const j = +x.dataset.hv; x.classList.toggle('in', j >= lo && j <= hi); x.classList.toggle('s', j === lo); x.classList.toggle('e', j === hi); }); } });
 document.addEventListener('dragstart', e => { const d = e.target.closest('[data-drag]'); if (!d) return; S.dragId = +d.dataset.drag; try { e.dataTransfer.setData('text/plain', d.dataset.drag); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} d.classList.add('drag'); });
@@ -1506,4 +1763,23 @@ document.addEventListener('drop', e => { const d = e.target.closest('[data-drag]
 document.addEventListener('dragend', () => { S.dragId = null; document.querySelectorAll('.crit.drag').forEach(x => x.classList.remove('drag')); });
 
 render();
+/* ===================== ДЕЙСТВИЯ v18 ===================== */
+Object.assign(S.sw, {stopai:true, stopwords:true, stopcrm:true, stophard:true});
+Object.assign(S.chipSets.hev, {cCall:true, cSum:true, cTask:true, tSum:true, tRec:true, tEmp:true});
+Object.assign(ACT, {
+  lpg: v => { S.lpg = +v; render(); }, tpg: v => { S.tpg = +v; render(); }, spg: v => { S.spg = +v; render(); },
+  lf2: v => { S.lf2 = v; S.lpg = 0; render(); }, calcM: v => { S.calcM = v; render(); }, stopAct: v => { S.stopAct = v; render(); },
+  hookCreate: type => { const p = P(), url = (S.form.hUrl || '').trim(); if (!url){ toast('Укажите ' + (type === 'email' ? 'почту' : (type === 'telegram' || type === 'max' ? 'ID чата' : 'адрес')), true); return; }
+    const ev = HEV.map(e => e[0]).filter(x => S.chipSets.hev[x]).join(', ') || 'call.ended';
+    p.hooks.unshift({url, desc:S.form.hDesc || HTN[type], type, ev, on:true, created:dstr(TODAY_D, true), last:'—', st:['Работает','ok']});
+    S.form.hUrl = ''; S.form.hDesc = ''; S.dlg = null; S.tab.integrations = 'hooks'; S.selHook = 0; S.inView = 'hook'; S.hookTested = false; toast(type === 'amocrm' || type === 'bitrix' ? HTN[type] + ' подключена' : 'Вебхук создан'); },
+  empAcc: v => { const p = P(); if (!p.acc) p.acc = {}; const m = ctx().co.team[+v]; p.acc[+v] = !accOf(m, +v); toast(p.acc[+v] ? 'Доступ включён · ' + m.n : 'Доступ выключен · ' + m.n); },
+  empAdd: () => { const n = (S.form.eName || '').trim().replace(/\s+/g, ' '); if (n.split(' ').length < 2){ toast('Укажите имя и фамилию', true); return; }
+    const T = ctx().co.team, role = S.form.eRole || 'mgr'; T.push({n, r:role === 'head' ? 'Руководитель' : 'Менеджер', dep:S.form.eDep || 'Продажи', m:'fixed', num:'—', dev:'Мобильное приложение', g:'ok', live:['Не в сети','neu']});
+    S.form['role_' + S.co + '_' + (T.length - 1)] = role; S.form.eName = ''; S.form.eMail = ''; S.form.eDep = ''; S.dlg = {k:'creds', a:String(T.length - 1)}; render(); },
+  stopWAdd: () => { const w = (S.form.stw || '').trim().toLowerCase(); if (!w) return; const p = P(); if (!p.stopW.includes(w)) p.stopW.push(w); S.form.stw = ''; toast('Слово добавлено'); },
+  stopWDel: v => { P().stopW.splice(+v, 1); render(); },
+  stopDel: v => { const p = P(); p.stops = stopData().filter(s => s.n !== v); toast('Номер убран из стоп-листа'); },
+  stopAddGo: () => { const n = (S.form.stN || '').trim(); if (n.replace(/\D/g, '').length < 10){ toast('Проверьте номер', true); return; } stopData().unshift({n, why:S.form.stWhy || 'Просил не звонить', src:'Мария Лебедева', at:dstr(TODAY_D, true)}); S.form.stN = ''; S.dlg = null; toast('Номер добавлен в стоп-лист'); }
+});
 </script></body></html>
