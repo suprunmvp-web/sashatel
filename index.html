@@ -617,6 +617,37 @@ tr.click:hover .chev{color:var(--fg)}
 .obar{height:4px;margin:0 18px 16px;border-radius:99px;background:var(--surface-2);overflow:hidden}.obar i{display:block;height:100%;background:var(--fg);border-radius:99px;transition:width .3s ease}
 .page{padding-bottom:112px}
 .sw.on::after{background:var(--surface)}.chk{color:var(--surface)}
+/* v21 */
+.sorth{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-transform:inherit;letter-spacing:inherit}
+.sorth:hover,.sorth.on{color:var(--fg)}
+.selt th.cb,.selt td.cb{width:44px;padding-right:0}
+.selt input[type=checkbox],.t th.cb input{width:16px;height:16px;accent-color:var(--fg);cursor:pointer;margin:0;vertical-align:middle}
+.t tr.selr td{background:var(--surface-2)}
+.bulk{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%;min-height:38px}
+.bulk .link{margin-left:10px;font-size:13px;color:var(--muted)}
+.cnt{margin-left:auto;font-size:13px;white-space:nowrap}
+.tcnt{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;margin-left:6px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);font-size:11px;font-weight:600;color:var(--fg-2)}
+.rules{display:flex;flex-direction:column}
+.rule{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;padding:14px 18px;border-top:1px solid var(--line-2)}
+.rules .rule:first-child{border-top:0}
+.rule.off .rule-c{opacity:.5}
+.rule-c{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;flex:1}
+.rule-r{display:flex;align-items:center;gap:10px;flex:none}
+.rule .dd-b{min-height:36px;font-size:14px}
+.rk{color:var(--muted);font-size:14px;white-space:nowrap}
+.inp.rnum{min-height:36px;padding:0 10px;font-family:var(--f-mono);flex:none;text-align:right}
+.ldrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ldrow .stepper .inp{min-height:34px}
+.pill.live{color:var(--fg)}.pill.live::before{background:var(--pos);animation:pulse 1.6s infinite}
+.tw:has(.dd-m),.card:has(.dd-m){overflow:visible}
+.t .dd{min-width:200px}.t .dd .dd-b{width:100%}
+@media (max-width:640px){.rule-r{width:100%;justify-content:space-between}.cnt{margin-left:0}.selt td.cb{position:absolute;right:14px;top:14px;width:auto;padding:0}.selt tr{position:relative}.selt th.cb{display:none}}
+@media (max-width:640px){.dd-m{position:fixed!important;left:12px!important;right:12px!important;top:auto!important;bottom:12px;width:auto!important;max-height:60vh;z-index:90;box-shadow:var(--pop)}}
+.rule{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:center}
+.rule-c{grid-column:1;grid-row:1}.rule-h{grid-column:1;grid-row:2;font-size:13px}.rule-r{grid-column:2;grid-row:1/3}
+.sumcard .kvt-r{min-height:40px}
+@media (max-width:640px){.rule{grid-template-columns:1fr}.rule-r{grid-column:1;grid-row:3;justify-content:flex-start}}
+.lrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px 10px 16px;border-top:1px solid var(--line-2);font-size:14px}.sumcard .lrow:first-child{border-top:0}.lrow .sub{display:block;margin-top:2px}
 </style>
 </head><body><div id="app"></div><script>
 'use strict';
@@ -731,7 +762,9 @@ const CALLS = [
   {h:'14:19',m:3,n:'+7 985 253-31-77',from:'+7 985 498-10-64',d:'2:05',r:['Отказ','bad'],s:'Работают с конкурентом, договор до марта.',talk:true},
   {h:'14:11',m:1,n:'+7 916 444-90-23',from:'+7 903 135-64-90',d:'6:48',r:['Сделка','ok'],s:'Согласовали КП, ждут счёт сегодня.',talk:true},
   {h:'14:06',m:4,n:'+7 911 529-47-33',from:'+7 985 168-77-31',d:'—',r:['Не взяли','neu'],s:'Повторный набор через 2 часа с другого номера.',talk:false},
-  {h:'14:02',m:2,n:'+7 926 279-12-58',from:'+7 903 755-18-45',d:'1:14',r:['Перезвонить','info'],s:'Нужно решение руководителя, перезвонить в понедельник.',talk:true}
+  {h:'14:02',m:2,n:'+7 926 279-12-58',from:'+7 903 755-18-45',d:'1:14',r:['Перезвонить','info'],s:'Нужно решение руководителя, перезвонить в понедельник.',talk:true},
+  {h:'14:34',m:2,n:'+7 915 302-77-14',from:'+7 903 755-18-45',d:'—',r:['Идёт вызов','info'],s:'',talk:false,st:'init'},
+  {h:'14:21',m:4,n:'+7 999 812-40-66',from:'+7 926 401-12-87',d:'—',r:['Ошибка','bad'],s:'',talk:false,st:'err'}
 ];
 const TRANS = {"0": [["0:00", "М", "Добрый день! Анна, компания «Ромашка». Удобно говорить пару минут?"], ["0:05", "К", "Да, слушаю."], ["0:07", "М", "Вы оставляли заявку на сайте по автоматизации отдела продаж. Подскажите, сколько у вас сейчас менеджеров?"], ["0:15", "К", "Двадцать человек, плюс два руководителя группы."], ["0:20", "М", "А в чём сейчас ведёте клиентов?"], ["0:23", "К", "В amoCRM, но половина звонков мимо неё, менеджеры звонят с мобильных."], ["0:31", "М", "Понятно. Как раз под это у нас тариф на 20 сотрудников: звонки, записи и задачи попадают в сделку сами."], ["0:42", "К", "А по деньгам сколько выходит?"], ["0:45", "М", "Зависит от набора модулей. Давайте я покажу на демо и сразу посчитаем под ваш отдел."], ["0:53", "К", "Давайте. Когда можно?"], ["0:56", "М", "Четверг в 11:00 подойдёт?"], ["1:00", "К", "Подойдёт. Пришлите ссылку на почту."], ["1:03", "М", "Отправлю сегодня. Спасибо, до четверга!"]], "1": [["0:00", "М", "Здравствуйте, Игорь, компания «Ромашка». По поводу вашей заявки, удобно сейчас?"], ["0:06", "К", "Нет, я на встрече. Наберите после пяти."], ["0:10", "М", "Хорошо, после 17:00 перезвоню. Как к вам обращаться?"], ["0:14", "К", "Сергей."], ["0:16", "М", "Спасибо, Сергей, до связи."]], "3": [["0:00", "М", "Добрый день, Дмитрий, «Ромашка». Звоню по поводу автоматизации продаж."], ["0:05", "К", "Мы уже работаем с другой компанией."], ["0:09", "М", "Понимаю. Можно узнать, с кем, и всё ли устраивает?"], ["0:14", "К", "С конкурентом вашим, в целом устраивает. Договор до марта."], ["0:21", "М", "А если в марте будете пересматривать, могу набрать в феврале с предложением?"], ["0:27", "К", "Можно, но не обещаю."], ["0:30", "М", "Договорились. Хорошего дня!"]], "4": [["0:00", "М", "Сергей Викторович, добрый день, Игорь из «Ромашки». Получили наше КП?"], ["0:06", "К", "Да, посмотрели с финансовым директором."], ["0:10", "М", "Какие вопросы остались?"], ["0:13", "К", "По срокам внедрения и по оплате — можно квартально?"], ["0:19", "М", "Внедрение две недели, оплата квартально — да, можем."], ["0:25", "К", "Тогда нас всё устраивает. Выставляйте счёт."], ["0:29", "М", "Счёт пришлю сегодня до конца дня, договор — через ЭДО."], ["0:35", "К", "Хорошо, ждём."], ["0:37", "М", "Спасибо, Сергей Викторович! На связи."]], "6": [["0:00", "М", "Добрый день, Мария, «Ромашка». Вы смотрели наше предложение?"], ["0:05", "К", "Смотрела, мне понравилось, но решает директор."], ["0:10", "М", "Когда он сможет посмотреть?"], ["0:13", "К", "Он в отъезде до понедельника."], ["0:16", "М", "Тогда наберу вам в понедельник, чтобы понять решение. Удобно утром?"], ["0:22", "К", "Да, после десяти."], ["0:24", "М", "Договорились, до понедельника!"]]};
 const QS = {'дорого':[[3,'…честно, для нас это дорого, у конкурента дешевле…'],[6,'…дороговато выходит на 20 человек, есть скидка?…']],'конкурент':[[3,'…работаем с конкурентом, договор до марта…'],[0,'…сейчас смотрим ещё одного подрядчика…']],'перезвоните позже':[[1,'…давайте после пяти, сейчас на совещании…'],[6,'…перезвоните в понедельник, решение за руководителем…']],'пришлите КП':[[0,'…пришлите КП на почту, посмотрю до четверга…'],[4,'…КП получили, ждём счёт…']],'не звоните':[[3,'…больше не звоните, пожалуйста…']]};
@@ -1008,7 +1041,7 @@ const NAMES = {call:'История звонков',stats:'Статистика'
 const PERIOD = ['stats','calls','auto'];
 const EVT = {spam:['Номер получил спам-метку','warn','numbers:all'], hook:['Ошибка доставки вебхука','bad','integrations:log'], markOk:['Маркировка одобрена','neu','numbers:marking'], markSent:['Заявка на маркировку отправлена','neu','numbers:marking'], trunkDown:['Транк был недоступен','warn','trunks:'], trunkOn:['Транк подключён','neu','trunks:'], numsAdded:['Номера подключены','neu','numbers:all'], invoice:['Счёт выставлен','neu','billing:balance'], payment:['Платёж зачислен','neu','billing:balance'], balLow:['Баланс заканчивается','warn','billing:balance'], release:['Вышло обновление','neu','stats']};
 const FEED = {romashka:[['14:02','spam','+7 916 755-41-27',1],['09:10','hook','bi.romashka.ru · 502',1],['вчера','markOk','Т2',0],['16.10','trunkDown','МегаФон · офис · 2 мин',0],['15.10','release','Версия 1.8',0]], polezny:[['11:40','numsAdded','+60 · пул «Регионы»',1],['вчера','invoice','№ 2026-1017',0],['15.10','release','Версия 1.8',0]], newco:[['10:15','trunkOn','Билайн · Продажи',1],['вчера','markSent','4 оператора',0],['15.10','payment','30 000 ₽',0]]};
-const SETUP = [['Подключить оператора','Билайн или МТС · договор на вашу компанию','trunks:'],['Добавить сотрудников','Роли и логины для приложения','settings:team'],['Подключить CRM','Виджет и запись звонков в сделках','integrations:hooks']];
+const SETUP = [['Подключить транк','Билайн, МТС или свой оператор','trunks:'],['Добавить сотрудников','Роли и логины для приложения','settings:team'],['Подключить CRM','Виджет и запись звонков в сделках','integrations:hooks']];
 
 function sidebar(C){
   const done = Object.keys(P().setup).length, tot = SETUP.length;
@@ -1039,7 +1072,7 @@ function topbar(C){
   </div></header>`;
 }
 function footer(){
-  return `<footer class="foot"><span>© SashaTel, 2026 · агент операторов связи</span>${LEGAL_FOOT.map(t => `<a href="#" ${A('doc', t)}>${t}</a>`).join('')}<a href="#" ${A('nav','billing:docs')}>Все документы</a></footer>`;
+  return `<footer class="foot"><span>© SashaTel, 2026 · агент операторов связи</span>${LEGAL_FOOT.map(t => `<a href="#" ${A('doc', t)}>${t}</a>`).join('')}<a href="#" ${A('dlg','legal')}>Все документы</a></footer>`;
 }
 function datePicker(){
   const dp = S.dp, selB = dp.b == null ? (dp.hv >= 0 ? dp.hv : dp.a) : dp.b, lo = Math.min(dp.a, selB), hi = Math.max(dp.a, selB);
@@ -1106,7 +1139,7 @@ function scrStats(C){
   const t = S.tab.stats === 'health' ? 'health' : 'dz';
   if (C.n30 < 1500) return `<div class="ph"><div><h1>Статистика</h1></div></div>` + onboarding(C);
   const head = `<div class="ph"><div><h1>Статистика</h1></div><button type="button" class="btn" ${A('toast','Выгрузка запущена')}>${ic('download', 14)} Выгрузить CSV</button></div>` ;
-  const ft = S.ft && C.tkByKey[S.ft] ? S.ft : 'all';
+  const ft = 'all';
   const prev = C.sum(C.RA - C.RN, C.RA - 1), k = C.TOT;
   const pick = o => ft === 'all' ? {N:o.N, A:o.A, dlg:o.dlg, min:o.min} : {N:o.dl[ft], A:o.an[ft], dlg:o.A ? o.dlg*o.an[ft]/o.A : 0, min:o.A ? o.min*o.an[ft]/o.A : 0};
   const cur = pick(k), pv = pick(prev), share = k.N ? cur.N/k.N : 1;
@@ -1153,7 +1186,7 @@ function scrStats(C){
     const P = (r, a) => (cx + r*Math.cos(a)).toFixed(2) + ' ' + (cy + r*Math.sin(a)).toFixed(2);
     const segs = TECH.map((x, k) => { const f = x[2]/tot, a1 = a0 + Math.max(f, .002)*Math.PI*2 - .012, big = a1 - a0 > Math.PI ? 1 : 0, d = `M${P(R0, a0)} A${R0} ${R0} 0 ${big} 1 ${P(R0, a1)} L${P(R1, a1)} A${R1} ${R1} 0 ${big} 0 ${P(R1, a0)} Z`; a0 = a1 + .012; return `<path class="seg" data-seg="${k}" data-l="${esc(x[0])}" data-v="${pc(f*100)}" d="${d}" style="fill:${x[4]}"/>`; }).join('');
     return card(hdr('Итог набора', 'Чем закончились наборы за период'), `<div class="donut-w" data-l0="Наборов" data-v0="${fmt(tot)}"><svg viewBox="0 0 200 200" class="donut" role="img" aria-label="Итог набора">${segs}</svg><div class="dc"><span class="dc-l">Наборов</span><b class="dc-v mono">${fmt(tot)}</b></div><div class="dleg">${TECH.map((x, k) => `<div class="dl-r" data-seg="${k}" data-l="${esc(x[0])}" data-v="${pc(x[2]/tot*100)}" title="SIP ${x[1]}"><i style="background:${x[4]}"></i><span class="dl-n">${x[0]}</span><span class="mono">${fmt(x[2])}</span><b class="mono">${pc(x[2]/tot*100)}</b></div>`).join('')}</div></div>`); };
-  return head + filters + dzPart() ;
+  return head + dzPart();
 }
 function diagnostics(C){
   const gap = C.rate != null ? C.rate - C.goal : 0, ICO = {bad:'!',warn:'!',info:'i',ok:'✓'}, STT = {bad:'Критично',warn:'Внимание',info:'Подсказка',ok:'В норме'};
@@ -1170,21 +1203,21 @@ function callMeta(C, i){
   const [hh, mm] = c.h.split(':').map(Number), base = hh*3600 + mm*60 + 2, amd = c.r[0] === 'Автоответчик', ring = c.talk ? 17 : (amd ? 9 : 28);
   const dp = c.d === '—' ? 0 : (+c.d.split(':')[0])*60 + (+c.d.split(':')[1]), T = x => [Math.floor(x/3600), Math.floor(x%3600/60), x%60].map(v => String(v).padStart(2, '0')).join(':');
   const pr = PREF[c.n.slice(3, 6)] || ['МТС','Москва и Московская обл.'];
-  return {c, m, tk, start:T(base), conn: c.talk ? T(base + ring) : '—', fin:T(base + ring + dp), dur: c.d === '—' ? '0:00' : c.d,
-    end: c.talk ? (i % 2 ? 'Клиент положил трубку' : 'Менеджер завершил') : (amd ? 'Автоответчик' : 'Не взяли трубку'), code: c.talk ? '200 OK' : (amd ? '200 · автоответчик' : '480 · не ответил'),
-    status: c.talk ? ['Завершён','ok'] : ['Не дозвонились','neu'], op:pr[0], reg:pr[1], lead: 30778400 + i*37};
+  return {c, m, tk, start:T(base), conn: c.talk ? T(base + ring) : '—', fin:T(base + ring + dp), dur: c.st === 'init' ? '—' : c.d === '—' ? '0:00' : c.d,
+    end: c.st === 'init' ? 'Идёт вызов' : c.st === 'err' ? 'Оператор отклонил вызов' : c.talk ? (i % 2 ? 'Клиент положил трубку' : 'Менеджер завершил') : (amd ? 'Сброшен на автоответчике' : 'Не взяли трубку'), code: c.st === 'init' ? '180 Ringing' : c.st === 'err' ? '503 Service Unavailable' : c.talk ? '200 OK' : (amd ? '200 · автоответчик' : '480 · не ответил'),
+    status: c.st === 'init' ? ['Инициирован','live'] : c.st === 'err' ? ['Ошибка','bad'] : c.talk ? ['Завершён','ok'] : (amd ? ['Автоответчик','neu'] : ['Недозвон','neu']), op:pr[0], reg:pr[1], lead: 30778400 + i*37};
 }
 function scrCalls(C){
   const team = C.co.team;
   let rows = CALLS.map((c, i) => callMeta(C, i)).map((x, i) => Object.assign(x, {idx:i}));
   const fT = S.form.cT || 'Все транки', fR = S.form.cR || 'Все статусы', fM = S.form.cM || 'Все менеджеры', fq = (S.form.cq || '').replace(/\D/g, '');
-  if (fR === 'С разговором') rows = rows.filter(x => x.c.talk); if (fR === 'Без разговора') rows = rows.filter(x => !x.c.talk);
+  if (fR !== 'Все статусы') rows = rows.filter(x => x.status[0] === fR); rows.sort((a, b) => b.c.h.localeCompare(a.c.h));
   if (fT !== 'Все транки') rows = rows.filter(x => x.tk.name === fT); if (fM !== 'Все менеджеры') rows = rows.filter(x => x.m.n === fM);
   if (fq) rows = rows.filter(x => x.c.n.replace(/\D/g, '').includes(fq) || x.c.from.replace(/\D/g, '').includes(fq));
   const any = fq || fT !== 'Все транки' || fR !== 'Все статусы' || fM !== 'Все менеджеры';
   const playing = x => S.play && S.play.i === x.idx && !S.play.paused;
   return `<div class="ph"><div><h1>История звонков</h1></div></div>` +
-    `<div class="filters fl-chips"><label class="srch">${ic('search', 14)}<input id="cq" data-f="cq" type="search" placeholder="Поиск по телефону" value="${esc(S.form.cq || '')}" aria-label="Поиск по телефону"></label>${dd('cT', '', fT, ['Все транки'].concat(C.trunks.map(t => t.name)).map(o => [o, o]))}${dd('cM', '', fM, ['Все менеджеры'].concat(team.map(m => m.n)).map(o => [o, o]))}${dd('cR', '', fR, ['Все статусы','С разговором','Без разговора'].map(o => [o, o]))}${any ? `<button type="button" class="btn ghost sm" ${A('callsReset')}>Сбросить ${ic('x', 12)}</button>` : ''}<button type="button" class="btn sm" ${A('toast','Выгрузка запущена: ' + rows.length + ' звонков')}>${ic('download', 14)} Экспорт</button></div>` +
+    `<div class="filters fl-chips"><label class="srch">${ic('search', 14)}<input id="cq" data-f="cq" type="search" placeholder="Поиск по телефону" value="${esc(S.form.cq || '')}" aria-label="Поиск по телефону"></label>${dd('cT', '', fT, ['Все транки'].concat(C.trunks.map(t => t.name)).map(o => [o, o]))}${dd('cM', '', fM, ['Все менеджеры'].concat(team.map(m => m.n)).map(o => [o, o]))}${dd('cR', '', fR, ['Все статусы','Завершён','Инициирован','Недозвон','Автоответчик','Ошибка'].map(o => [o, o]))}${any ? `<button type="button" class="btn ghost sm" ${A('callsReset')}>Сбросить ${ic('x', 12)}</button>` : ''}<button type="button" class="btn sm" ${A('toast','Выгрузка запущена: ' + rows.length + ' звонков')}>${ic('download', 14)} Экспорт</button></div>` +
     card('', table([{t:'Телефон',p:1},{t:'Время'},{t:'Статус'},{t:'Длительность'},{t:'Запись'},{t:'Причина завершения'},{t:'Менеджер и транк'},{t:'',r:1}], rows.map(x => ({a:'call', v:x.idx, cells:[`<b class="mono">${x.c.n}</b>`, `<span class="mono nowrap">${dm(S.range.b)} ${x.start.slice(0, 5)}</span>`, pill(x.status[0], x.status[1]), `<span class="mono">${x.dur}</span>`, x.c.talk ? `<button type="button" class="playb${playing(x) ? ' on' : ''}" aria-label="${playing(x) ? 'Пауза' : 'Слушать запись'}" title="${playing(x) ? 'Пауза' : 'Слушать запись'}" ${A('play', x.idx)}>${ic(playing(x) ? 'pause' : 'play', 14)}</button>` : '<span class="muted">—</span>', esc(x.end), `<b class="nowrap" style="font-weight:500">${esc(x.m.n)}</b><span class="sub nowrap">${esc(x.tk.name)}</span>`, `<span class="chev">${ic('chev', 16)}</span>`]})), 'Ничего не нашли. Проверьте номер или сбросьте фильтры.') + pager('cpg', rows.length, 0, 20));
 }
 function scrCall(C){
@@ -1279,8 +1312,8 @@ const numRow = (C, n) => ({a:'num', v:NUMS.indexOf(n), cells:[`<b class="mono">$
 const NUMCOLS = [{t:'Номер',p:1},{t:'Транк'},{t:'Использование'},{t:'Маркировка'},{t:'Спам-метки'},{t:'Наборов сегодня',r:1},{t:'Состояние'}];
 function scrTrunks(C){
   const rows = C.trunks.map(tk => ({a:'trunk', v:tk.id, cells:[`<b>${esc(tk.name)}</b><span class="sub">${esc(tk.op === '—' ? 'Свой оператор' : tk.op)}</span>`, tk.contract === 'na' ? '' : (tk.contract === 'на подписании' ? pill('Договор на подписании','warn') : pill('Работает', 'ok')), tk.nums, tkRate(C, tk), `<span class="chev">${ic('chev', 16)}</span>`]}));
-  return `<div class="ph"><div><h1>Транки</h1></div><button type="button" class="btn pri" ${A('trunkNew')}>${ic('plus', 15)} Подключить оператора</button></div>` +
-    (C.trunks.length ? card('', table([{t:'Транк',p:1},{t:'Состояние'},{t:'Номеров',r:1},{t:'Дозвон',r:1},{t:'',r:1}], rows)) : card('', `<div class="empty">Подключите Билайн или МТС — договор и номера на вашу компанию<div style="margin-top:12px"><button type="button" class="btn pri" ${A('trunkNew')}>Подключить оператора</button></div></div>`));
+  return `<div class="ph"><div><h1>Транки</h1></div><button type="button" class="btn pri" ${A('trunkNew')}>${ic('plus', 15)} Подключить транк</button></div>` +
+    (C.trunks.length ? card('', table([{t:'Транк',p:1},{t:'Состояние'},{t:'Номеров',r:1},{t:'Дозвон',r:1},{t:'',r:1}], rows)) : card('', `<div class="empty">Подключите Билайн или МТС — договор и номера на вашу компанию<div style="margin-top:12px"><button type="button" class="btn pri" ${A('trunkNew')}>Подключить транк</button></div></div>`));
 }
 const OPP = {'Билайн':['903','905','909','960','961','962'],'МТС':['910','915','916','985','917'],'МегаФон':['925','926','929','999']};
 function trunkNumsData(C, t){
@@ -1304,25 +1337,16 @@ function trunkLog(C, t, own){
 }
 function scrTrunk(C){
   const t = C.trunks.find(x => x.id === S.selT) || C.trunks[0]; if (!t) return scrTrunks(C);
-  const own = t.kind === 'own', tab = ['nums','req','rot','conn'].includes(S.tab.trunk) ? S.tab.trunk : 'nums', busy = Math.round(t.lines*.17), norm = NORM[P().cmode || 'bal'];
-  const head = `<div class="ph"><div>${back('Транки', 'go','trunks')}<h1 style="margin-top:6px">${esc(t.name)}</h1><div class="row" style="margin-top:8px">${pill('Работает','ok')}<span class="muted">${esc(own ? 'Свой оператор' : t.op)} · ${t.nums} ${plural(t.nums,'номер','номера','номеров')} · дозвон ${tkRate(C, t)}</span></div></div></div>` +
-    tabs('trunk', [['nums', ic('numbers', 15) + ' Номера'],['req', ic('file', 15) + ' Заявки'],['rot', ic('dial', 15) + ' Карусель'],['conn', ic('trunks', 15) + ' Подключение']]);
-  if (tab === 'nums'){
-    const need = Math.ceil(C.monthVol*tkShare(C, t)/22/norm), lack = Math.max(0, need - t.nums), mine = NUMS.filter(n => tkOf(C, n).id === t.id);
-    const st = C.trunks.filter(x => x.kind !== 'own'), pools = C.co.pools.filter((p, i) => !own && st.length && st[i % st.length].id === t.id), prem = P().premium;
-    const vol = Math.round(C.monthVol*tkShare(C, t));
-    return head + `<div class="nline" title="Наборы ÷ 22 рабочих дня ÷ ${norm} наборов с номера (режим карусели)"><span>Для <b>${fmt(vol)}</b> наборов в месяц нужно <b>${need}</b> ${plural(need,'номер','номера','номеров')}, на транке <b>${t.nums}</b>${lack ? '' : ' — хватает'}</span>${own ? '' : (lack ? `<button type="button" class="btn pri sm" ${A('buy', lack)}>Заказать ${lack}</button>` : '')}</div>` +
-      trunkNumsTable(C, t, own);
-  }
+  const own = t.kind === 'own', tab = ['nums','qz','req','rot','conn'].includes(S.tab.trunk) ? S.tab.trunk : 'nums', qn = numsOf(C, t).filter(r => r.st[0] === 'Карантин').length, busy = Math.round(t.lines*.17), norm = NORM[P().cmode || 'bal'];
+  const head = `<div class="ph"><div>${back('Транки', 'go','trunks')}<h1 style="margin-top:6px">${esc(t.name)}</h1><div class="row" style="margin-top:8px">${pill('Работает','ok')}<span class="muted">${esc(own ? 'Свой оператор' : t.op)} · ${t.nums} ${plural(t.nums,'номер','номера','номеров')} · дозвон ${tkRate(C, t)}${qn ? ' · ' + qn + ' в карантине' : ''}</span></div></div></div>` +
+    tabs('trunk', [['nums', ic('numbers', 15) + ' Номера'],['qz', ic('ban', 15) + ' Карантин' + (qn ? `<span class="tcnt">${qn}</span>` : '')],['rot', ic('dial', 15) + ' Карусель'],['req', ic('file', 15) + ' Заявки'],['conn', ic('trunks', 15) + ' Подключение']]);
+  if (tab === 'nums') return head + numsTab(C, t, own);
+  if (tab === 'qz') return head + quarTab(C, t);
   if (tab === 'req'){
     const rq = (P().reqs || []).filter(r => r.tk === t.id);
     return head + card(hdr('Заявки оператору', 'Подключение, заказ и замена номеров', own ? '' : `<button type="button" class="btn sm pri" ${A('buy', 10)}>Заказать номера</button>`), table([{t:'Дата',p:1},{t:'Тип'},{t:'Заявка'},{t:'Статус'}], rq.map(r => ({cells:[`<b class="mono">${r.at}</b>`, r.type, esc(r.d), pill(r.st[0], r.st[1])]})), 'Заявок пока нет'));
   }
-  if (tab === 'rot'){
-    const vol = C.monthVol*tkShare(C, t), MODE = [['care','Бережный',5,'низкий'],['bal','Сбалансированный',8,'средний'],['max','Максимум',12,'высокий']], cm = P().cmode || 'bal';
-    return head + card(hdr('Режим карусели', 'Сколько наборов делать с одного номера в день'), `<div class="card-b"><div class="cmodes">${MODE.map(m => `<button type="button" class="cmode${cm === m[0] ? ' on' : ''}" aria-pressed="${cm === m[0]}" ${A('cmode', m[0])}><b>${m[1]}</b><span class="dl"><span>Наборов с номера</span><span class="mono">${m[2]} в день</span><span>Риск спам-метки</span><span>${m[3]}</span></span></button>`).join('')}</div></div>`) +
-      (true ? card(hdr('Карантин', 'Когда номер уходит на отдых'), setRow('На отдых, если дозвон с номера ниже', 'Считаем за последние наборы с номера', stepper('qz:thr', S.qz.thr + '%', 'порог')) + setRow('Минимум наборов для оценки', '', stepper('qz:min', S.qz.min, 'минимум')) + setRow('Отдых', '', stepper('qz:rest', S.qz.rest + ' дн', 'отдых')) + setRow('Звонить с номера региона абонента', 'Нужны номера в регионах ваших абонентов', sw('region','Тот же регион'))) : '');
-  }
+  if (tab === 'rot') return head + rulesTab(C, t);
   if (tab === 'conn'){
     const host = t.host || (t.op === 'МТС' ? 'sip.mts.ru:5060' : 'sip.beeline.ru:5060'), login = t.login || ('7' + C.co.inn.slice(0, 6) + '01'), pw = 'Kx7q-29Lm-pV4t';
     const cp = v => `<button type="button" class="btn ghost sm icon" aria-label="Скопировать" title="Скопировать" ${A('copy', v)}>${ic('copy', 14)}</button>`;
@@ -1330,7 +1354,7 @@ function scrTrunk(C){
     const status = `<section class="card tstat"><div class="tstat-m"><span class="tstat-dot" aria-hidden="true"></span><div><b>Зарегистрирован${own ? '' : ' у ' + esc(t.op)}</b><div class="muted">Проверено сегодня в 14:52 · отклик 38 мс · занято ${busy} из ${t.lines} линий</div></div></div><button type="button" class="btn" ${A('tkTest')}>${S.tkTest ? ic('check', 14) + ' Звонок прошёл' : 'Тестовый звонок'}</button></section>`;
     const sip = card(hdr('Параметры SIP', own ? 'Из кабинета вашего оператора' : 'Выдал оператор при подключении', `<button type="button" class="btn sm" ${A('trunkEdit', t.id)}>Изменить</button>`), `<div class="kvt">${row('Сервер', `<span class="mono">sip:${esc(host)}</span>`, cp('sip:' + host))}${row('Логин', `<span class="mono">${esc(login)}</span>`, cp(login))}${row('Пароль', `<span class="mono">${S.showPw ? pw : '••••••••••••'}</span>`, `<button type="button" class="btn ghost sm icon" aria-label="${S.showPw ? 'Скрыть' : 'Показать'} пароль" title="${S.showPw ? 'Скрыть' : 'Показать'}" ${A('showPw')}>${ic('eye', 14)}</button>` + cp(pw))}${row('Транспорт', 'UDP · RTP 10000–20000')}${row('Кодеки', 'G.711 A-law, G.729')}${row('Линий', String(t.lines))}${row('Лимит', '10 вызовов в секунду')}${row('Основной номер', `<span class="mono">${t.main}</span>`, cp(t.main))}</div>`);
     const wl = card(hdr('Белый список', 'Добавьте адреса в настройках транка у оператора'), `<div class="kvt">${row('IP-адрес', '<span class="mono">178.72.162.244</span>', cp('178.72.162.244'))}${row('Входящие', '<span class="mono">sip:sip.sashatel.ru:5060</span>', cp('sip:sip.sashatel.ru:5060'))}</div>`);
-    const ct = own ? card(hdr('Договор', ''), `<div class="kvt">${row('Оператор', 'Ваш договор, SashaTel к нему не подключён')}</div>`) : card(hdr('Договор с оператором', '', `<button type="button" class="btn sm" ${A('dlg', 'contract:' + t.id)}>Открыть</button>`), `<div class="kvt">${row('Номер', `<span class="mono">№ ${esc(t.contract)}</span>`)}${row('Абонент', esc(C.co.full))}${row('Статус', pill(t.contract === 'на подписании' ? 'На подписании' : 'Действует', t.contract === 'на подписании' ? 'warn' : 'ok'))}</div>`);
+    const ct = own ? card(hdr('Договор', ''), `<div class="kvt">${row('Оператор', 'Ваш договор, SashaTel к нему не подключён')}</div>`) : card(hdr('Договор с оператором', '', `<button type="button" class="btn sm" ${A('dlg', 'contract:' + t.id)}>Открыть</button>`), `<div class="kvt">${row('Номер', `<span class="mono">№ ${esc(t.contract)}</span>`)}${row('Заключён', `<span class="mono">${t.contract === 'на подписании' ? '—' : (t.signed || (t.op === 'МТС' ? '03.06.2026' : '12.05.2026'))}</span>`)}${row('Абонент', esc(C.co.full))}${row('Статус', pill(t.contract === 'на подписании' ? 'На подписании' : 'Действует', t.contract === 'на подписании' ? 'warn' : 'ok'))}</div>`);
     const danger = `<section class="card dz"><div><b>Удалить транк</b><div class="muted">Номера перестанут звонить через SashaTel. Договор с оператором останется</div></div><button type="button" class="btn danger sm" ${A('confirm','delTrunk')}>Удалить</button></section>`;
     return head + status + `<div class="grid2"><div class="col">${sip}</div><div class="col">${wl}${ct}</div></div>` + danger;
   }
@@ -1457,7 +1481,7 @@ function scrIntegrations(C){
   const rows = all.filter(e => (lf === 'all' || (lf === 'err') === (e.code !== 200)) && (ev === 'all' || e.ev === ev) && (!q || e.id.includes(q) || e.cid.includes(q) || e.ev.includes(q) || (qd.length > 2 && e.ph.replace(/\D/g, '').includes(qd)) || (e.h.desc || '').toLowerCase().includes(q)));
   const {pg, sl} = page(rows, 'lpg', 15), errs = all.filter(e => e.code !== 200).length;
   const evs = [['all','Все события']].concat([...new Set(all.map(e => e.ev))].map(x => [x, x]));
-  return h + card(`<div class="filters" style="width:100%">${srch('lq','Номер, ID звонка или доставки')}${seg('lf2', lf, [['all','Все'],['ok','Успешные'],['err','Ошибки' + (errs ? ' · ' + errs : '')]])}${dd('lev', '', ev, evs)}<button type="button" class="btn sm" ${A('toast','Выгрузка ' + rows.length + ' записей · CSV')}>${ic('download', 14)} CSV</button></div>`,
+  return h + card(`<div class="filters" style="width:100%">${srch('lq','Номер, ID звонка или доставки')}${seg('lf2', lf, [['all','Все'],['ok','Успешные'],['err','С ошибками']])}${dd('lev', '', ev, evs)}<span class="muted cnt">${fmt(rows.length)} ${plural(rows.length,'запись','записи','записей')}</span><button type="button" class="btn sm" ${A('toast','Выгрузка ' + rows.length + ' записей · CSV')}>${ic('download', 14)} CSV</button></div>`,
     logTable(sl, all.length ? 'Ничего не нашли' : 'Событий пока нет') + pager('lpg', rows.length, pg, 15));
 }
 function statAlerts(C){
@@ -1506,19 +1530,16 @@ function stopData(){
 }
 function stopTab(C){
   const p = P(); if (!p.stopW) p.stopW = ['не звоните','удалите мой номер','больше не звонить','отпишите','жалоба'];
-  const all = stopData(), qd = (S.form.stq || '').replace(/\D/g, ''), rows = qd ? all.filter(s => s.n.replace(/\D/g, '').includes(qd)) : all, {pg, sl} = page(rows, 'spg', 10);
+  const all = stopData();
   const AI = [['no','Просьба не звонить'],['rkn','Угроза жалобы'],['client','Уже клиент'],['wrong','Ошибочный номер']];
   if (!S.chipSets.aiT) S.chipSets.aiT = {no:true, rkn:true, wrong:true};
   const rules = card(hdr('Правила', 'Номер попадает в стоп-лист автоматически'),
     setRow('ИИ-анализ расшифровок', 'Проверяем каждый разговор', sw('stopai','ИИ-анализ')) +
-    (S.sw.stopai ? `<div class="card-b" style="display:flex;flex-direction:column;gap:12px"><div class="field">Причины${chips('aiT', AI)}</div><div class="field">Что делать${seg('stopAct', S.stopAct || 'auto', [['auto','Сразу в стоп-лист'],['check','На проверку руководителю']])}</div></div>` : '') +
+    (S.sw.stopai ? `<div class="card-b"><div class="field">Причины${chips('aiT', AI)}</div></div>` : '') +
     setRow('Фильтр по словам', 'В речи абонента', sw('stopwords','Фильтр по словам')) +
     (S.sw.stopwords ? `<div class="card-b" style="display:flex;flex-direction:column;gap:10px"><div class="chips">${p.stopW.map((w, i) => `<span class="chip on wchip">${esc(w)}<button type="button" aria-label="Удалить" ${A('stopWDel', i)}>${ic('x', 12)}</button></span>`).join('')}</div><div class="row" style="flex-wrap:nowrap"><input class="inp" id="stw" data-f="stw" placeholder="Слово или фраза" value="${esc(S.form.stw || '')}" aria-label="Слово или фраза"><button type="button" class="btn sm" ${A('stopWAdd')}>Добавить</button></div></div>` : '') +
-    setRow('Синхронизация с CRM', 'Контакты с тегом «Не звонить»', sw('stopcrm','Синхронизация')) +
-    setRow('Запрещать ручной набор', 'Менеджер увидит предупреждение', sw('stophard','Запрет')) +
     `<div class="card-b">${sel('stopTerm','Срок в стоп-листе',['Бессрочно','12 месяцев','6 месяцев'])}</div>`);
-  const list = card(`<div class="filters" style="width:100%">${srch('stq','Поиск по номеру')}<button type="button" class="btn sm" ${A('dlg','stopAdd')}>${ic('plus', 14)} Номер</button><button type="button" class="btn sm" ${A('toast','Выгрузка стоп-листа · CSV')}>${ic('download', 14)} CSV</button></div>`,
-    table([{t:'Номер',p:1},{t:'Причина'},{t:'Источник'},{t:'Добавлен'},{t:''}], sl.map(s => ({cells:[`<b class="mono">${s.n}</b>`, esc(s.why), `<span class="sub" style="display:inline">${esc(s.src)}</span>`, `<span class="mono">${s.at}</span>`, `<button type="button" class="btn ghost icon sm" aria-label="Убрать из стоп-листа" ${A('stopDel', s.n)}>${ic('x', 14)}</button>`]})), 'Ничего не нашли') + pager('spg', rows.length, pg, 10));
+  const list = stopTable(all);
   return `<div class="grid2 stopg">${list}${rules}</div>`;
 }
 function scrSettings(C){
@@ -1574,14 +1595,14 @@ function docsTab(C){
   const ag = (DOCS.find(g => g.g === 'Связь и операторы') || {items:[]}).items.filter(d => !/^Договор об оказании|Сведения о пользователях/.test(d[0])), G = DOCS.filter(g => g.g !== 'Связь и операторы');
   const docRow = d => `<div class="doc"><span class="ic">${ic('file',18)}</span><div style="min-width:0"><div style="font-weight:500">${esc(d[0])}</div><div class="muted">${esc(d[2])}</div></div><button type="button" class="btn sm" ${A('doc', d[0])}>Открыть</button></div>`;
   const opRow = t => `<div class="doc"><span class="ic">${ic('file',18)}</span><div style="min-width:0"><div style="font-weight:500">Договор об оказании услуг связи — ${esc(t.op)}</div><div class="muted">№ ${esc(t.contract)} · ${esc(t.name)}</div></div><div class="row" style="flex-wrap:nowrap;gap:12px">${pill(t.contract === 'на подписании' ? 'На подписании' : 'Действует', t.contract === 'на подписании' ? 'warn' : 'ok')}<button type="button" class="btn sm" ${A('dlg','contract:' + t.id)}>Открыть</button></div></div>`;
-  return card(hdr('Связь и операторы', 'Договоры заключены на вашу компанию', `<button type="button" class="btn sm" ${A('trunkNew')}>Подключить оператора</button>`), ops.map(opRow).join('') + (ops.length ? ag.map(docRow).join('') : `<div class="empty">Договоров с операторами пока нет</div>`)) +
+  return card(hdr('Связь и операторы', 'Договоры заключены на вашу компанию', `<button type="button" class="btn sm" ${A('trunkNew')}>Подключить транк</button>`), ops.map(opRow).join('') + (ops.length ? ag.map(docRow).join('') : `<div class="empty">Договоров с операторами пока нет</div>`)) +
     G.map(g => card(hdr(g.g, ''), g.items.map(docRow).join(''))).join('');
 }
 function scrBilling(C){
   const t = ['price','balance','docs'].includes(S.tab.billing) ? S.tab.billing : 'price'; S.tab.billing = t;
-  const h = `<div class="ph"><div><h1>Биллинг</h1></div></div>` + tabs('billing', [['price', ic('numbers',15) + ' Тарифы'],['balance', ic('billing',15) + ' Баланс'],['docs', ic('file',15) + ' Документы']]);
+  const h = `<div class="ph"><div><h1>Биллинг</h1></div></div>` + tabs('billing', [['price', ic('numbers',15) + ' Тарифы'],['balance', ic('billing',15) + ' Баланс'],['docs', ic('file',15) + ' Счета и акты']]);
   if (t === 'balance') return h + balanceTab(C);
-  if (t === 'docs') return h + docsTab(C);
+  if (t === 'docs') return h + finTab(C);
   return h + tariffsTab(C);
 }
 
@@ -1590,8 +1611,8 @@ const codeB = s => `<div class="codew"><button type="button" class="btn ghost sm
 const KBT = [['start','Начало работы'],['nums','Номера и карусель'],['hooks','Интеграции и события'],['api','API']];
 function kbArts(){
   return [
-    ['start','Подключение за 4 шага', `<ol class="steps-v"><li><b>Договор с оператором.</b> Транки → Подключить оператора. Договор с Билайном или МТС заключается на вашу компанию, номера и связь оплачиваете оператору.</li><li><b>Номера.</b> Транк → Заявки → Заказать номера. Количество считаем по объёму наборов.</li><li><b>Карусель.</b> Транк → Карусель: режим нагрузки и правила отдыха номеров.</li><li><b>Сотрудники и CRM.</b> Настройки → Сотрудники: роли и логины для приложения. Интеграции → Добавить → amoCRM или Битрикс24.</li></ol>`],
-    ['start','Частые вопросы', `<dl class="dl"><dt>Можно ли свои номера</dt><dd>Да, через SIP-транк любого оператора: Транки → Подключить оператора → Свой оператор</dd><dt>Как списывается оплата</dt><dd>Каждый день 1/30 месячной лицензии. История — Биллинг → Баланс</dd><dt>Где записи звонков</dt><dd>История звонков → звонок → Прослушать</dd><dt>Почему номер на отдыхе</dt><dd>Упал дозвон или появилась спам-метка. Номер возвращается в ротацию сам</dd></dl>`],
+    ['start','Подключение за 4 шага', `<ol class="steps-v"><li><b>Договор с оператором.</b> Транки → Подключить транк. Договор с Билайном или МТС заключается на вашу компанию, номера и связь оплачиваете оператору.</li><li><b>Номера.</b> Транк → Заявки → Заказать номера. Количество считаем по объёму наборов.</li><li><b>Карусель.</b> Транк → Карусель: режим нагрузки и правила отдыха номеров.</li><li><b>Сотрудники и CRM.</b> Настройки → Сотрудники: роли и логины для приложения. Интеграции → Добавить → amoCRM или Битрикс24.</li></ol>`],
+    ['start','Частые вопросы', `<dl class="dl"><dt>Можно ли свои номера</dt><dd>Да, через SIP-транк любого оператора: Транки → Подключить транк → Свой оператор</dd><dt>Как списывается оплата</dt><dd>Каждый день 1/30 месячной лицензии. История — Биллинг → Баланс</dd><dt>Где записи звонков</dt><dd>История звонков → звонок → Прослушать</dd><dt>Почему номер на отдыхе</dt><dd>Упал дозвон или появилась спам-метка. Номер возвращается в ротацию сам</dd></dl>`],
     ['nums','Статусы номеров', `<dl class="dl"><dt>Активен</dt><dd>Номер в ротации, наборы идут</dd><dt>Карантин</dt><dd>Номер на отдыхе после падения дозвона или спам-метки</dd><dt>Резерв</dt><dd>Номер ждёт замены выбывшего</dd><dt>Отключён</dt><dd>Номер выведен из ротации вручную</dd></dl>`],
     ['nums','Режимы карусели', `<dl class="dl"><dt>Бережный</dt><dd>До 5 наборов с номера в день · риск спам-метки низкий</dd><dt>Сбалансированный</dt><dd>До 8 наборов · риск средний</dd><dt>Максимум</dt><dd>До 12 наборов · риск высокий, номеров нужно меньше</dd></dl>`],
     ['hooks','События', `<div class="tw"><table class="t"><thead><tr><th>Событие</th><th>Когда</th></tr></thead><tbody>${HEV.map(e => `<tr><td data-l="Событие" class="p"><span class="mono">${e[0]}</span></td><td data-l="Когда">${e[1]}</td></tr>`).join('')}</tbody></table></div>`],
@@ -1612,6 +1633,10 @@ function scrKb(C){
 /* ===================== ДИАЛОГИ ===================== */
 function dialogMore(C, d){
   const k = d.k, arg = d.a || '';
+  if (k === 'num') return numDialog(C, arg);
+  if (k === 'numDel'){ const ids = d.ids || []; return ['Убрать ' + ids.length + ' ' + plural(ids.length,'номер','номера','номеров') + ' из транка?', `<p>Номера перестанут звонить через SashaTel. Отключить их у оператора — отдельной заявкой, создадим её автоматически.</p><div class="chips">${ids.slice(0, 8).map(x => `<span class="chip wchip mono">${esc(x)}</span>`).join('')}${ids.length > 8 ? `<span class="muted">и ещё ${ids.length - 8}</span>` : ''}</div>`, `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button><button type="button" class="btn danger-fill" ${A('numDelGo')}>Убрать</button>`]; }
+  if (k === 'legal') return ['Документы SashaTel', DOCS.map(g => `<div class="field">${esc(g.g)}<div class="sumcard">${g.items.filter(x => !/^Договор об оказании|Сведения о пользователях/.test(x[0])).map(x => `<div class="lrow"><div style="min-width:0"><div>${esc(x[0])}</div><div class="sub">${esc(x[2])}</div></div><span class="kvt-a"><button type="button" class="btn ghost sm icon" aria-label="Скачать" title="Скачать PDF" ${A('toast', x[0] + ' · PDF скачан')}>${ic('download', 14)}</button></span></div>`).join('')}</div></div>`).join(''), `<button type="button" class="btn" ${A('toast','Архив документов скачан')}>${ic('download', 14)} Скачать всё</button><button type="button" class="btn pri" ${A('dlgClose')}>Закрыть</button>`];
+  if (k === 'sverka') return ['Акт сверки', sel('svPer','Период',['С начала года','III квартал 2026','Октябрь 2026']) + `<p class="muted">Сформируем за 1 рабочий день и отправим в ЭДО и на ${esc(C.co.mail)}</p>`, `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button><button type="button" class="btn pri" ${A('dlgSend','Запрос на акт сверки отправлен')}>Запросить</button>`];
   if (k === 'support') return ['Поддержка', `<p class="muted">Отвечаем в рабочее время за 15 минут, по аварийным вопросам — круглосуточно</p><div class="pick">${[['Telegram','@sashatel_support'],['Телефон','+7 800 555-35-35'],['Почта','support@sashatel.ru']].map(x => `<button type="button" class="pick-i" ${A('toast', x[0] + ': ' + x[1])}><b>${x[0]}</b><span class="muted mono">${x[1]}</span></button>`).join('')}</div>`, `<button type="button" class="btn" ${A('go','kb')}>Документация</button><button type="button" class="btn pri" ${A('dlgSend','Чат поддержки открыт')}>Написать в чат</button>`];
   if (k === 'resetPw'){ const m = C.co.team[+arg]; if (!m) return null; return ['Сбросить пароль?', `<p>${esc(m.n)} выйдет из приложения и веб-телефона. Новый пароль покажем один раз.</p>`, `<button type="button" class="btn" ${A('dlgClose')}>Отмена</button><button type="button" class="btn pri" ${A('dlg','creds:' + arg)}>Сбросить</button>`]; }
   if (k === 'key'){ const kk = keysData()[+arg]; if (!kk) return null; return [kk.n, `<dl class="dl"><dt>Ключ</dt><dd class="mono">${esc(kk.k)}</dd><dt>Права</dt><dd>${kk.sc.map(esc).join(', ')}</dd><dt>Создан</dt><dd class="mono">${esc(kk.created)}</dd><dt>Использован</dt><dd class="mono">${esc(kk.last)}</dd></dl><p class="help">Полный ключ показывали один раз при создании. Потеряли — отзовите и создайте новый.</p>`, `<button type="button" class="btn danger" ${A('keyDel', arg)}>Отозвать</button><button type="button" class="btn pri" ${A('dlgClose')}>Закрыть</button>`]; }
@@ -1640,6 +1665,132 @@ function dialogMore(C, d){
   if (k === 'autotop') return ['Автопополнение', setRow('Автопополнение', 'Счёт или списание с карты', sw('autotop','Автопополнение')) + `<div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">${fld('atMin','Когда баланс ниже, ₽','15 000','number')}${fld('atSum','Пополнить на, ₽','50 000','number')}</div>` + setRow('Сообщить, если баланса меньше чем на 3 дня', '', sw('nbal','Низкий баланс')), `<button type="button" class="btn pri" ${A('dlgSend','Сохранено')}>Сохранить</button>`];
   return null;
 }
+
+/* ===================== ТРАНК: НОМЕРА, КАРАНТИН, ПРАВИЛА ===================== */
+S.sel = {}; S.sort = {}; S.selVis = {};
+const MSD = 86400000;
+const dtm = d => dstr(d) + ' ' + hm(d.getHours(), d.getMinutes());
+const daysTo = d => Math.max(0, Math.ceil((d - TODAY_D) / MSD));
+const RULES0 = () => ({load:8, warm:true, wStart:3, wStep:2, back:'auto', backCheck:true, region:false, list:[
+  {id:'r1', on:true, m:'rate', op:'lt', v:35, w:'n50', act:'qz', arg:7},
+  {id:'r2', on:true, m:'spam', op:'any', v:'any', w:'now', act:'qz', arg:14},
+  {id:'r3', on:true, m:'rej', op:'gt', v:5, w:'d1', act:'load', arg:4},
+  {id:'r4', on:false, m:'miss', op:'gt', v:15, w:'row', act:'notify', arg:0}]});
+const rulesOf = t => { const p = P(); if (!p.rules) p.rules = {}; if (!p.rules[t.id]) p.rules[t.id] = RULES0(); return p.rules[t.id]; };
+const normOf = t => t ? rulesOf(t).load : NORM[P().cmode || 'bal'];
+const RM = {rate:['Дозвон с номера','%'], rej:['Отклонено оператором','%'], miss:['Недозвонов подряд',''], calls:['Наборов с номера за день',''], spam:['Спам-метка','']};
+const RW = [['n50','за 50 наборов'],['n100','за 100 наборов'],['d1','за день'],['d3','за 3 дня'],['d7','за неделю']];
+const RA = [['qz','В карантин на'],['load','Снизить нагрузку до'],['repl','Заказать замену номера'],['notify','Только уведомить']];
+const SPAMS = ['Kaspersky Who Calls','Яндекс АОН','МТС «Кто звонит»','Билайн «Антиспам»','МегаФон «Стоп-спам»'];
+
+function numsOf(C, t){
+  const p = P(); if (!p.nm) p.nm = {}; if (p.nm[t.id]) return p.nm[t.id];
+  const L = trunkNumsData(C, t);
+  L.forEach((r, k) => {
+    r.id = r.n;
+    if (r.spam){ r.qWhy = 'Спам-метка · ' + (r.spam === 'Kaspersky' ? 'Kaspersky Who Calls' : r.spam); const a = new Date(TODAY_D.getTime() - (k % 4 + 1)*MSD + 11*3600000 + k*61000); r.qAt = a; r.qUntil = new Date(a.getTime() + 14*MSD); }
+    else if (k % 11 === 5 && r.init){ r.st = ['Карантин','warn']; r.rate = 28 + (k % 6); r.ans = Math.round(r.init*r.rate/100); r.qWhy = 'Дозвон ' + pc(r.rate) + ' ниже 35% за 50 наборов'; const a = new Date(TODAY_D.getTime() - (k % 6 + 1)*MSD + 9*3600000 + k*97000); r.qAt = a; r.qUntil = new Date(a.getTime() + 7*MSD); }
+  });
+  return p.nm[t.id] = L;
+}
+const lastKey = s => s === '—' ? '' : s.slice(3, 5) + s.slice(0, 2) + s.slice(6);
+function sortRows(scope, rows, key){
+  const so = S.sort[scope]; if (!so) return rows;
+  return rows.slice().sort((a, b) => { const x = key(a, so.k), y = key(b, so.k); return (x > y ? 1 : x < y ? -1 : 0) * so.d; });
+}
+function selTable(scope, cols, rows, empty){
+  if (!rows.length) return `<div class="empty">${empty || 'Пусто'}</div>`;
+  const sel = S.sel[scope] || (S.sel[scope] = {}), all = rows.every(r => sel[r.id]), so = S.sort[scope] || {};
+  S.selVis[scope] = rows.map(r => r.id);
+  const th = c => c.k ? `<button type="button" class="sorth${so.k === c.k ? ' on' : ''}" ${A('sortBy', scope + '|' + c.k)}>${c.t}${so.k === c.k ? ic(so.d > 0 ? 'arrowUp' : 'arrowDown', 12) : ''}</button>` : c.t;
+  return `<div class="tw"><table class="t selt"><thead><tr><th class="cb"><input type="checkbox" aria-label="Выбрать все на странице" ${all ? 'checked' : ''} ${A('selAll', scope)}></th>${cols.map(c => `<th${c.r ? ' style="text-align:right"' : ''}>${th(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr class="${r.a ? 'click' : ''}${sel[r.id] ? ' selr' : ''}"${r.a ? ' ' + A(r.a, r.v) + ' tabindex="0"' : ''}><td class="cb"><input type="checkbox" aria-label="Выбрать ${esc(r.id)}" ${sel[r.id] ? 'checked' : ''} ${A('selOne', scope + '|' + r.id)}></td>${r.cells.map((x, i) => `<td data-l="${esc(cols[i].t)}" class="${cols[i].p ? 'p' : ''}${cols[i].r ? ' r' : ''}">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const selIds = scope => Object.keys(S.sel[scope] || {}).filter(k => S.sel[scope][k]);
+const bulkBar = (scope, n, actions) => `<div class="bulk"><span><b>Выбрано ${n}</b> <button type="button" class="link" ${A('selClear', scope)}>Снять выбор</button></span><div class="row">${actions.join('')}</div></div>`;
+
+function numBtns(C, t, list, scope, small){
+  const sz = small ? ' sm' : '', has = s => list.some(r => r.st[0] === s), out = [];
+  if (has('Карантин') || has('Резерв')) out.push(`<button type="button" class="btn pri${sz}" ${A('numAct', 'back|' + scope)}>${ic('arrowUp', 14)} Вернуть в ротацию</button>`);
+  if (has('Активен')) out.push(`<button type="button" class="btn${sz}" ${A('numAct', 'qz|' + scope)}>В карантин</button>`);
+  if (list.some(r => r.mark === '—')) out.push(`<button type="button" class="btn${sz}" ${A('numAct', 'mark|' + scope)}>Запросить маркировку</button>`);
+  out.push(`<button type="button" class="btn${sz}" ${A('numAct', 'repl|' + scope)}>Заменить</button>`);
+  out.push(`<button type="button" class="btn${sz}" ${A('numAct', 'csv|' + scope)}>${ic('download', 14)} CSV</button>`);
+  out.push(`<button type="button" class="btn danger${sz}" ${A('numAct', 'del|' + scope)}>Убрать из транка</button>`);
+  return out;
+}
+const numSt = (r, full) => r.st[0] === 'Карантин' ? (full ? pill('Карантин · до ' + dstr(r.qUntil), 'warn') : pill('Карантин', 'warn') + `<span class="sub">до ${dstr(r.qUntil)}</span>`) : pill(r.st[0], r.st[1]);
+
+function numsTab(C, t, own){
+  const all = numsOf(C, t), scope = 'nums:' + t.id, f = S.form.nf2 || 'all', q = (S.form.nq || '').replace(/\D/g, '');
+  const FL = {all:() => true, act:r => r.st[0] === 'Активен', qz:r => r.st[0] === 'Карантин', res:r => r.st[0] === 'Резерв', nomark:r => r.mark === '—', spam:r => !!r.spam};
+  let rows = all.filter(FL[f] || FL.all).filter(r => !q || r.n.replace(/\D/g, '').includes(q));
+  rows = sortRows(scope, rows, (r, k) => k === 'last' ? lastKey(r.last) : k === 'rate' ? (r.rate == null ? -1 : r.rate) : k === 'st' ? r.st[0] : r[k]);
+  const {pg, sl} = page(rows, 'npg', 15), ids = selIds(scope), selList = all.filter(r => ids.includes(r.id));
+  const vol = Math.round(C.monthVol*tkShare(C, t)), need = Math.ceil(vol/22/normOf(t)), lack = Math.max(0, need - all.length);
+  const top = `<div class="nline" title="Наборы ÷ 22 рабочих дня ÷ ${normOf(t)} наборов с номера (настройка карусели)"><span>Для <b>${fmt(vol)}</b> наборов в месяц при нагрузке ${normOf(t)} в день нужно <b>${need}</b> ${plural(need,'номер','номера','номеров')}, на транке <b>${all.length}</b>${lack ? '' : ' — хватает'}</span>${own || !lack ? '' : `<button type="button" class="btn pri sm" ${A('buy', lack)}>${ic('plus', 14)} Заказать ${lack}</button>`}</div>`;
+  const filt = `<div class="filters" style="width:100%">${srch('nq','Поиск по номеру')}${dd('nf2', '', f, [['all','Все номера'],['act','Активные'],['qz','В карантине'],['res','Резерв'],['nomark','Без маркировки'],['spam','Со спам-меткой']])}<span class="muted cnt">${fmt(rows.length)} ${plural(rows.length,'номер','номера','номеров')}</span></div>`;
+  return top + card(ids.length ? bulkBar(scope, ids.length, numBtns(C, t, selList, scope, true)) : filt,
+    selTable(scope, [{t:'Номер',p:1,k:'n'},{t:'Статус',k:'st'},{t:'Маркировка'},{t:'Спам-метка'},{t:'Инициаций',r:1,k:'init'},{t:'Ответов',r:1,k:'ans'},{t:'Дозвон',r:1,k:'rate'},{t:'Последний набор',k:'last'}],
+      sl.map(r => ({id:r.id, a:'dlg', v:'num:' + r.n, cells:[`<b class="mono nowrap">${r.n}</b>`, numSt(r), r.mark === '—' ? '<span class="muted">Нет</span>' : esc(r.mark), r.spam ? pill(r.spam, 'bad') : '<span class="muted">Чисто</span>', fmt(r.init), fmt(r.ans), r.rate == null ? '—' : pc(r.rate), `<span class="mono nowrap">${r.last}</span>`]})), 'Ничего не нашли') + pager('npg', rows.length, pg, 15));
+}
+function quarTab(C, t){
+  const all = numsOf(C, t).filter(r => r.st[0] === 'Карантин'), scope = 'qz:' + t.id, R = rulesOf(t);
+  const rows = sortRows(scope, all, (r, k) => k === 'qAt' ? r.qAt.getTime() : k === 'qUntil' ? r.qUntil.getTime() : r[k]), ids = selIds(scope);
+  const info = `<div class="nline"><span>${R.back === 'auto' ? 'Номера возвращаются в ротацию сами, когда выходит срок' + (R.backCheck ? ' и нет спам-меток' : '') : 'Номера возвращаются только вручную'}</span><button type="button" class="btn sm" ${A('tab','trunk:rot')}>Правила</button></div>`;
+  return info + card(ids.length ? bulkBar(scope, ids.length, [`<button type="button" class="btn pri sm" ${A('numAct', 'back|' + scope)}>${ic('arrowUp', 14)} Вернуть в ротацию</button>`, `<button type="button" class="btn sm" ${A('numAct', 'ext|' + scope)}>Продлить на 7 дней</button>`, `<button type="button" class="btn sm" ${A('numAct', 'repl|' + scope)}>Заменить</button>`, `<button type="button" class="btn danger sm" ${A('numAct', 'del|' + scope)}>Убрать из транка</button>`]) : `<div><h2>В карантине · ${all.length}</h2><div class="muted">Номера на отдыхе не звонят</div></div>`,
+    selTable(scope, [{t:'Номер',p:1,k:'n'},{t:'Причина'},{t:'Попал',k:'qAt'},{t:'Вернётся',k:'qUntil'},{t:'Дозвон до карантина',r:1,k:'rate'},{t:'',r:1}],
+      rows.map(r => ({id:r.id, a:'dlg', v:'num:' + r.n, cells:[`<b class="mono nowrap">${r.n}</b>`, esc(r.qWhy || 'Вручную'), `<span class="mono nowrap">${dtm(r.qAt)}</span>`, `<span class="nowrap"><span class="mono">${dstr(r.qUntil)}</span> <span class="muted">· через ${daysTo(r.qUntil)} ${plural(daysTo(r.qUntil),'день','дня','дней')}</span></span>`, pc(r.rate), `<button type="button" class="btn sm" ${A('numAct', 'back|one:' + t.id + ':' + r.n)}>Вернуть</button>`]})), 'В карантине пусто — все номера звонят'));
+}
+function ruleHits(C, t, r){
+  const L = numsOf(C, t).filter(x => x.st[0] !== 'Резерв');
+  if (r.m === 'rate') return L.filter(x => x.rate != null && (r.op === 'lt' ? x.rate < +r.v : x.rate > +r.v)).length;
+  if (r.m === 'spam') return L.filter(x => x.spam && (r.v === 'any' || SPAMS[+r.v] && SPAMS[+r.v].startsWith(x.spam))).length;
+  if (r.m === 'rej') return Math.max(0, Math.round(L.length*(r.op === 'gt' ? Math.max(0, 8 - +r.v)/40 : .9)));
+  if (r.m === 'miss') return r.op === 'gt' ? Math.max(0, 3 - Math.floor(+r.v/10)) : L.length - 2;
+  return L.filter(x => (x.init/7) > +r.v === (r.op === 'gt')).length;
+}
+function ruleRow(C, t, r){
+  const id = f => 'rf:' + t.id + ':' + r.id + ':' + f, M = RM[r.m], n = ruleHits(C, t, r), inp = (f, val, w) => `<input class="inp rnum" style="width:${w || 64}px" inputmode="numeric" data-rf="${t.id}|${r.id}|${f}" value="${esc(val)}" aria-label="Значение">`;
+  const cond = r.m === 'spam' ? `${dd(id('v'), '', r.v, [['any','в любом сервисе']].concat(SPAMS.map((s, i) => [String(i), 'в ' + s])))}` : `${dd(id('op'), '', r.op, [['lt','ниже'],['gt','выше']])}${inp('v', r.v)}${M[1] ? `<span class="rk">${M[1]}</span>` : ''}${r.m === 'miss' ? '' : dd(id('w'), '', r.w, RW)}`;
+  const act = `${dd(id('act'), '', r.act, RA)}${r.act === 'qz' ? inp('arg', r.arg, 56) + `<span class="rk">${plural(+r.arg,'день','дня','дней')}</span>` : r.act === 'load' ? inp('arg', r.arg, 56) + '<span class="rk">в день</span>' : ''}`;
+  return `<div class="rule${r.on ? '' : ' off'}"><div class="rule-c"><span class="rk">Если</span>${dd(id('m'), '', r.m, Object.keys(RM).map(k => [k, RM[k][0]]))}${cond}<span class="rk">→</span>${act}</div><div class="rule-h muted">${r.on ? 'Сейчас под правило попадают ' + n + ' ' + plural(n,'номер','номера','номеров') : 'Правило выключено'}</div><div class="rule-r"><button type="button" class="sw${r.on ? ' on' : ''}" role="switch" aria-checked="${r.on}" aria-label="Правило включено" ${A('ruleOn', t.id + '|' + r.id)}></button><button type="button" class="btn ghost sm icon" aria-label="Удалить правило" title="Удалить правило" ${A('ruleDel', t.id + '|' + r.id)}>${ic('x', 14)}</button></div></div>`;
+}
+function rulesTab(C, t){
+  const R = rulesOf(t), vol = Math.round(C.monthVol*tkShare(C, t)), need = Math.ceil(vol/22/R.load), have = numsOf(C, t).length;
+  const load = card(hdr('Нагрузка на номер', 'Сколько наборов делает один номер в день'), `<div class="card-b ldrow"><div class="stepper"><button type="button" class="btn icon sm" aria-label="Меньше" ${A('rld', -1)}>−</button><input class="inp rnum" style="width:72px;text-align:center" inputmode="numeric" data-rf="${t.id}||load" value="${R.load}" aria-label="Наборов в день"><button type="button" class="btn icon sm" aria-label="Больше" ${A('rld', 1)}>+</button></div><span class="muted">наборов в день · при таком значении под ${fmt(vol)} наборов в месяц нужно ${need} ${plural(need,'номер','номера','номеров')}, сейчас ${have}</span></div>` +
+    setRow('Прогрев новых номеров', R.warm ? 'Новый номер начинает с малой нагрузки и растёт до нормы' : 'Новые номера сразу работают на полную', `<button type="button" class="sw${R.warm ? ' on' : ''}" role="switch" aria-checked="${R.warm}" aria-label="Прогрев" ${A('rset', 'warm')}></button>`) +
+    (R.warm ? `<div class="card-b ldrow" style="padding-top:0"><span class="rk">Старт</span><input class="inp rnum" style="width:56px" inputmode="numeric" data-rf="${t.id}||wStart" value="${R.wStart}" aria-label="Стартовая нагрузка"><span class="rk">наборов в день, затем +</span><input class="inp rnum" style="width:56px" inputmode="numeric" data-rf="${t.id}||wStep" value="${R.wStep}" aria-label="Шаг прогрева"><span class="rk">каждый день до ${R.load}</span></div>` : '') +
+    setRow('Звонить с номера региона абонента', 'Нужны номера в регионах ваших абонентов', `<button type="button" class="sw${R.region ? ' on' : ''}" role="switch" aria-checked="${R.region}" aria-label="Регион абонента" ${A('rset', 'region')}></button>`));
+  const rules = card(hdr('Правила', 'Проверяем каждый номер после каждого набора, сверху вниз', `<div class="row"><button type="button" class="btn ghost sm" ${A('rulesReset')}>Шаблон SashaTel</button><button type="button" class="btn sm" ${A('ruleAdd')}>${ic('plus', 14)} Правило</button></div>`), `<div class="rules">${R.list.length ? R.list.map(r => ruleRow(C, t, r)).join('') : '<div class="empty">Правил нет — номера работают без ограничений</div>'}</div>`);
+  const back = card(hdr('Возврат из карантина', ''), `<div class="card-b">${seg('rback', R.back, [['auto','Сам по сроку'],['manual','Только вручную']])}</div>` + (R.back === 'auto' ? setRow('Перед возвратом проверить спам-метки', 'Если метка осталась — продлим на тот же срок', `<button type="button" class="sw${R.backCheck ? ' on' : ''}" role="switch" aria-checked="${R.backCheck}" aria-label="Проверка" ${A('rset', 'backCheck')}></button>`) : ''));
+  return load + rules + back;
+}
+function numDialog(C, n){
+  let r = null, t = null; C.trunks.forEach(x => { const f = numsOf(C, x).find(y => y.n === n); if (f){ r = f; t = x; } }); if (!r) return null;
+  const sc = 'one:' + t.id + ':' + r.n, row = kvRow;
+  const spam = SPAMS.map(s => row(s, r.spam && s.startsWith(r.spam) ? pill('Спам','bad') : '<span class="muted">Чисто</span>')).join('');
+  const b = `<div class="sumcard">${row('Транк', esc(t.name))}${row('Статус', numSt(r, true))}${r.qWhy && r.st[0] === 'Карантин' ? row('Причина', esc(r.qWhy)) + row('В карантине с', `<span class="mono">${dtm(r.qAt)}</span>`) : ''}${row('Маркировка', r.mark === '—' ? '<span class="muted">Нет</span>' : esc(r.mark))}${row('Инициаций · ответов', `${fmt(r.init)} · ${fmt(r.ans)}`)}${row('Дозвон', r.rate == null ? '—' : pc(r.rate))}${row('Последняя инициация', `<span class="mono">${r.last}</span>`)}</div><div class="field">Спам-метки<div class="sumcard">${spam}</div><span class="help">Проверено сегодня в 14:40</span></div>`;
+  const acts = numBtns(C, t, [r], sc, false).filter(x => !x.includes('csv|'));
+  return [r.n, b, acts.reverse().join('')];
+}
+function stopTable(all){
+  const scope = 'stop', qd = (S.form.stq || '').replace(/\D/g, ''), rows = qd ? all.filter(s => s.n.replace(/\D/g, '').includes(qd)) : all, {pg, sl} = page(rows, 'spg', 10), ids = selIds(scope);
+  return card(ids.length ? bulkBar(scope, ids.length, [`<button type="button" class="btn danger sm" ${A('stopBulk')}>Убрать из стоп-листа</button>`]) : `<div class="filters" style="width:100%">${srch('stq','Поиск по номеру')}<button type="button" class="btn sm" ${A('dlg','stopAdd')}>${ic('plus', 14)} Номер</button><button type="button" class="btn sm" ${A('toast','Выгрузка стоп-листа · CSV')}>${ic('download', 14)} CSV</button></div>`,
+    selTable(scope, [{t:'Номер',p:1},{t:'Причина'},{t:'Источник'},{t:'Добавлен'}], sl.map(s => ({id:s.n, cells:[`<b class="mono nowrap">${s.n}</b>`, esc(s.why), `<span class="muted">${esc(s.src)}</span>`, `<span class="mono">${s.at}</span>`]})), 'Ничего не нашли') + pager('spg', rows.length, pg, 10));
+}
+/* ===================== СЧЕТА И АКТЫ ===================== */
+function finDocs(C){
+  const tx = txData(C), out = [], MONS = {};
+  tx.forEach(x => { const k = x.d.slice(3, 10); if (x.type === 'in') out.push({d:x.d.slice(0, 10), kind:'Счёт', no:x.desc.replace('Оплата по счёту № ', ''), per:'Предоплата', sum:x.sum, st:['Оплачен','ok']}); else { MONS[k] = (MONS[k] || 0) - x.sum; } });
+  Object.keys(MONS).forEach((k, i) => { const m = +k.slice(0, 2), y = k.slice(3), cur = i === 0; out.push({d:cur ? '' : new Date(+y, m, 0).getDate() + '.' + k, kind:'Акт', no:cur ? '—' : 'А-' + y + '-' + k.slice(0, 2), per:MON[m - 1] + ' ' + y, sum:MONS[k], st:cur ? ['Сформируем ' + new Date(+y, m, 0).getDate() + '.' + k.slice(0, 2),'neu'] : ['Подписан в ЭДО','ok'], wait:cur}); });
+  out.push({d:'', kind:'Счёт', no:'2026-1017', per:'Предоплата', sum:30000, st:['Ждёт оплаты','warn'], fresh:true});
+  return out.sort((a, b) => (b.d ? b.d.split('.').reverse().join('') : '9') > (a.d ? a.d.split('.').reverse().join('') : '9') ? 1 : -1);
+}
+function finTab(C){
+  const ty = S.form.fty || 'all', rows = finDocs(C).filter(r => ty === 'all' || (ty === 'inv') === (r.kind === 'Счёт'));
+  return card(`<div class="filters" style="width:100%">${seg('fty2', ty, [['all','Все'],['inv','Счета'],['act','Акты']])}<span class="muted cnt">${rows.length} ${plural(rows.length,'документ','документа','документов')}</span><button type="button" class="btn sm" ${A('dlg','sverka')}>Акт сверки</button></div>`,
+    table([{t:'Документ',p:1},{t:'Период'},{t:'Дата'},{t:'Сумма',r:1},{t:'Статус'},{t:'',r:1}], rows.map(r => ({cells:[`<b>${r.no === '—' ? r.kind + ' за ' + esc(r.per.split(' ')[0].toLowerCase()) : r.kind + ' № ' + esc(r.no)}</b>`, esc(r.per), `<span class="mono">${r.d || (r.wait ? '—' : '17.10.2026')}</span>`, `<span class="mono">${rub(r.sum)}</span>`, pill(r.st[0], r.st[1]), r.wait ? '' : `<button type="button" class="btn ghost sm" ${A('toast', r.kind + ' ' + r.no + ' · PDF скачан')}>${ic('download', 14)} PDF</button>`]}))));
+}
 /* ===================== ПАНЕЛИ ===================== */
 function drawer(C){
   const d = S.drawer; if (!d) return '';
@@ -1666,11 +1817,11 @@ function drawer(C){
       (ct === 'tr' ? `<div class="trs">${(TRANS[d.v] || []).map(l => `<div class="tl ${l[1] === 'М' ? 'm' : 'k'}"><span class="mono sub">${l[0]}</span><div><b>${l[1] === 'М' ? esc(team[c.m % team.length].n) : 'Клиент'}</b><p>${esc(l[2])}</p></div></div>`).join('')}</div><button type="button" class="btn sm" style="align-self:flex-start" ${A('toast','Скопировано')}>Скопировать текст</button>` : '') +
       (ct === 'tech' ? `<dl class="dl"><dt>Транк</dt><dd>${esc(tk.name)}</dd><dt>С номера</dt><dd class="mono">${c.from}</dd><dt>Оператор абонента</dt><dd>МТС</dd><dt>Ответ оператора</dt><dd class="mono">${c.talk ? '200 OK' : (c.r[0] === 'Автоответчик' ? '200 · автоответчик' : '480 · не взяли')}</dd><dt>Время до ответа</dt><dd class="mono">${c.talk ? '6,2 с' : '—'}</dd><dt>Задержка набора</dt><dd class="mono">1,1 с</dd><dt>Маркировка</dt><dd>${pill('Активна','ok')}</dd><dt>Попытка</dt><dd class="mono">1 из 3</dd><dt>Кодек</dt><dd class="mono">G.711 A-law</dd><dt>ID звонка</dt><dd class="mono">c_8f2a9${d.v}</dd></dl>` : '') +
       (false ? (sumOn ? `<dl class="dl"><dt>Итог</dt><dd>${pill(c.r[0], c.r[1])}</dd></dl><p style="color:var(--fg-2)">${esc(c.s)}</p>` : `<div class="teaser" style="flex-direction:column;align-items:flex-start"><span>Краткое содержание разговора и автоматический итог: встреча, отказ, перезвонить, не ЛПР. +0,5 ₽ за минуту.</span><button type="button" class="btn pri sm" ${A('nav','billing:plan')}>Подключить</button></div>`) : ''); }
-  if (k === 'buy'){ const t = C.trunks.find(x => x.id === S.selT) || C.trunks.find(x => x.kind !== 'own') || C.trunks[0], vol = Math.round(C.monthVol*tkShare(C, t)), need = Math.ceil(vol/22/NORM[P().cmode || 'bal']), lack = Math.max(0, need - t.nums), Q0 = priceCalc(C), nn = Q0.nums + S.buyQty, tr = PRICE.tiers.find(x => nn <= x.max), lic1 = Math.max(tr.min, nn*tr.rate);
+  if (k === 'buy'){ const t = C.trunks.find(x => x.id === S.selT) || C.trunks.find(x => x.kind !== 'own') || C.trunks[0], vol = Math.round(C.monthVol*tkShare(C, t)), need = Math.ceil(vol/22/normOf(t)), lack = Math.max(0, need - t.nums), Q0 = priceCalc(C), nn = Q0.nums + S.buyQty, tr = PRICE.tiers.find(x => nn <= x.max), lic1 = Math.max(tr.min, nn*tr.rate);
     title = 'Заказать номера'; sub = esc(t.name) + ' · ' + esc(t.op); save = 'Отправить заявку'; msg = 'Заявка отправлена оператору';
     body = `<div class="field">Сколько номеров${stepper('buyQty', S.buyQty, 'количество')}<span class="help">${lack ? 'Для ' + fmt(vol) + ' наборов в месяц не хватает ' + lack : 'Номеров хватает под текущий объём'}</span></div>${sel('buyType','Тип номеров',['Мобильные (DEF)','Городские','8-800'])}${sel('buyReg','Регион',['Регионы абонентов (по базе)','Москва','Санкт-Петербург'])}<div class="sumcard"><div class="kvt-r"><span class="kvt-k">Абонент</span><span class="kvt-v">${esc(C.co.full)}</span><span></span></div><div class="kvt-r"><span class="kvt-k">Срок</span><span class="kvt-v">1–3 рабочих дня</span><span></span></div><div class="kvt-r"><span class="kvt-k">Номера и связь</span><span class="kvt-v">По тарифу ${esc(t.op)}, счёт от оператора</span><span></span></div><div class="kvt-r"><span class="kvt-k">Лицензия SashaTel</span><span class="kvt-v">${rub(Q0.pay)} → <b>${rub(lic1)}</b> в месяц</span><span></span></div></div>`; }
   if (k === 'own'){ title = 'Подключить свои номера'; save = 'Закрыть'; body = `<p class="muted">Нужен свой SIP-транк</p><button type="button" class="btn pri" style="align-self:flex-start" ${A('trunkNew','own')}>Подключить свой транк</button>`; }
-  if (k === 'trunk'){ const ed = S.tkEdit ? C.trunks.find(t => t.id === S.tkEdit) : null; title = ed ? 'Изменить транк' : 'Подключить оператора'; sub = ed ? ed.name : 'Номера и договор — на вашу компанию'; save = ed ? 'Сохранить' : (S.tkKind === 'own' ? 'Подключить' : 'Отправить заявку');
+  if (k === 'trunk'){ const ed = S.tkEdit ? C.trunks.find(t => t.id === S.tkEdit) : null; title = ed ? 'Изменить транк' : 'Подключить транк'; sub = ed ? ed.name : 'Номера и договор — на вашу компанию'; save = ed ? 'Сохранить' : (S.tkKind === 'own' ? 'Подключить' : 'Отправить заявку');
     const stp = [['Заявка','Реквизиты из кабинета'],['Договор','Подпись в ЭДО или Госключ'],['Номера и доступ','Оператор выдаёт сервер, логин, пароль'],['Подключение','Регистрируем транк в SashaTel']];
     body = (ed ? '' : `<div class="field">Как подключить${opt('tkKind','st', S.tkKind === 'st', 'Новый договор через SashaTel', 'Билайн или МТС · заявку готовим мы')}${opt('tkKind','own', S.tkKind === 'own', 'У меня уже есть оператор', 'UIS, Mango Office, OnlinePBX, Sipuni и др.')}</div>`) + fld('tkName','Название транка', ed ? ed.name : 'Например, «Билайн · Продажи»', 'text', 'Так транк будет называться в статистике, номерах и звонках') +
       (S.tkKind === 'st' && !ed ? sel('tkOp','Оператор',['Билайн','МТС']) + `<div class="field">Номеров${stepper('buyQty', S.buyQty, 'количество')}<span class="help">Нужно ${C.need} · формула наборы ÷ 22 ÷ 8</span></div>` + sel('tkLines','Линий',['20','10','30','60'],'Звонков одновременно') + `<div class="steps-v">${stp.map((x, i) => `<div class="row" style="flex-wrap:nowrap;gap:12px"><span class="fi info">${i+1}</span><div><b>${x[0]}</b><div class="muted">${x[1]}</div></div></div>`).join('')}</div>` :
@@ -1688,7 +1839,7 @@ function drawer(C){
   if (k === 'req'){ title = 'Изменить реквизиты'; sub = C.co.full; save = 'Отправить на проверку'; msg = 'Реквизиты отправлены';
     body = fld('rInn','ИНН', C.co.inn, 'text', 'Название, КПП, ОГРН и адрес подтянем из ЕГРЮЛ') + fld('rBik','БИК банка','044525974') + fld('rAcc','Расчётный счёт','40702810…') + fld('rSign','Подписант', C.co.signer) + fld('rMail','Почта для счетов', C.co.mail, 'email') + `<div class="note"><div><b>Смена реквизитов меняет договор</b><p>Пришлём допсоглашение на подпись в ЭДО.</p></div></div>`; }
   if (k === 'search'){ title = 'Поиск'; sub = 'Номер, сотрудник или транк'; save = 'Закрыть'; const q = (S.form.sq || '').toLowerCase().trim(), qd = q.replace(/\D/g, '');
-    const R = []; if (q){ NUMS.forEach((n, i) => { if (qd && n.num.replace(/\D/g, '').includes(qd)) R.push(['Номер', n.num, n.use, 'num', i]); }); CALLS.forEach((c, i) => { if (qd && c.n.replace(/\D/g, '').includes(qd)) R.push(['Звонок', c.n, dm(S.range.b) + ' ' + c.h + ' · ' + team[c.m % team.length].n, 'call', i]); }); team.forEach((m, i) => { if (m.n.toLowerCase().includes(q)) R.push(['Сотрудник', m.n, m.dep, 'person', i]); }); C.trunks.forEach(t => { if (t.name.toLowerCase().includes(q)) R.push(['Транк', t.name, t.op, 'trunk', t.id]); }); }
+    const R = []; if (q){ C.trunks.forEach(t => numsOf(C, t).forEach(r => { if (qd && r.n.replace(/\D/g, '').includes(qd)) R.push(['Номер', r.n, t.name + ' · ' + r.st[0], 'dlg', 'num:' + r.n]); })); CALLS.forEach((c, i) => { if (qd && c.n.replace(/\D/g, '').includes(qd)) R.push(['Звонок', c.n, dm(S.range.b) + ' ' + c.h + ' · ' + team[c.m % team.length].n, 'call', i]); }); team.forEach((m, i) => { if (m.n.toLowerCase().includes(q)) R.push(['Сотрудник', m.n, m.dep, 'person', i]); }); C.trunks.forEach(t => { if (t.name.toLowerCase().includes(q)) R.push(['Транк', t.name, t.op, 'trunk', t.id]); }); }
     body = `<label class="field" for="sq">Что ищем<input id="sq" data-f="sq" type="search" placeholder="Например, 916 или Анна" value="${esc(S.form.sq || '')}" autofocus></label>` + (q ? (R.length ? R.map(r => `<button type="button" class="pop-i" ${A(r[3], r[4])}><span class="tag">${r[0]}</span><span><span class="mono">${esc(r[1])}</span><span class="sub">${esc(r[2])}</span></span></button>`).join('') : '<div class="empty">Ничего не нашли</div>') : '<p class="muted">Введите часть номера, имя сотрудника или название транка</p>'); }
   if (k === 'report'){ title = 'Отчёт по расписанию'; sub = 'Сводка по дозвону'; save = 'Сохранить'; msg = 'Отчёт настроен';
     body = sel('repWhen','Когда',['Каждый понедельник в 9:00','Каждый день в 9:00','1-го числа месяца']) + `<div class="field">Куда${chips('nch', [['mail','Почта'],['tg','Telegram']])}</div><div class="note"><div><b>В отчёте</b><p>Здоровье телефонии · дозвон по транкам · спам-метки</p></div></div>`; }
@@ -1714,15 +1865,15 @@ function render(){
   const C = ctx();
   const ae = document.activeElement, fid = ae && ae.dataset ? ae.dataset.f : null, selStart = fid && ae.selectionStart;
   const db = document.querySelector('.drawer-b'), dbScroll = db ? db.scrollTop : 0;
-  root.innerHTML = `<div class="app">${sidebar(C)}<div class="main">${topbar(C)}<main class="page" id="main">${SCR[S.screen](C)}</main></div></div>${drawer(C)}${dialog(C)}${modal(C)}${S.dirty ? `<div class="applybar${S.play ? ' up' : ''}" role="region" aria-label="Несохранённые изменения"><span>Есть несохранённые изменения</span><div class="row" style="gap:8px;flex-wrap:nowrap"><button type="button" class="btn sm" ${A('telCancel')}>Отменить</button><button type="button" class="btn pri sm" ${A('telApply')}${S.saving ? ' disabled' : ''}>${S.saving ? 'Сохраняем…' : 'Применить'}</button></div></div>` : ''}${playerBar()}${S.toast ? `<div class="toast${S.toastErr ? ' err' : ''}${S.dirty || S.play ? ' up' : ''}" role="status" aria-live="polite">${esc(S.toast)}</div>` : ''}`;
+  root.innerHTML = `<div class="app">${sidebar(C)}<div class="main">${topbar(C)}<main class="page" id="main">${SCR[S.screen](C)}${footer()}</main></div></div>${drawer(C)}${dialog(C)}${modal(C)}${S.dirty ? `<div class="applybar${S.play ? ' up' : ''}" role="region" aria-label="Несохранённые изменения"><span>Есть несохранённые изменения</span><div class="row" style="gap:8px;flex-wrap:nowrap"><button type="button" class="btn sm" ${A('telCancel')}>Отменить</button><button type="button" class="btn pri sm" ${A('telApply')}${S.saving ? ' disabled' : ''}>${S.saving ? 'Сохраняем…' : 'Применить'}</button></div></div>` : ''}${playerBar()}${S.toast ? `<div class="toast${S.toastErr ? ' err' : ''}${S.dirty || S.play ? ' up' : ''}" role="status" aria-live="polite">${esc(S.toast)}</div>` : ''}`;
   bindCharts();
   if (fid){ const el = document.querySelector('[data-f="' + fid + '"]'); if (el){ el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
   const db2 = document.querySelector('.drawer-b'); if (db2 && dbScroll) db2.scrollTop = dbScroll;
 }
 let toastT = null;
 const telScreen = () => (S.screen === 'trunk' && S.tab.trunk === 'rot');
-const telSnap = () => JSON.stringify({cmode:P().cmode, qz:S.qz, retries:S.retries, sw:S.sw, prot:S.prot, dist:S.dist, split:P().split});
-function telRestore(){ if (!S.snap) return; const o = JSON.parse(S.snap); P().cmode = o.cmode; S.qz = o.qz; S.retries = o.retries; S.sw = o.sw; S.prot = o.prot; S.dist = o.dist; P().split = o.split; }
+const telSnap = () => JSON.stringify({cmode:P().cmode, qz:S.qz, retries:S.retries, sw:S.sw, prot:S.prot, dist:S.dist, split:P().split, rules:P().rules || {}});
+function telRestore(){ if (!S.snap) return; const o = JSON.parse(S.snap); P().cmode = o.cmode; S.qz = o.qz; S.retries = o.retries; S.sw = o.sw; S.prot = o.prot; S.dist = o.dist; P().split = o.split; P().rules = o.rules; }
 const mmssS = x => Math.floor(x/60) + ':' + ('0' + Math.floor(x%60)).slice(-2);
 function playerBar(){
   if (!S.play) return ''; const p = S.play, c = CALLS[p.i], team = ctx().co.team;
@@ -1767,7 +1918,7 @@ const ACT = {
   save: v => { const k = S.drawer && S.drawer.k; if (k === 'trunk') return saveTrunk(); if (k === 'buy' && S.screen === 'trunk'){ P().reqs.unshift({tk:S.selT, type:'Номера', d:'Заказ ' + S.buyQty + ' ' + plural(S.buyQty,'номера','номеров','номеров'), st:['Отправлена','neu'], at:'сегодня'}); } if (k === 'hook'){ const p = P(); p.hooks.push({url:S.form.hUrl || 'https://crm.company.ru/hooks/sashatel', ev:Object.keys(S.chipSets.hev).filter(x => S.chipSets.hev[x]).join(', '), last:'только что', st:['Работает','ok']}); S.drawer = null; S.tab.integrations = 'hooks'; S.inView = 'list'; return toast('Вебхук добавлен'); } S.drawer = null; if (v) toast(v); else render(); },
   confirm: v => { S.confirm = v || null; render(); },
   confirmYes: () => { const p = P(), k = S.confirm; S.confirm = null;
-    if (k === 'applyTel'){ S.saving = true; render(); return setTimeout(() => { S.saving = false; const fail = Math.random() < .15; if (!fail) S.dirty = false; toast(fail ? 'Ошибка сохранения · попробуйте ещё раз' : 'Настройки сохранены', fail); }, 700); }
+    if (k === 'applyTel'){ S.saving = true; render(); return setTimeout(() => { S.saving = false; const fail = false; if (!fail) S.dirty = false; toast(fail ? 'Ошибка сохранения · попробуйте ещё раз' : 'Настройки сохранены', fail); }, 700); }
     if (k === 'delTrunk'){ const t = p.trunks.find(x => x.id === S.selT) || p.trunks[0]; p.trunks = p.trunks.filter(x => x !== t); S.screen = 'trunks'; S.selT = null; return toast('Транк удалён'); }
     if (k === 'amoOff'){ p.amoOn = false; S.inView = 'list'; return toast('amoCRM отключена'); }
     if (k === 'hookOff'){ p.hooks.splice(S.selHook, 1); S.inView = 'list'; return toast('Вебхук удалён'); }
@@ -1882,7 +2033,7 @@ document.addEventListener('click', e => {
   if (ACT[a]) ACT[a](v, el); else if (a.startsWith('w:') || a.startsWith('split:')) stepAction(a, +v);
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape'){ if (S.confirm) S.confirm = null; else if (S.drawer) S.drawer = null; else if (S.dp) S.dp = null; else if (S.pop) S.pop = null; else if (S.sideOpen) S.sideOpen = false; else return; render(); }
+  if (e.key === 'Escape'){ if (S.confirm) S.confirm = null; else if (S.dlg) S.dlg = null; else if (S.drawer) S.drawer = null; else if (S.dp) S.dp = null; else if (S.pop) S.pop = null; else if (S.sideOpen) S.sideOpen = false; else return; render(); }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('tr[data-a]')){ e.preventDefault(); e.target.click(); }
 });
 document.addEventListener('input', e => { const f = e.target.dataset && e.target.dataset.f; if (!f) return; S.form[f] = e.target.value; if (f === 'cq' || f === 'sq') return render(); if (f === 'lq' || f === 'tq' || f === 'stq'){ S.lpg = 0; S.tpg = 0; S.spg = 0; return render(); } if (f === 'calcN' || f === 'amtC') return render(); if (f === 'nq'){ S.npg = 0; return render(); } if (f === 'lblText' || f === 'lblCat'){ const ph = document.querySelector('.phone b'); if (ph && f === 'lblText') ph.textContent = e.target.value || ''; } });
@@ -1926,4 +2077,51 @@ Object.assign(ACT, {
   stopAct: v => { S.stopAct = v; toast('Сохранено'); }
 });
 { const sw0 = ACT.sw; ACT.sw = v => { sw0(v); if (S.screen === 'settings' && !S.dlg) toast('Сохранено'); }; }
+/* ===================== ДЕЙСТВИЯ: номера, правила, выбор ===================== */
+const markDirty = () => { if (!S.dirty){ S.snap = telSnap(); S.dirty = true; } };
+const addReq = (tk, type, d) => { P().reqs = P().reqs || []; P().reqs.unshift({tk, type, d, st:['Отправлена','neu'], at:'сегодня'}); };
+const trunkById = id => ctx().trunks.find(x => x.id === id);
+function numTargets(scope){
+  if (scope.startsWith('one:')){ const [, tid, n] = scope.split(':'); const t = trunkById(tid); return {t, list:numsOf(ctx(), t).filter(r => r.n === n), scope:null}; }
+  const tid = scope.split(':')[1], t = trunkById(tid), ids = selIds(scope); return {t, list:numsOf(ctx(), t).filter(r => ids.includes(r.id)), scope};
+}
+const nw = n => n + ' ' + plural(n,'номер','номера','номеров');
+Object.assign(ACT, {
+  selOne: v => { const i = v.indexOf('|'), sc = v.slice(0, i), id = v.slice(i + 1); const s = S.sel[sc] || (S.sel[sc] = {}); s[id] = !s[id]; render(); },
+  selAll: sc => { const s = S.sel[sc] || (S.sel[sc] = {}), vis = S.selVis[sc] || [], all = vis.every(id => s[id]); vis.forEach(id => { s[id] = !all; }); render(); },
+  selClear: sc => { S.sel[sc] = {}; render(); },
+  sortBy: v => { const [sc, k] = v.split('|'), cur = S.sort[sc]; S.sort[sc] = {k, d: cur && cur.k === k ? -cur.d : (k === 'n' || k === 'st' ? 1 : -1)}; render(); },
+  numAct: v => { const i = v.indexOf('|'), act = v.slice(0, i), sc = v.slice(i + 1), {t, list, scope} = numTargets(sc); if (!t || !list.length) return;
+    const n = list.length, now = new Date(TODAY_D.getTime() + 14*3600000 + 52*60000), R = rulesOf(t), qd = (R.list.find(r => r.act === 'qz' && r.on) || {arg:7}).arg;
+    if (act === 'del'){ S.dlg = {k:'numDel', a:'', ids:list.map(r => r.n), tid:t.id, scope}; return render(); }
+    if (act === 'back') list.forEach(r => { r.st = ['Активен','ok']; r.qWhy = r.qAt = r.qUntil = null; });
+    if (act === 'qz') list.forEach(r => { if (r.st[0] !== 'Карантин'){ r.st = ['Карантин','warn']; r.qWhy = 'Вручную'; r.qAt = now; r.qUntil = new Date(now.getTime() + qd*MSD); } });
+    if (act === 'ext') list.forEach(r => { if (r.qUntil) r.qUntil = new Date(r.qUntil.getTime() + 7*MSD); });
+    if (act === 'mark'){ const m = list.filter(r => r.mark === '—'); m.forEach(r => { r.mark = 'На проверке'; }); addReq(t.id, 'Маркировка', 'Маркировка ' + nw(m.length)); }
+    if (act === 'repl') addReq(t.id, 'Замена', 'Замена ' + nw(n));
+    if (scope) S.sel[scope] = {}; if (S.dlg && S.dlg.k === 'num') S.dlg = null;
+    toast({back:nw(n) + ' в ротации', qz:nw(n) + ' в карантине на ' + qd + ' ' + plural(qd,'день','дня','дней'), ext:'Карантин продлён на 7 дней', mark:'Заявка на маркировку отправлена оператору', repl:'Заявка на замену отправлена оператору', csv:'Выгрузка ' + nw(n) + ' · CSV'}[act]); },
+  numDelGo: () => { const d = S.dlg; if (!d) return; const t = trunkById(d.tid), L = numsOf(ctx(), t); d.ids.forEach(n => { const k = L.findIndex(r => r.n === n); if (k >= 0) L.splice(k, 1); }); t.nums = L.length; addReq(t.id, 'Отключение', 'Отключение ' + nw(d.ids.length)); if (d.scope) S.sel[d.scope] = {}; S.dlg = null; toast(nw(d.ids.length) + ' убрали из транка · заявка оператору создана'); },
+  ruleOn: v => { const [tid, rid] = v.split('|'), r = rulesOf(trunkById(tid)).list.find(x => x.id === rid); markDirty(); r.on = !r.on; render(); },
+  ruleDel: v => { const [tid, rid] = v.split('|'), R = rulesOf(trunkById(tid)); markDirty(); R.list = R.list.filter(x => x.id !== rid); render(); },
+  ruleAdd: () => { const R = rulesOf(trunkById(S.selT) || ctx().trunks[0]); markDirty(); R.list.push({id:'r' + Date.now().toString(36), on:true, m:'rate', op:'lt', v:30, w:'d1', act:'qz', arg:3}); render(); },
+  rulesReset: () => { const t = trunkById(S.selT) || ctx().trunks[0]; markDirty(); P().rules[t.id] = RULES0(); toast('Вернули шаблон SashaTel · примените изменения'); },
+  rset: k => { const R = rulesOf(trunkById(S.selT) || ctx().trunks[0]); markDirty(); R[k] = !R[k]; render(); },
+  rback: v => { const R = rulesOf(trunkById(S.selT) || ctx().trunks[0]); markDirty(); R.back = v; render(); },
+  rld: v => { const R = rulesOf(trunkById(S.selT) || ctx().trunks[0]); markDirty(); R.load = Math.max(1, Math.min(40, R.load + (+v))); render(); },
+  stopBulk: () => { const ids = selIds('stop'), p = P(); p.stops = stopData().filter(s => !ids.includes(s.n)); S.sel.stop = {}; toast(nw(ids.length) + ' убрали из стоп-листа'); },
+  fty2: v => { S.form.fty = v; render(); }
+});
+{ const dp0 = ACT.ddPick; ACT.ddPick = v => { const k = v.indexOf('|'), id = v.slice(0, k), val = v.slice(k + 1);
+  if (id.startsWith('rf:')){ const [, tid, rid, f] = id.split(':'), r = rulesOf(trunkById(tid)).list.find(x => x.id === rid); S.pop = null; markDirty(); r[f] = val;
+    if (f === 'm'){ if (val === 'spam'){ r.v = 'any'; r.w = 'now'; } else if (r.v === 'any'){ r.v = val === 'rate' ? 35 : 5; r.w = 'd1'; } if (val === 'miss') r.op = 'gt'; }
+    if (f === 'act' && (val === 'qz' || val === 'load') && !+r.arg) r.arg = val === 'qz' ? 7 : 4; return render(); }
+  if (id === 'nf2'){ S.npg = 0; Object.keys(S.sel).forEach(s => { if (s.startsWith('nums:')) S.sel[s] = {}; }); }
+  dp0(v); }; }
+document.addEventListener('input', e => { const f = e.target.dataset && e.target.dataset.rf; if (!f) return; const [tid, rid, k] = f.split('|'), t = trunkById(tid); if (!t) return; const v = e.target.value.replace(/[^\d]/g, ''); if (e.target.value !== v) e.target.value = v; markDirty();
+  const n = Math.max(0, Math.min(999, +v || 0)); if (rid){ const r = rulesOf(t).list.find(x => x.id === rid); if (r) r[k] = k === 'v' && (r.m === 'rate' || r.m === 'rej') ? Math.min(100, n) : n; } else rulesOf(t)[k] = Math.max(1, Math.min(40, n || 1));
+  });
+document.addEventListener('focusout', e => { if (!(e.target.dataset && e.target.dataset.rf)) return; setTimeout(() => { const a = document.activeElement, f = a && a.dataset && a.dataset.rf, pos = f ? a.selectionStart : 0; render(); if (f){ const el = document.querySelector('[data-rf="' + f + '"]'); if (el){ el.focus(); try { el.setSelectionRange(pos, pos); } catch (er) {} } } }, 0); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.rf) e.target.blur(); });
+{ const dl0 = ACT.dlg; ACT.dlg = v => { S.drawer = null; dl0(v); }; }
 </script></body></html>
