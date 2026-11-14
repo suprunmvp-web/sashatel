@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>SashaTel — рабочее место</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="renderer.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="logo"><span class="logo-icon">S</span><strong>SashaTel</strong></div>
+    <p class="side-label">РАБОЧЕЕ МЕСТО</p>
+    <button class="side-nav active" type="button" aria-current="page">Телефон</button>
+    <div class="side-bottom">
+      <div class="avatar">Д</div>
+      <div><strong>Демо-менеджер</strong><span>Тестовый аккаунт</span></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div><div class="eyebrow">SashaTel / Desktop</div><h1>Телефон</h1></div>
+      <div class="status"><span class="status-dot"></span><span>Демонстрация</span></div>
+    </header>
+    <div class="warning" role="status"><strong>Демо-режим.</strong> Это прототип интерфейса: реальные звонки, SIP, звук и списания пока не подключены.</div>
+    <div class="columns">
+      <section class="panel dialer" aria-labelledby="dial-title">
+        <div class="section-heading"><h2 id="dial-title">Новый звонок</h2><span class="mode">DEMO</span></div>
+        <label for="phone">Номер телефона</label>
+        <input id="phone" type="tel" inputmode="tel" autocomplete="off" placeholder="+7 999 123-45-67" maxlength="22" aria-describedby="phone-help">
+        <div id="phone-help" class="help">Россия · мобильные и городские номера</div>
+        <div class="keypad" aria-label="Цифровая клавиатура">
+          <button data-digit="1">1</button><button data-digit="2">2<span>АБВ</span></button><button data-digit="3">3<span>ГДЕ</span></button>
+          <button data-digit="4">4<span>ЖЗИ</span></button><button data-digit="5">5<span>КЛМ</span></button><button data-digit="6">6<span>НОП</span></button>
+          <button data-digit="7">7<span>РСТ</span></button><button data-digit="8">8<span>УФХ</span></button><button data-digit="9">9<span>ЦЧШ</span></button>
+          <button data-digit="*">*</button><button data-digit="0">0</button><button data-digit="#">#</button>
+        </div>
+        <button class="call" id="call" type="button">Начать тестовый звонок</button>
+        <button class="hangup" id="hangup" type="button" hidden>Завершить</button>
+        <p class="call-state" id="call-state" role="status" aria-live="polite">Готово к тесту</p>
+        <p class="call-timer" id="call-timer" aria-live="off"></p>
+      </section>
+      <section class="panel history" aria-labelledby="history-title">
+        <div class="section-heading"><h2 id="history-title">История вызовов</h2><span id="count">0 записей</span></div>
+        <div class="history-head"><span>Номер / статус</span><span>Время</span><span>Длительность</span></div>
+        <div id="history-list" aria-live="polite"><div class="empty">Здесь появятся тестовые вызовы.<br>История хранится только до закрытия приложения.</div></div>
+        <div class="history-footer"><span>Источник: локальная демо-сессия</span><button id="clear" class="clear" type="button">Очистить</button></div>
+      </section>
+    </div>
+    <footer>Версия 0.1.0 · Телефония Asterisk пока не подключена · Никаких платных вызовов</footer>
+  </main>
+</div>
+</body>
+</html>
