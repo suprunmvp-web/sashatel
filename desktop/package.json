@@ -1,0 +1,14 @@
+{
+  "name": "sashatel-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SashaTel desktop softphone — mock mode until Asterisk integration",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "45.3.2"
+  }
+}
