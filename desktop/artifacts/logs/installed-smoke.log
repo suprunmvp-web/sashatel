@@ -1,0 +1,4 @@
+PASS standalone install by extraction outside checkout: { mode: 'UNAVAILABLE', call: 'idle', audio: true, startDisabled: true }
+Executable: /tmp/sashatel-installed-bPkxot/SashaTel-linux-x64/SashaTel
+
+Local tar.gz SHA256: 297e70ecb1d561c86425b696c25e94031995849b0f3b1934703586dfe1674140

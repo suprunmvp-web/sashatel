@@ -37,3 +37,5 @@
 ## Draft PR и CI
 
 Draft PR #10: https://github.com/suprunmvp-web/sashatel/pull/10. Head 2a8faff прошёл локальную матрицу; GitHub Core run 43763590209 success. Desktop run 43763590272 выявил Ubuntu AppArmor `No usable sandbox` на системном Chromium. CI исправлен установкой bundled SUID sandbox helpers (root:root, 4755) для pinned Chromium/Electron; не отключает AppArmor, userns policy или sandbox. В CI выбран pinned Chromium вместо случайного /usr/bin/chromium. Packaged helper настраивается отдельно после build; архив создаётся до этого шага и сохраняет исходные executable permissions.
+
+Run 43763815302 показал, что Chrome for Testing не обнаруживает bundled `chrome_sandbox` по имени автоматически. Указан официальный `CHROME_DEVEL_SANDBOX` отдельно для pinned Chromium, source Electron и packaged Electron; используется соответствующий root-owned helper каждого runtime. Добавлено точное типизированное расширение Electron результата TRANSPORT_UNAVAILABLE, не меняя Core. Portable tar.gz распакован в отдельный /tmp каталог вне checkout: самостоятельный launch с Audio и заблокированными calls PASS (журнал в artifacts).

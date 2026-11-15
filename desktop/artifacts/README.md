@@ -16,6 +16,7 @@
 | Audio real Electron, synthetic PCM + lifecycle/resource/security | 14/14 | [audio-electron.log](logs/audio-electron.log) |
 | UI real Electron source | 4/4 | [ui-electron.log](logs/ui-electron.log) |
 | Electron Linux x64 build / ASAR | PASS | [build.log](logs/build.log) |
+| Portable archive распакован вне checkout, самостоятельный launch | PASS | [installed-smoke.log](logs/installed-smoke.log) |
 | UI E2E из пакета | 4/4 | [packaged-electron.log](logs/packaged-electron.log) |
 
 Новые интеграционные проверки проходят путь UI facade → IPC → существующий owner/Core. Включены double start, explicit answer, no-answer history, reload active, replay/stale/invalid commands, session exhaustion/quarantine и настоящий Audio service lease loss → advisory без call ended. В Electron UI Settings выполняет selection/volume/microphone PCM/tone/stop on navigation. Audio native tests включают 20 capture/release циклов, реальные закрытия tracks/contexts, late result и имитированные disconnect/suspend/lock.

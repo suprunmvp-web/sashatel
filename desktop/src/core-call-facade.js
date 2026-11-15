@@ -14,7 +14,7 @@ export class CoreCallFacade {
   disposed = false;
   online = false;
   pending = false;
-  /** @param {import('../../packages/call-lifecycle/src/index').RendererCallAPI} bridge */
+  /** @param {import('./contracts').ElectronCallAPI} bridge */
   constructor(bridge, demo = false) {
     this.bridge = bridge; this.mode = demo ? 'demo' : 'live';
     this.unsubscribe = bridge.subscribe(snapshot => this.accept(snapshot));

@@ -72,11 +72,18 @@ export interface HistoryPort {
   /** Only the session demo implements this. Live history must come from Backend. */
   recordDemo?: (item: HistoryItem) => void;
 }
+/** Electron host adds a fail-closed unavailable-transport result without changing Core. */
+export type ElectronCallAPI = Omit<import('../../packages/call-lifecycle/src/index').RendererCallAPI, 'request'> & {
+  request(command: import('../../packages/call-lifecycle/src/index').RendererCommand): Promise<
+    import('../../packages/call-lifecycle/src/index').CommandResult |
+    Readonly<{ ok: false; error: Readonly<{ domain: 'owner'; code: 'TRANSPORT_UNAVAILABLE' }> }>
+  >;
+};
 declare global {
   interface Window {
     sashatel?: {
       mode: string; version: string; platform: string;
-      calls: import('../../packages/call-lifecycle/src/index').RendererCallAPI;
+      calls: ElectronCallAPI;
       demo?: { send(value: { callId: string; event: DemoEvent }): Promise<boolean> };
       audio?: { reportIssue(value: { callId: string; code: string }): Promise<boolean> };
     };
