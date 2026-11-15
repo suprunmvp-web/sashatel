@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   ui:
-    runs-on: ubuntu-latest
+    # Playwright 1.58 supports 24.04; ubuntu-latest has moved to 26.04.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: desktop
@@ -25,6 +26,8 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
       - run: npm run typecheck && npm run lint && npm test
+      - name: Remove checked-in screenshots before collecting fresh CI evidence
+        run: rm -f artifacts/*.png
       - run: npx playwright install --with-deps chromium
       - run: npm run test:components
       - run: xvfb-run -a npm run test:electron

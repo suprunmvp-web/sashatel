@@ -13,6 +13,8 @@ Use this file with current GitHub issue/comment IDs and PR head SHAs to avoid du
 
 ## Automation boundary
 
+Own Draft PR: https://github.com/suprunmvp-web/sashatel/pull/8. Initial implementation commit: `28d2d83`. First PR workflow run `43743416013` passed typecheck/lint/19 unit tests, then failed before browser tests because ubuntu-latest was 26.04, unsupported by pinned Playwright 1.58. Runner pinned to supported ubuntu-24.04; CI now removes checked-in screenshots before fresh evidence capture. This is a CI compatibility fix, not a new UI task.
+
 The cloud scheduler confirmed an enabled hourly Desktop UI task, with UI-only scope and no merge permission. It returned inherited environment selection with no resolved environment list. Future cloud shell provisioning/autonomous builds are not yet verified; report a concrete blocker if a run has only connector access. Never claim that a scheduled check proves a successful development run.
 
 On subsequent runs first inspect own PR/head, existing workflow status, new UI Issues, review comments and this log. Update the existing Draft PR for the same task; use a new own branch/PR only for a distinct task. Do not duplicate external Core/Audio work or infer task ownership from the shared GitHub username.
