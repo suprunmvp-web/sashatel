@@ -25,6 +25,22 @@ const mutations = [
     name: 'cleanup deadline releases uncertain session',
     from: 'call.reason = event;', to: 'lease = null; call.reason = event;',
   },
+  {
+    name: 'previous owner epoch can issue commands',
+    file: 'desktop-call-owner.js', test: 'integration/desktop-owner.test.js',
+    from: "if (command.ownerId !== this.#ownerId) return failure('OWNER_CHANGED');", to: '',
+  },
+  {
+    name: 'revoked renderer can still command calls',
+    file: 'desktop-call-owner.js', test: 'integration/desktop-owner.test.js',
+    from: "if (!session.active) return failure('SESSION_CLOSED');", to: '',
+  },
+  {
+    name: 'audio loss silently ends the SIP call',
+    file: 'desktop-call-owner.js', test: 'integration/desktop-owner.test.js',
+    from: "this.#audioIssue = Object.freeze({ domain: 'audio', callId, code });",
+    to: "this.#core.endCall(callId); this.#audioIssue = Object.freeze({ domain: 'audio', callId, code });",
+  },
 ];
 
 for (const mutation of mutations) {
@@ -33,13 +49,13 @@ for (const mutation of mutations) {
     await cp(join(root, 'src'), join(temp, 'src'), { recursive: true });
     await cp(join(root, 'test'), join(temp, 'test'), { recursive: true });
     await cp(join(root, 'package.json'), join(temp, 'package.json'));
-    const target = join(temp, 'src', 'call-lifecycle.js');
+    const target = join(temp, 'src', mutation.file ?? 'call-lifecycle.js');
     const original = await readFile(target, 'utf8');
     assert.ok(original.includes(mutation.from), `Mutation no longer applies: ${mutation.name}`);
     await writeFile(target, original.replaceAll(mutation.from, mutation.to));
     const result = spawnSync(process.execPath, ['--input-type=module'], {
       cwd: root, encoding: 'utf8', timeout: 10_000,
-      input: `await import(${JSON.stringify(pathToFileURL(join(temp, 'test', 'call-lifecycle.test.js')).href)});`,
+      input: `await import(${JSON.stringify(pathToFileURL(join(temp, 'test', mutation.test ?? 'call-lifecycle.test.js')).href)});`,
     });
     assert.equal(result.error, undefined, `Mutation runner failed: ${mutation.name}`);
     assert.equal(result.status, 1, `Mutation survived: ${mutation.name}\n${result.stdout}\n${result.stderr}`);
