@@ -163,6 +163,70 @@ test('real Electron / Chromium: synthetic capture through production permission 
       });
       assert.equal(name, 'NotAllowedError');
     });
+    await t.test('simulated disconnect events on native tracks/elements release only media resources', async () => {
+      const result = await page.evaluate(async () => {
+        const service = window.sashatelAudio;
+        const lease = await service.acquireInput();
+        const raw = service.input.raw.getAudioTracks()[0];
+        raw.stop(); raw.dispatchEvent(new Event('ended')); // synthetic hardware notification
+        const closed = await lease.closed;
+        while (service.getState().operation) await new Promise(resolve => setTimeout(resolve, 5));
+        const capture = service.getState().capture;
+        const playback = service.testPlayback();
+        while (!service.output) await new Promise(resolve => setTimeout(resolve, 5));
+        service.output.element.dispatchEvent(new Event('error')); // synthetic disconnect notification
+        return { closed, capture, output: await playback, stopped: lease.stream.getTracks().every(t => t.readyState === 'ended') };
+      });
+      assert.equal(result.closed.reason, 'DEVICE_LOST');
+      assert.equal(result.capture.status, 'interrupted');
+      assert.equal(result.output.reason, 'DEVICE_UNAVAILABLE');
+      assert.equal(result.stopped, true);
+    });
+    await t.test('cancelled native capture arriving late is actually stopped', async () => {
+      const result = await page.evaluate(async () => {
+        const service = window.sashatelAudio;
+        const nativeCapture = service.mediaDevices.getUserMedia;
+        let release, raw;
+        const gate = new Promise(resolve => { release = resolve; });
+        service.mediaDevices.getUserMedia = async function (...args) {
+          raw = await nativeCapture.apply(this, args); await gate; return raw;
+        };
+        try {
+          const testing = service.testMicrophone().catch(error => error.code);
+          while (!raw) await new Promise(resolve => setTimeout(resolve, 5));
+          service.stopTests(); const code = await testing; release();
+          await new Promise(resolve => setTimeout(resolve, 20));
+          return { code, stopped: raw.getTracks().every(t => t.readyState === 'ended'), capture: service.getState().capture.status };
+        } finally { release(); service.mediaDevices.getUserMedia = nativeCapture; }
+      });
+      assert.equal(result.code, 'CANCELLED'); assert.equal(result.stopped, true);
+      assert.notEqual(result.capture, 'active');
+    });
+    await t.test('20 native capture/release cycles stop every raw and processed track', async () => {
+      const result = await page.evaluate(async () => {
+        const service = window.sashatelAudio;
+        const tracks = [];
+        for (let i = 0; i < 20; i++) {
+          const lease = await service.acquireInput();
+          tracks.push(...lease.stream.getTracks(), ...service.input.raw.getTracks());
+          lease.release(); await lease.closed;
+        }
+        return tracks.every(track => track.readyState === 'ended');
+      });
+      assert.equal(result, true);
+    });
+    await t.test('main-to-preload sleep/lock events keep the service suspended until both recover', async () => {
+      await page.evaluate(async () => { window.sleepTestLease = await window.sashatelAudio.acquireInput(); });
+      await app.evaluate(({ BrowserWindow }) => {
+        const contents = BrowserWindow.getAllWindows()[0].webContents;
+        for (const event of ['locked', 'suspend', 'resume']) contents.send('audio:lifecycle', event);
+      });
+      await page.waitForFunction(() => window.sashatelAudio.getState().suspended);
+      assert.equal(await page.evaluate(async () => (await window.sleepTestLease.closed).reason), 'suspended');
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('audio:lifecycle', 'unlocked'));
+      await page.waitForFunction(() => !window.sashatelAudio.getState().suspended && !window.sashatelAudio.getState().operation);
+      assert.equal(await page.evaluate(() => window.sashatelAudio.getState().capture.status === 'active'), false);
+    });
     await t.test('all service-owned AudioContexts are actually closed', async () => {
       await page.waitForFunction(() => window.audioTestContexts.every(context => context.state === 'closed'));
       assert.ok(await page.evaluate(() => window.audioTestContexts.length >= 6));
