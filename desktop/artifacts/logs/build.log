@@ -1,0 +1,6 @@
+
+> sashatel-desktop@0.1.0 build
+> node scripts/package.mjs
+
+Packaging app for platform linux x64 using electron v45.3.2
+Packaged: dist/SashaTel-linux-x64

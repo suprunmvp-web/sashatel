@@ -15,7 +15,8 @@
     "test:electron": "playwright test --project=electron",
     "build": "node scripts/package.mjs",
     "test:audio:electron": "node --test --test-isolation=none test/electron/*.test.cjs",
-    "start:demo": "SASHATEL_DEMO=1 electron ."
+    "start:demo": "SASHATEL_DEMO=1 electron .",
+    "postinstall": "node node_modules/electron/install.js"
   },
   "devDependencies": {
     "electron": "45.3.2",

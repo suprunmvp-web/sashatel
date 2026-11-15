@@ -1,0 +1,9 @@
+npm warn deprecated eslint@9.39.2: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+> sashatel-desktop@0.1.0 postinstall
+> node node_modules/electron/install.js
+
+
+added 144 packages in 4s
+Clean install path: /tmp/sashatel-clean-final-w3DgEo
+Electron binary installed: true

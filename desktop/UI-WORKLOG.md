@@ -1,3 +1,5 @@
+> Исторический документ независимого PR #8. Текущая интеграция: [docs/desktop-integration.md](../docs/desktop-integration.md).
+
 # Desktop UI work log
 
 Use this file with current GitHub issue/comment IDs and PR head SHAs to avoid duplicate automated work. Do not treat an observation as completion of another team's task.

@@ -1,0 +1,4 @@
+
+> @sashatel/call-lifecycle@0.1.0 test:contracts
+> tsc --project test/types/tsconfig.json
+

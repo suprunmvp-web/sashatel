@@ -1,36 +1,42 @@
-# Desktop UI — фактическая проверка
+# Фактическая проверка интегрированного Desktop
 
-Снимки ниже получены Playwright из **запущенного Electron 45.3.2 на Linux/Xvfb**, не из макетов. E2E выполнен на исходниках и на распакованном `dist/SashaTel-linux-x64/SashaTel`; последний запуск обновляет PNG из упакованного приложения. Анимации при захвате завершены, CSS приложения не подменялся. Номера тестовые, реальные звонки/медиа не выполнялись.
+2026-11-15, Cloud Linux x64, Node 24.22.1, Electron 45.3.2, Playwright 1.58.2. PNG захвачены из настоящего Electron через Playwright, headless Ozone (без Xvfb в этой среде). Финальный захват — из `dist/SashaTel-linux-x64/SashaTel`, с каноническим Core внутри ASAR. Ни CSS, ни приложение не подменялись при захвате. **Chromium sandbox включён** (`chromiumSandbox:true`), `--no-sandbox` отсутствует и проверяется E2E. В CI используется Xvfb.
 
-| Экран | Снимок |
+## Матрица
+
+| Проверка | Результат | Журнал |
+| --- | --- | --- |
+| Чистый npm ci в пустом каталоге, project postinstall, Electron binary | PASS, 144 packages; binary установлен | [clean-install.log](logs/clean-install.log) |
+| Strict JS/JSDoc typecheck + ESLint | PASS | [static.log](logs/static.log) |
+| Core contracts (включая expected-negative fixtures) | PASS | [core-contracts.log](logs/core-contracts.log) |
+| Core unit/integration/coverage | 215/215, lines/functions 100%, branches 99.68% | [core-coverage.log](logs/core-coverage.log) |
+| Core mutations | 7/7 обнаружены | [core-mutations.log](logs/core-mutations.log) |
+| Объединённые Audio/security/UI + новые bridge/media tests | 95/95 | [desktop-unit.log](logs/desktop-unit.log) |
+| Chromium components/user flows/axe (обе темы) | 7/7, axe без нарушений | [components.log](logs/components.log) |
+| Audio real Electron, synthetic PCM + lifecycle/resource/security | 14/14 | [audio-electron.log](logs/audio-electron.log) |
+| UI real Electron source | 4/4 | [ui-electron.log](logs/ui-electron.log) |
+| Electron Linux x64 build / ASAR | PASS | [build.log](logs/build.log) |
+| UI E2E из пакета | 4/4 | [packaged-electron.log](logs/packaged-electron.log) |
+
+Новые интеграционные проверки проходят путь UI facade → IPC → существующий owner/Core. Включены double start, explicit answer, no-answer history, reload active, replay/stale/invalid commands, session exhaustion/quarantine и настоящий Audio service lease loss → advisory без call ended. В Electron UI Settings выполняет selection/volume/microphone PCM/tone/stop on navigation. Audio native tests включают 20 capture/release циклов, реальные закрытия tracks/contexts, late result и имитированные disconnect/suspend/lock.
+
+## Снимки
+
+| Экран | Файл |
 | --- | --- |
-| Dialer, светлая тема | [electron-dialer-light.png](electron-dialer-light.png) |
-| Dialer, тёмная тема | [electron-dialer-dark.png](electron-dialer-dark.png) |
-| Connecting, демо | [electron-connecting-dark.png](electron-connecting-dark.png) |
-| Active, демо | [electron-active-dark.png](electron-active-dark.png) |
-| Failed, демо | [electron-failed-dark.png](electron-failed-dark.png) |
-| История | [electron-history-dark.png](electron-history-dark.png) |
-| Настройки | [electron-settings-dark.png](electron-settings-dark.png) |
-| Dialer, 400×640 | [electron-dialer-minimum.png](electron-dialer-minimum.png) |
-| Настройки, 400×640 | [electron-settings-minimum.png](electron-settings-minimum.png) |
+| Dialer светлый | [electron-dialer-light.png](electron-dialer-light.png) |
+| Dialer тёмный | [electron-dialer-dark.png](electron-dialer-dark.png) |
+| Demo/Test connecting | [electron-connecting-dark.png](electron-connecting-dark.png) |
+| Demo/Test explicit connected | [electron-active-dark.png](electron-active-dark.png) |
+| Ошибка транспорта Demo/Test | [electron-failed-dark.png](electron-failed-dark.png) |
+| История answered/missed/cancelled/failed | [electron-history-dark.png](electron-history-dark.png) |
+| Settings без физических устройств | [electron-settings-dark.png](electron-settings-dark.png) |
+| Settings с измеряемым синтетическим PCM | [electron-settings-measured-pcm.png](electron-settings-measured-pcm.png) |
+| Reload того же owner | [electron-reload-owner.png](electron-reload-owner.png) |
+| Обычный запуск, SIP недоступен | [electron-default-unavailable.png](electron-default-unavailable.png) |
+| Dialer минимум | [electron-dialer-minimum.png](electron-dialer-minimum.png) |
+| Settings минимум | [electron-settings-minimum.png](electron-settings-minimum.png) |
 
-## Проверки
+Звонки — только локальные управляемые тестовые события. Audio Electron использует синтетический WAV и fake devices Chromium; в native Cloud inventory 0 inputs / 0 outputs. Отправка generated tone проверена, слышимость не подтверждена. Физические Mac/TCC/USB/Bluetooth/sleep, macOS bundle, Windows installer и подпись/notarization **не проверялись**. Linux результат — запуск переносимой сборки, не установка OS installer. Checklist и ограничения: [архитектура](../../docs/desktop-integration.md).
 
-- `npm run typecheck`: строгая проверка JS/JSDoc + контрактов TypeScript.
-- `npm run lint`: ESLint.
-- `npm test`: 33 unit tests — валидация, защита от повторных команд, запрет автоматического ответа, время до/после ответа, история и redial, ошибки команд, terminating/quarantine, cleanup подписчиков, перевод публичного Audio API без media-эффектов.
-- `npm run test:components`: 7 Chromium scenarios — реальный clipboard, редактирование selection, Enter, переходы/пустые состояния/ошибки/retry, сохранение темы, contract-driven audio, stop/late result cleanup. Axe WCAG 2 A/AA + 2.1 AA: Dialer/History/Settings в двух темах; размеры 400×640, 460×780, 760×900, 320×512. Полная видимость call CTA проверяется внутри main при поддерживаемом минимуме, а не только по границе окна.
-- `DISPLAY=:98 npm run test:electron`: один составной E2E — настоящее окно, preload, security preferences, реальный переход Connecting → Ringing → Active → Failed, история, настройки, снимки, resize, zoom 125/150%, отсутствие pageerror.
-- `npm run build -- --electron-zip-dir=/tmp/sashatel-electron-zips`: упаковка Linux x64. ZIP проверен по SHA256 из npm Electron checksums.
-- Тот же E2E с `SASHATEL_EXECUTABLE=./dist/SashaTel-linux-x64/SashaTel`: запуск упакованного приложения.
-- `git diff --check`: без ошибок whitespace.
-
-Регрессия из [Tech Lead review 5912232629](https://github.com/suprunmvp-web/sashatel/pull/8#pullrequestreview-5912232629): до исправления новые проверки дали 19 passed / 14 failed, после — 33 passed / 0 failed. Проверены terminal snapshots без ответа, ранний remote hangup, disposed/неизвестная причина, отсутствующий/невалидный timestamp, `connectedAt=0`, connected→ended и отсутствие переноса ответа на следующий вызов. Снимок истории теперь содержит реальные демо-события answered/missed/cancelled/failed. Unknown проверен UI component test через контракт, без добавления фиктивных production-событий.
-
-Тесты исправили регрессии повторного Enter, сброса выбора устройств до отправки команды, недоступного stop во время pending diagnostic, late audio после навигации, контраста вторичного текста и скрытого CTA на минимальном размере.
-
-## Границы доказательств
-
-Audio в component tests — детерминированный double, не физическое устройство. UI-фасад проверяет публичный контракт PR #3; сам независимый аудиосервис/его IPC/security не включён в эту ветку. `--no-sandbox` передаётся **только cloud E2E launcher**; проверка preferences не доказывает работу ОС sandbox в целевой среде. Production start сохраняет sandbox и не содержит этого флага.
-
-Не проверены macOS/Windows, TCC, реальные микрофон/гарнитура/аудиовыход, физическая слышимость, Bluetooth, hardware suspend, Retina/VoiceOver, установщик, подпись/нотаризация, SIP и Backend. На macOS отдельно пройти checklist Audio-ветки после согласованной интеграции. CI workflow добавлен, но его GitHub-статус нужно смотреть отдельно от локальных результатов.
+Исторические результаты независимых PR сохранены в их документации; текущая матрица выше относится к интеграционной ветке. Почасовая Cloud automation не создана: лимит 5/5 активных задач.

@@ -1,3 +1,5 @@
+> Исторический документ независимого PR #8. Текущая интеграция: [docs/desktop-integration.md](../docs/desktop-integration.md).
+
 # Desktop UI integration boundaries
 
 Base: `feat/desktop-softphone-v1` `139b121`. This PR intentionally targets that branch: `main` only contains the web cabinet. Do not merge this UI branch, PR #2 or PR #3 without Tech Lead review. No Core, Audio Device Service, Backend or Asterisk implementation is changed here.

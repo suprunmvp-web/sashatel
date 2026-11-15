@@ -155,6 +155,7 @@ test('settings UI drives actual Audio service: measured microphone, device selec
     await expect.poll(() => page.evaluate(() => window.sashatelAudio.getState().volume)).toBe(.35);
     await page.locator('#test-microphone').click();
     await expect.poll(async () => Number(await page.getByRole('meter').getAttribute('aria-valuenow'))).toBeGreaterThan(0);
+    await page.locator('#main').evaluate(el => { el.scrollTop = 0; });
     await page.screenshot({ path: 'artifacts/electron-settings-measured-pcm.png' });
     await page.getByRole('button', { name: 'Телефон', exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.sashatelAudio.getState().testing)).toBe(null);
