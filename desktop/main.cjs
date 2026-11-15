@@ -4,12 +4,15 @@ const path = require('node:path');
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1100,
-    height: 760,
-    minWidth: 760,
-    minHeight: 560,
+    width: 460,
+    height: 780,
+    minWidth: 400,
+    minHeight: 640,
+    useContentSize: true,
+    show: false,
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
     title: 'SashaTel',
-    backgroundColor: '#f7f8fa',
+    backgroundColor: '#141414',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -19,6 +22,7 @@ function createWindow() {
     }
   });
   win.loadFile(path.join(__dirname, 'index.html'));
+  win.once('ready-to-show', () => win.show());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
 }
