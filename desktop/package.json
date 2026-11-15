@@ -6,9 +6,12 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "test": "node --test --test-isolation=none test/*.test.mjs test/*.test.cjs",
+    "test:electron": "node --test --test-isolation=none test/electron/*.test.cjs"
   },
   "devDependencies": {
-    "electron": "45.3.2"
+    "electron": "45.3.2",
+    "playwright": "1.65.1"
   }
 }
