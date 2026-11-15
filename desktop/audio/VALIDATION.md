@@ -8,7 +8,7 @@ microphone or headphones were available. No macOS machine was used.
 
 `cd desktop && npm ci && npm test`
 
-40 passing unit/security tests. Device/TCC failure simulation uses mocks where
+57 passing unit/security/lifecycle tests. Device/TCC failure simulation uses mocks where
 cloud hardware and macOS APIs are unavailable. These tests cover:
 
 - Discovery without capture, detached snapshots, broken UI subscriber isolation.
@@ -26,6 +26,14 @@ cloud hardware and macOS APIs are unavailable. These tests cover:
   after wake, no automatic recapture or playback restart.
 - Invalid numeric/ID arguments, exact trusted document, IPC sender/frame/argument
   validation, camera/foreign-origin/subframe denial, local resource allowlist.
+- Issue #5: durable media lease closure, input loss during replacement/resume,
+  25 repeated capture/switch cycles, listener disposal, overlapping sleep/lock
+  orders, immediate screen exit on test-start notification and rejected async
+  subscribers. These tests use the actual service with mocked hardware/TCC.
+- Rooted resource policy: new local assets, percent/traversal/UNC paths, dotfiles,
+  privileged code, sibling paths, missing/non-regular files, symlink files and
+  directories (including internal links), loops and symlink replacement. CSP
+  remains byte-for-byte unchanged.
 
 `git diff --check` passed. CSS, original renderer/call logic, root web cabinet,
 logo and visible DOM remain unchanged; the HTML head only adds the audio module
@@ -33,11 +41,21 @@ and stream-media CSP directive. Dependencies are locked. No runtime package was
 added; Playwright is a development-only dependency.
 `npm audit` reported 0 known vulnerabilities in the locked dependencies.
 
+The additive public declaration passed TypeScript 5.9.3 strict checking:
+
+```sh
+npm exec --yes --package typescript@5.9.3 -- tsc --strict --noEmit \
+  --lib es2023,dom --module nodenext --moduleResolution nodenext \
+  audio/audio-device-service.d.mts
+```
+
+This checks the API declaration, not the other agent's UI/Core integration.
+
 ## Checked in real Electron
 
 `cd desktop && npm run test:electron`
 
-9 passing tests (two parent integration tests and seven nested cases). The
+14 passing tests (three parent integration tests and eleven nested cases). The
 integration runner explicitly sets `chromiumSandbox: true` because Playwright's
 default otherwise injects `--no-sandbox`. Application security settings remain
 enabled. Linux without a display uses headless Ozone. No production test mode or
@@ -57,6 +75,15 @@ permission bypass is added to main/preload.
 - Cancellation, competing requests, lease release, service suspend/resume,
   actual closure of owned AudioContexts, camera denial and page reload succeed
   with no renderer `pageerror` events.
+- Issue #5: 20 native capture/release cycles, native tracks returned late after
+  cancellation, simulated disconnection events on native tracks/elements, and
+  main→preload lifecycle delivery with overlapping lock/sleep. Actual track-ended
+  states and context closure are checked. Synthetic events are **not** physical
+  unplugging or actual macOS power/TCC events.
+- A temporary copy of the app loads previously unlisted local JS/CSS/SVG with the
+  production policy/CSP. Symlink/private/outside file imports and inline/network
+  requests stay denied; an independent Electron `net.fetch` also fails under the
+  session request hook. Original HTML/renderer/CSS are not modified by fixtures.
 
 ## Requires a real Mac
 
@@ -72,6 +99,10 @@ zero-leak claims, and WebRTC/SIP/call lifecycle integration. The packaging confi
 was supplied but was not built on a Mac. No claim of release readiness is made.
 
 ## MacBook Air manual checklist
+
+Use [MAC-SMOKE.md](./MAC-SMOKE.md) for the updated **no-certificates/no-secrets**
+procedure, packaged metadata commands, pass criteria and per-device results.
+The following original checklist is retained as supporting detail.
 
 Use the packaged SashaTel app for TCC identity; also compare `npm start` for
 development. There are no audio controls in the audited UI. Until a settings

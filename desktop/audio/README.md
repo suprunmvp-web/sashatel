@@ -6,6 +6,10 @@ at `window.sashatelAudio`. Startup only enumerates devices; it never opens a
 microphone or prompts for access. No design, layout, CSS, logo, dialer or call
 business logic has changed. The existing call remains a silent simulation.
 
+Issue #5 follow-up: [Cloud UI/Core contract](./UI-INTEGRATION.md),
+[typed API](./audio-device-service.d.mts), and
+[no-credentials Mac smoke procedure](./MAC-SMOKE.md).
+
 ## Audit and scope
 
 Base: `feat/desktop-softphone-v1` at `139b121`. `main` had only the web cabinet,
@@ -68,7 +72,7 @@ singleton. Dependencies can be injected for unit tests; production uses native
 | `requestPermission(): Promise<'granted'>` | User-initiated OS + Chromium permission request; opens and stops a temporary default input, then refreshes labels |
 | `selectInput(id): Promise<void>` | `''` means OS default; explicit ID must exist; applies to current and future capture |
 | `selectOutput(id): Promise<void>` | `''` means OS default; uses `setSinkId` for managed output elements; stops playback on failed/uncertain routing |
-| `acquireInput(): Promise<{stream: MediaStream, release(): void}>` | Exclusive processed input lease; caller releases it in `finally`; release is idempotent |
+| `acquireInput(): Promise<{stream: MediaStream, closed: Promise, release(): void}>` | Exclusive processed input lease; caller releases it in `finally`; release is idempotent; `closed` resolves once with media release reason, never SIP completion |
 | `setInputGain(value): void` | Finite linear gain 0–2, applies to actual processed stream; 1 = unity, 0 = silence |
 | `setPlaybackVolume(value): void` | Finite 0–1, applies immediately to managed elements; does not change system volume |
 | `attachPlayback(element, remoteStream): Promise<detach>` | Routes, applies volume, attaches and plays a borrowed stream; detach is idempotent |
@@ -106,6 +110,10 @@ State includes:
   `softwareInputGain=true`. Output selection is feature detection, not proof
   that a particular device accepts routing.
 - `testing`: `null`, `microphone` or `playback`.
+- `operation`: public pending setup-operation name or `null`; `suspended` and
+  `disposed` describe service availability. Do not read implementation internals.
+- `capture`: most recent lease `{status, owner, leaseId, reason}`; media-only
+  status survives a refresh and does not represent call/session signaling.
 - `meter`: `null` or `{rms, peak, dbFS, signalDetected}` from current PCM frames.
   Silence has `dbFS=null`, avoiding non-finite values in UI/serialization.
 - `lastTest`: the most recent completed/interrupted test result.
@@ -156,8 +164,10 @@ every physical endpoint change behind that alias. Choose an explicit ID when
 that distinction matters. A default input whose underlying track ends is stopped.
 
 Power/lock events release transport leases too. The transport must observe state
-errors, end or pause sending as its lifecycle requires, and explicitly reacquire
-after recovery. The service does not alter the call lifecycle or resurrect calls.
+and `lease.closed`, pause sending as its lifecycle requires, and explicitly
+reacquire after recovery. Overlapping sleep/lock require both recovery events.
+Media loss does not confirm SIP completion; only Core's authoritative signaling
+evidence can finalize a call. The service does not alter Core or resurrect calls.
 
 ## Connect existing UI (no new UI in this branch)
 
@@ -244,18 +254,20 @@ and contexts; use the lease/service lifecycle methods.
 `electron-builder.yml` and `build/entitlements.mac.plist` provide app identity,
 `NSMicrophoneUsageDescription`, hardened runtime, JIT and microphone entitlement
 for the app/helpers. They are packaging inputs, **not a signed/notarized release**.
-To exercise a local package on a Mac with signing credentials configured:
+To exercise a local unsigned app bundle on a Mac without certificates/secrets:
 
 ```sh
 cd desktop
 npm ci
-npx --yes --package electron-builder@26.18.0 electron-builder --mac --arm64
+CSC_IDENTITY_AUTO_DISCOVERY=false npx --yes --package electron-builder@26.18.0 \
+  electron-builder --mac --dir --arm64 -c.mac.identity=null
 ```
 
 The optional packager is pinned in this command, not installed into the runtime.
 Use `--x64` for an Intel Mac. Signing identity, provisioning, notarization and
 Apple distribution credentials remain the release pipeline's responsibility.
-Verify the generated app's Info.plist and helper entitlements on a Mac. Source
+Verify the generated app's Info.plist on a Mac. Helper entitlements require a
+signed/ad-hoc package and remain unverified for an unsigned bundle. Source
 launches via `npm start` are attributed to the Electron host by TCC, so a packaged
 SashaTel run is required to verify the real application permission identity.
 
@@ -266,7 +278,8 @@ IPC accepts no arguments and only the owning main frame at the exact local entry
 URL. Preload exposes status, request and a validated lifecycle subscription; it
 never exposes `ipcRenderer`, sender events, filesystem, shell or arbitrary
 channels. Both Chromium permission handlers use an audio-only policy. Resource
-requests use a fixed local-file allowlist; navigation, redirects, new windows
+requests use a rooted renderer-extension policy with filesystem/symlink checks;
+navigation, redirects, new windows
 and webviews are blocked. CSP allows local modules and stream media, retaining
 `connect-src 'none'` and no inline/eval scripts. Failures are normalized; subscriber
 and expected native Promise failures are handled without global exception
