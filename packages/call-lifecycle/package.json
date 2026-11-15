@@ -3,11 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.js",
-  "engines": { "node": ">=24" },
+  "types": "./src/index.d.ts",
+  "exports": { "types": "./src/index.d.ts", "default": "./src/index.js" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
-    "test": "node --test --test-isolation=none test/*.test.js",
-    "test:coverage": "node --experimental-test-coverage --test --test-isolation=none --test-coverage-include=src/**/*.js --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 test/*.test.js",
+    "test": "node --test --test-isolation=none test/*.test.js test/integration/*.test.js",
+    "test:integration": "node --test --test-isolation=none test/integration/*.test.js",
+    "test:contracts": "tsc --project test/types/tsconfig.json",
+    "test:coverage": "node --experimental-test-coverage --test --test-isolation=none --test-coverage-include=src/**/*.js --test-coverage-exclude=src/**/*.d.ts --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 test/*.test.js test/integration/*.test.js",
     "test:mutations": "node scripts/check-mutations.js"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }
