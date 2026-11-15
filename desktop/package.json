@@ -4,11 +4,25 @@
   "private": true,
   "description": "SashaTel desktop softphone — mock mode until Asterisk integration",
   "main": "main.cjs",
+  "type": "module",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "node --test --test-isolation=none tests/*.test.js",
+    "test:components": "playwright test --project=chromium",
+    "test:electron": "playwright test --project=electron",
+    "build": "electron-packager . SashaTel --out=dist --overwrite --ignore='^/(tests|artifacts|test-results|playwright-report|scripts|node_modules|dist)($|/)' --ignore='(playwright|eslint|tsconfig)' --prune=true"
   },
   "devDependencies": {
-    "electron": "45.3.2"
+    "electron": "45.3.2",
+    "@electron/packager": "20.3.0",
+    "@playwright/test": "1.58.2",
+    "@axe-core/playwright": "4.11.1",
+    "typescript": "5.9.3",
+    "eslint": "9.39.2",
+    "@eslint/js": "9.39.2",
+    "globals": "17.3.0"
   }
 }

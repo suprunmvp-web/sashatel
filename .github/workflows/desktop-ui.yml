@@ -1,0 +1,44 @@
+name: Desktop UI
+on:
+  pull_request:
+    paths: ['desktop/**', '.github/workflows/desktop-ui.yml']
+  push:
+    branches: ['feature/desktop-ui-cloud']
+    paths: ['desktop/**', '.github/workflows/desktop-ui.yml']
+permissions:
+  contents: read
+concurrency:
+  group: desktop-ui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ui:
+    # Playwright 1.58 supports 24.04; ubuntu-latest has moved to 26.04.
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck && npm run lint && npm test
+      - name: Remove checked-in screenshots before collecting fresh CI evidence
+        run: rm -f artifacts/*.png
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:components
+      - run: xvfb-run -a npm run test:electron
+      - run: npm run build
+      - run: xvfb-run -a npm run test:electron
+        env:
+          SASHATEL_EXECUTABLE: ./dist/SashaTel-linux-x64/SashaTel
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-ui-evidence
+          path: |
+            desktop/artifacts/*.png
+            desktop/test-results/
