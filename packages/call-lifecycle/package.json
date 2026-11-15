@@ -1,0 +1,13 @@
+{
+  "name": "@sashatel/call-lifecycle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.js",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test --test-isolation=none test/*.test.js",
+    "test:coverage": "node --experimental-test-coverage --test --test-isolation=none --test-coverage-include=src/**/*.js --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 test/*.test.js",
+    "test:mutations": "node scripts/check-mutations.js"
+  }
+}
