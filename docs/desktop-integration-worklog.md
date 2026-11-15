@@ -33,3 +33,7 @@
 2026-11-15: попытка создать «SashaTel — Desktop Integration», RRULE FREQ=HOURLY;INTERVAL=1, завершилась `too_many_active_automations`: current_count=5, plan_limit=5. Новая задача **не создана**; другие пять задач не менялись. Почасовая работа этого инженера в Cloud **не подтверждена и не настроена**. После освобождения слота создать отдельную задачу именно для Issue #9/этой ветки/её Draft PR; не присваивать Core/Audio/UI automations.
 
 При продолжении: проверить PR по head ref, новые review/comment IDs+updated_at и CI run/head SHA; не повторять выполненное и не создавать второй PR. Новые события записывать здесь. Физический Mac не тестировался.
+
+## Draft PR и CI
+
+Draft PR #10: https://github.com/suprunmvp-web/sashatel/pull/10. Head 2a8faff прошёл локальную матрицу; GitHub Core run 43763590209 success. Desktop run 43763590272 выявил Ubuntu AppArmor `No usable sandbox` на системном Chromium. CI исправлен установкой bundled SUID sandbox helpers (root:root, 4755) для pinned Chromium/Electron; не отключает AppArmor, userns policy или sandbox. В CI выбран pinned Chromium вместо случайного /usr/bin/chromium. Packaged helper настраивается отдельно после build; архив создаётся до этого шага и сохраняет исходные executable permissions.

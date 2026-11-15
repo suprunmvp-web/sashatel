@@ -74,6 +74,8 @@ WebRTC требует отдельного устойчивого DOM/media host
 
 Актуальные журналы и снимки: [desktop/artifacts](../desktop/artifacts/README.md). Workflow `Desktop Integration` проверяет чистую установку, Core contracts/coverage/mutations, объединённые unit/security/integration, lint/typecheck, Chromium components/axe, Audio Electron, UI Electron, packaging и тот же UI E2E из пакета. **Ни один Electron launcher не использует `--no-sandbox`; chromiumSandbox:true задан явно.**
 
+Ubuntu с ограниченными unprivileged user namespaces требует корректной установки Chromium SUID sandbox helper (root-owned 4755 в защищённом от записи installation directory). CI устанавливает bundled helpers только у pinned тестовых binaries, не отключает AppArmor или sandbox. Портативный архив сам не выполняет привилегированную системную установку.
+
 Linux build — переносимое распакованное приложение, не OS installer. Локальный `.tar.gz` и GitHub Actions artifact подходят для передачи Linux-сборки. DMG/Windows installer не созданы.
 
 Физический Mac: [Audio MAC-SMOKE](../desktop/audio/MAC-SMOKE.md), плюс компактный UI checklist:
