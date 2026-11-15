@@ -11,15 +11,16 @@
       "relatedReviewUrl": "https://github.com/suprunmvp-web/sashatel/pull/3#pullrequestreview-5911936607",
       "branch": "feature/desktop-audio-integration-hardening",
       "base": "feature/desktop-audio-foundation",
-      "status": "in_progress",
-      "pullRequestUrl": null,
+      "status": "ready_for_review",
+      "pullRequestUrl": "https://github.com/suprunmvp-web/sashatel/pull/7",
+      "testedImplementationCommit": "4007c95a20eb529df183900e3f6c6478ecc610fe",
       "verification": {
         "unitSecurityLifecyclePassed": 57,
         "electronPassed": 14,
         "physicalMacChecked": false,
         "scheduledCloudCodeExecutionChecked": false
       },
-      "notes": "Do not restart or duplicate this task. Reconcile branch/PR status and new substantive source revisions before work. Physical Mac/TCC/Bluetooth checks are documented, not performed."
+      "notes": "This source revision and linked Tech Lead review are implemented and published in Draft PR #7. Skip reimplementation. Handle only new substantive reviews/CI failures against this fix. Physical Mac/TCC/Bluetooth checks are documented, not performed."
     }
   ]
 }
