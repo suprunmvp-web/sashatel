@@ -59,7 +59,7 @@ test('real Electron: secure startup, IPC, external navigation, and empty hardwar
         try { await window.sashatelAudio.testPlayback(); } catch (error) { return error.code; }
       }), 'NO_OUTPUT');
     }
-    assert.equal(await page.locator('#call-state').textContent(), 'Готово к тесту');
+    assert.equal(await page.locator('#call-state').textContent(), 'Готов к набору');
   } finally { await app.close(); }
 });
 

@@ -62,7 +62,7 @@ test('outside siblings, privileged sources, secrets and non-assets are denied ev
   assert.equal(f.allowed(pathToFileURL(path.join(sibling, 'steal.js')).href), false);
   for (const relative of ['main.cjs', 'preload.js', 'security.js', 'sub/main.mjs', 'package.json',
     '.env.js', '.git/config.js', 'node_modules/lib/index.js', 'test/fakes.mjs', 'tests/spec.js',
-    'build/generated.js', 'dist/old.js', 'docs/example.js', 'assets/sound.wav', 'assets/secret.json',
+    'runtime/core/index.js', 'integration/test-transport.mjs', 'scripts/package.mjs', 'build/generated.js', 'dist/old.js', 'docs/example.js', 'assets/sound.wav', 'assets/secret.json',
     'assets/module.js.map', 'assets/dialer.test.js', 'ui/other.html', 'native.node', 'keys.pem']) {
     assert.equal(f.allowed(f.write(relative)), false, relative);
   }
@@ -97,7 +97,7 @@ test('missing/replaced/symlink roots are fail-closed', t => {
 test('CSP remains network-denying with no inline/eval or embedded document permissions', () => {
   const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const csp = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
-  assert.equal(csp, "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self' blob:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'");
+  assert.equal(csp, "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self' blob:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'");
 });
 test('IPC requires owning webContents, main frame, exact URL and zero arguments', () => {
   const event = { sender: contents, senderFrame: contents.mainFrame };

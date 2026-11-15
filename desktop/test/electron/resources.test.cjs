@@ -17,6 +17,9 @@ test('real Electron: new local UI assets load; private/symlink files, inline scr
     for (const file of ['main.cjs', 'preload.cjs', 'security.cjs', 'index.html', 'renderer.js', 'style.css', 'package.json']) {
       await fs.copyFile(path.join(original, file), path.join(root, file));
     }
+    await fs.cp(path.join(original, 'src'), path.join(root, 'src'), { recursive: true });
+    await fs.cp(path.join(original, 'integration'), path.join(root, 'integration'), { recursive: true });
+    await fs.cp(path.join(original, '../packages'), path.join(temp, 'packages'), { recursive: true, filter: source => !source.includes('node_modules') });
     await fs.cp(path.join(original, 'audio'), path.join(root, 'audio'), { recursive: true });
     await fs.writeFile(path.join(root, 'assets', 'review-new-module.mjs'), 'export const localAsset = 42;');
     await fs.writeFile(path.join(root, 'assets', 'review-new-style.css'), ':root { --audio-policy-fixture: permitted; }');

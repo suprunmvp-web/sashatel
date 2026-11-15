@@ -6,7 +6,7 @@ const fs = require('node:fs');
 
 // App-authored renderer assets only. A new asset needs no filename registration.
 const rendererExtensions = new Set(['.js', '.mjs', '.css', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.avif']);
-const privateSegments = new Set(['node_modules', 'test', 'tests', 'build', 'dist', 'docs', 'coverage', 'main', 'preload']);
+const privateSegments = new Set(['node_modules', 'test', 'tests', 'build', 'dist', 'docs', 'coverage', 'main', 'preload', 'runtime', 'integration', 'scripts', 'artifacts']);
 
 function createResourcePolicy(entryPath) {
   const root = path.dirname(path.resolve(entryPath));

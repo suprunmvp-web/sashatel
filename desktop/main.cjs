@@ -1,6 +1,9 @@
 'use strict';
 const { app, BrowserWindow, session, ipcMain, systemPreferences, powerMonitor } = require('electron');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+const demo = process.env.SASHATEL_DEMO === '1';
+let owner, callIPC;
 const { createPolicy } = require('./security.cjs');
 const entryPath = path.join(__dirname, 'index.html');
 let window = null;
@@ -41,13 +44,17 @@ function installAudioIPC() {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1100,
-    height: 760,
-    minWidth: 760,
-    minHeight: 560,
+    width: 460,
+    height: 780,
+    minWidth: 400,
+    minHeight: 640,
+    useContentSize: true,
+    show: false,
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
     title: 'SashaTel',
     backgroundColor: '#f7f8fa',
     webPreferences: {
+      additionalArguments: demo ? ['--sashatel-demo'] : [],
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -56,6 +63,8 @@ function createWindow() {
     }
   });
   window = win;
+  callIPC.bind(win);
+  win.once('ready-to-show', () => win.show());
   void win.loadFile(entryPath).catch(() => { if (!win.isDestroyed()) win.destroy(); });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
@@ -66,7 +75,14 @@ function createWindow() {
   win.on('closed', () => { if (window === win) window = null; });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const corePath = app.isPackaged ? path.join(__dirname, 'runtime/core/index.js') : path.join(__dirname, '../packages/call-lifecycle/src/index.js');
+  const { DesktopCallOwner } = await import(pathToFileURL(corePath).href);
+  const { installCallIPC } = await import('./integration/call-ipc.mjs');
+  const { TestTransport } = demo ? await import('./integration/test-transport.mjs') : {};
+  const transport = demo ? new TestTransport() : null;
+  owner = new DesktopCallOwner(transport || { start() { throw new Error('TRANSPORT_UNAVAILABLE'); }, terminate() { return Promise.resolve(); } });
+  callIPC = installCallIPC({ ipcMain, owner, policy, getWindow: () => window, transport });
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) => {
     callback(policy.permissionRequest(contents, permission, details));
   });
@@ -85,3 +101,5 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+app.on('before-quit', () => { callIPC?.dispose(); owner?.dispose(); });
