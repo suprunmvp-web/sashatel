@@ -20,10 +20,14 @@ export class AudioDeviceService {
     this.pending = null;
     this.disposed = false;
     this.suspended = false;
+    this.lifecycleBlocks = new Set();
+    this.leaseSequence = 0;
     this.state = {
       devices: { inputs: [], outputs: [] }, permission: 'unknown', systemPermission: 'unknown',
       inputId: '', outputId: '', inputGain: 1, volume: 0.7,
       testing: null, meter: null, lastTest: null, error: null,
+      operation: null, suspended: false, disposed: false,
+      capture: { status: 'idle', owner: null, leaseId: null, reason: null },
       capabilities: { outputSelection: typeof this.createElement().setSinkId === 'function',
         systemMicrophoneGain: false, softwareInputGain: true }
     };
@@ -34,8 +38,14 @@ export class AudioDeviceService {
     };
     mediaDevices?.addEventListener('devicechange', this.onDeviceChange);
     this.unsubscribeLifecycle = bridge?.onLifecycle(event => {
-      if (event === 'suspend' || event === 'locked') this.suspend();
-      if (event === 'resume' || event === 'unlocked') void this.resume().catch(() => {});
+      if (event === 'suspend' || event === 'locked') {
+        this.lifecycleBlocks.add(event === 'suspend' ? 'sleep' : 'lock');
+        this.suspend();
+      }
+      if (event === 'resume' || event === 'unlocked') {
+        this.lifecycleBlocks.delete(event === 'resume' ? 'sleep' : 'lock');
+        if (!this.lifecycleBlocks.size) void this.resume().catch(() => {});
+      }
     });
   }
 
@@ -44,14 +54,16 @@ export class AudioDeviceService {
     requireValue(!this.disposed, 'DISPOSED');
     requireValue(typeof listener === 'function', 'INVALID_ARGUMENT');
     this.listeners.add(listener);
-    try { listener(this.getState()); } catch { /* isolate UI subscribers */ }
+    this._notify(listener);
     return () => this.listeners.delete(listener);
+  }
+  _notify(listener) {
+    try { void Promise.resolve(listener(this.getState())).catch(() => {}); }
+    catch { /* isolate both synchronous and async UI subscribers */ }
   }
   _emit(patch) {
     Object.assign(this.state, patch);
-    for (const listener of this.listeners) {
-      try { listener(this.getState()); } catch { /* isolate UI subscribers */ }
-    }
+    for (const listener of this.listeners) this._notify(listener);
   }
   async _run(kind, operation) {
     requireValue(!this.disposed, 'DISPOSED');
@@ -59,7 +71,7 @@ export class AudioDeviceService {
     requireValue(!this.pending, 'BUSY');
     const token = { kind, controller: new AbortController() };
     this.pending = token;
-    this._emit({ error: null });
+    this._emit({ operation: kind, ...(kind !== 'discover' ? { error: null } : {}) });
     try {
       const result = await operation(token.controller.signal);
       requireValue(!token.controller.signal.aborted, 'CANCELLED');
@@ -69,8 +81,8 @@ export class AudioDeviceService {
       if (error.code !== 'CANCELLED') this._emit({ error: { code: error.code } });
       throw error;
     } finally {
-      if (this.pending === token) this.pending = null;
-      if (this.refreshAgain && !this.disposed && !this.suspended) {
+      if (this.pending === token) { this.pending = null; this._emit({ operation: null }); }
+      if (this.refreshAgain && !this.pending && !this.disposed && !this.suspended) {
         this.refreshAgain = false;
         this.onDeviceChange();
       }
@@ -84,6 +96,7 @@ export class AudioDeviceService {
       const pending = this.pending;
       this.pending = null;
       pending.controller.abort();
+      this._emit({ operation: null });
     }
   }
   async _discover(signal) {
@@ -204,9 +217,14 @@ export class AudioDeviceService {
       graph.gain.connect(graph.destination);
       await this._wait(graph.context.resume(), signal);
       requireValue(graph.context.state === 'running', 'AUDIO_INTERRUPTED');
+      requireValue(graph.raw.getAudioTracks().some(track => track.readyState === 'live'), 'DEVICE_LOST');
+      graph.leaseId = ++this.leaseSequence;
+      graph.closed = new Promise(resolve => { graph.resolveClosed = resolve; });
       this.input = graph;
       this._watchInput(graph);
       this._watchContext(graph, () => this._releaseInput('AUDIO_INTERRUPTED'));
+      this._emit({ capture: { status: 'active', owner, leaseId: graph.leaseId, reason: null } });
+      requireValue(this.input === graph && !signal.aborted, 'CANCELLED');
       return graph;
     } catch (error) { releaseGraph(graph); throw error; }
   }
@@ -225,6 +243,8 @@ export class AudioDeviceService {
       const graph = await this._acquireInput(signal, 'transport');
       return Object.freeze({
         stream: graph.stream,
+        // Media lifetime only. This is never evidence that SIP signaling ended.
+        closed: graph.closed,
         release: () => { if (this.input === graph) this._releaseInput('released'); }
       });
     });
@@ -327,7 +347,6 @@ export class AudioDeviceService {
       graph.summary = summary;
       graph.startedAt = performance.now();
       result = new Promise(resolve => { graph.resolve = resolve; });
-      this._emit({ testing: 'microphone', meter: null });
       graph.interval = setInterval(() => {
         try {
           graph.analyser.getFloatTimeDomainData(samples);
@@ -347,6 +366,8 @@ export class AudioDeviceService {
         }
       }, 50);
       graph.timer = setTimeout(() => this._releaseInput('completed'), durationMs);
+      // Configure owned timers before notifying UI, which can unmount/cancel here.
+      this._emit({ testing: 'microphone', meter: null });
     }).then(() => result);
   }
   testPlayback({ durationMs = 1000 } = {}) {
@@ -384,8 +405,8 @@ export class AudioDeviceService {
         const unwatchPlayback = this._watchPlayback(graph.element, () => this._releaseOutput('DEVICE_UNAVAILABLE'));
         graph.unwatch = () => { unwatchContext(); unwatchPlayback(); };
         result = new Promise(resolve => { graph.resolve = resolve; });
-        this._emit({ testing: 'playback' });
         graph.timer = setTimeout(() => this._releaseOutput('completed'), durationMs);
+        this._emit({ testing: 'playback' });
       } catch (error) { releaseGraph(graph); throw error; }
     }).then(() => result);
   }
@@ -394,6 +415,10 @@ export class AudioDeviceService {
     if (!graph) return;
     this.input = null;
     releaseGraph(graph);
+    graph.resolveClosed(Object.freeze({ leaseId: graph.leaseId, reason }));
+    const interrupted = !['completed', 'cancelled', 'released', 'disposed'].includes(reason);
+    this._emit({ capture: { status: interrupted ? 'interrupted' : 'idle', owner: graph.owner,
+      leaseId: graph.leaseId, reason } });
     if (graph.summary) {
       const result = { ...graph.summary, elapsedMs: Math.round(performance.now() - graph.startedAt), reason };
       this._emit({ testing: this.output ? 'playback' : null, meter: null, lastTest: result });
@@ -418,14 +443,16 @@ export class AudioDeviceService {
   suspend() {
     this.suspended = true;
     this._cancel();
-    this._releaseInput('suspended');
-    this._releaseOutput('suspended');
+    this._releaseInput(this.disposed ? 'disposed' : 'suspended');
+    this._releaseOutput(this.disposed ? 'disposed' : 'suspended');
     this._detachPlaybacks();
-    this._emit({ error: { code: 'SUSPENDED' } });
+    this._emit({ suspended: true, disposed: this.disposed, error: { code: this.disposed ? 'DISPOSED' : 'SUSPENDED' } });
   }
   resume() {
     requireValue(!this.disposed, 'DISPOSED');
+    requireValue(!this.lifecycleBlocks.size, 'SUSPENDED');
     this.suspended = false;
+    this._emit({ suspended: false, error: null });
     // Never reopen a microphone or restart audio automatically after wake/lock.
     return this.refreshDevices();
   }

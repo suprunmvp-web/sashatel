@@ -6,7 +6,20 @@ export const deferred = () => {
   return { promise, resolve, reject };
 };
 export const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-export class Track extends EventTarget {
+export class ObservedTarget extends EventTarget {
+  listeners = new Map();
+  addEventListener(type, listener, options) {
+    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+    this.listeners.get(type).add(listener);
+    super.addEventListener(type, listener, options);
+  }
+  removeEventListener(type, listener, options) {
+    this.listeners.get(type)?.delete(listener);
+    super.removeEventListener(type, listener, options);
+  }
+  get listenerCount() { return [...this.listeners.values()].reduce((sum, set) => sum + set.size, 0); }
+}
+export class Track extends ObservedTarget {
   readyState = 'live';
   stop() { this.readyState = 'ended'; }
   unplug() { this.stop(); this.dispatchEvent(new Event('ended')); }
@@ -18,7 +31,7 @@ export function stream() {
 
 export function fixture(options = {}) {
   const raw = [], contexts = [], elements = [], constraints = [];
-  const media = new EventTarget();
+  const media = new ObservedTarget();
   let devices = [
     { kind: 'audioinput', deviceId: 'mic-a', label: 'Mic A' },
     { kind: 'audioinput', deviceId: 'mic-b', label: 'Mic B' },
@@ -28,7 +41,7 @@ export function fixture(options = {}) {
   media.enumerateDevices = async () => devices;
   media.getUserMedia = async value => { constraints.push(value); const s = stream(); raw.push(s); return s; };
   const createContext = () => {
-    const context = new EventTarget();
+    const context = new ObservedTarget();
     context.state = 'suspended';
     context.nodes = [];
     const node = () => {
@@ -50,7 +63,7 @@ export function fixture(options = {}) {
     return context;
   };
   const createElement = () => {
-    const element = Object.assign(new EventTarget(), { srcObject: null, volume: 1, playing: false, sinkId: '',
+    const element = Object.assign(new ObservedTarget(), { srcObject: null, volume: 1, playing: false, sinkId: '',
       async setSinkId(id) { this.sinkId = id; },
       async play() { this.playing = true; }, pause() { this.playing = false; } });
     if (options.noSink) delete element.setSinkId;

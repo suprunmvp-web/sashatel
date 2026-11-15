@@ -9,6 +9,9 @@ function clean(f) {
   assert.ok(f.contexts.every(c => c.state === 'closed'), 'contexts closed');
   assert.ok(f.contexts.flatMap(c => c.nodes).every(n => !n.connections.length), 'nodes disconnected');
   assert.ok(f.elements.every(e => !e.playing && !e.srcObject), 'playback detached');
+  assert.ok(f.raw.flatMap(s => s.getTracks()).every(t => t.listenerCount === 0), 'input track listeners removed');
+  assert.ok([...f.contexts, ...f.elements].every(target => target.listenerCount === 0), 'context/playback listeners removed');
+  if (f.service.disposed) assert.equal(f.media.listenerCount, 0, 'devicechange listener removed');
 }
 
 test('discovery does not request capture; snapshots and subscribers are isolated', async () => {
@@ -187,7 +190,7 @@ test('suspend releases transport and playback; resume does not restart either', 
   assert.equal((await playback).reason, 'suspended');
   await rejects(f.service.acquireInput(), 'SUSPENDED');
   const count = f.raw.length;
-  await f.service.resume();
+  f.lifecycle('resume'); await tick();
   assert.equal(f.raw.length, count);
   const lease = await f.service.acquireInput(); lease.release();
   f.service.dispose(); clean(f);

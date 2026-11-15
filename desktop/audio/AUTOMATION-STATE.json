@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "repository": "suprunmvp-web/sashatel",
+  "scope": "Audio Device Service and Electron audio security only",
+  "tasks": [
+    {
+      "key": "suprunmvp-web/sashatel:issue:5:2026-11-15T17:27:33Z",
+      "sourceUrl": "https://github.com/suprunmvp-web/sashatel/issues/5",
+      "sourceUpdatedAt": "2026-11-15T17:27:33Z",
+      "relatedReviewIds": ["PRR_kwDOVSsFp88AAAABYGD-Xw"],
+      "relatedReviewUrl": "https://github.com/suprunmvp-web/sashatel/pull/3#pullrequestreview-5911936607",
+      "branch": "feature/desktop-audio-integration-hardening",
+      "base": "feature/desktop-audio-foundation",
+      "status": "in_progress",
+      "pullRequestUrl": null,
+      "verification": {
+        "unitSecurityLifecyclePassed": 57,
+        "electronPassed": 14,
+        "physicalMacChecked": false,
+        "scheduledCloudCodeExecutionChecked": false
+      },
+      "notes": "Do not restart or duplicate this task. Reconcile branch/PR status and new substantive source revisions before work. Physical Mac/TCC/Bluetooth checks are documented, not performed."
+    }
+  ]
+}

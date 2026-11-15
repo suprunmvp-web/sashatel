@@ -4,10 +4,11 @@ files:
   - main.cjs
   - preload.cjs
   - security.cjs
-  - renderer.js
   - index.html
-  - style.css
-  - audio/**
+  - '**/*.{js,mjs,css,svg,png,jpg,jpeg,webp,gif,ico,avif}'
+  - '!**/{node_modules,test,tests,build,dist,docs,coverage}/**'
+  - '!**/.*'
+  - '!**/*.{test,spec}.*'
 mac:
   target: dmg
   hardenedRuntime: true
