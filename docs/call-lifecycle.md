@@ -1,5 +1,7 @@
 # Call Lifecycle Core — архитектура и интеграция
 
+Документ фиксирует исходный результат PR #2. Расширение по Issue #4 — [Desktop owner / typed contracts / integration harness](core-desktop-contract.md); там актуальные команды, dev compiler и результаты расширенного набора тестов. Новое ядро по-прежнему не подключено к UI/SIP автоматически.
+
 ## Обследование опубликованного проекта
 
 Основа работы — `feat/desktop-softphone-v1`, commit `139b121d9e05b0a4bb0b8f1e934f156fd4b7e544`. В `main` (`b1e5ae1`) только `index.html` и минимальный README. Поэтому PR ядра направлен в Desktop-ветку: изменения веб-прототипа не переносятся в `main` вместе с этой работой.
