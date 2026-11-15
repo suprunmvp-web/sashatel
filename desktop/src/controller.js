@@ -1,4 +1,5 @@
 import { sanitizePhone } from './format.js';
+import { historyOutcome } from './history-mapping.js';
 
 /** Presentation state only. Call state/time, history and audio come from ports. */
 export class DesktopController {
@@ -40,9 +41,10 @@ export class DesktopController {
     if (snapshot.callId && ['ended', 'failed'].includes(snapshot.state) && !this.recorded.has(snapshot.callId)) {
       this.recorded.add(snapshot.callId);
       if (this.services.calls.mode === 'demo') {
+        const outcome = historyOutcome(snapshot);
         this.services.history.recordDemo?.({ id: snapshot.callId, number: snapshot.number,
-          at: this.started.get(snapshot.callId) ?? new Date(), mode: 'demo', durationMs: snapshot.durationMs,
-          status: snapshot.state === 'failed' ? 'failed' : ['cancelled', 'no-answer'].includes(snapshot.reason ?? '') ? 'cancelled' : 'answered' });
+          at: this.started.get(snapshot.callId) ?? new Date(), mode: 'demo', ...outcome,
+          durationMs: outcome.connectedAt === null ? 0 : snapshot.durationMs });
       }
     }
     this.notify();

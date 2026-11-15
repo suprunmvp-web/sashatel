@@ -13,12 +13,14 @@ The isolated demo adapter is **not a second production lifecycle**. It has no tr
 Read the actual shared API from `packages/call-lifecycle/src` in PR #2 / `feat/call-lifecycle-core` (`1655e7e` inspected). The production facade should:
 
 - Forward `start(raw)` and `endCall(callId)` results without optimistic success. Forward subscriptions and read `getSnapshot()` initially: Core subscriptions do not send an initial callback.
-- Expose the same `state`, `callId`, `number`, `canStart`, `durationMs`, `reason`. Add `connection` only from the actual SIP registration/transport owner; do not infer registration from call state or a resolved start command.
+- Expose the same `state`, `callId`, `number`, `canStart`, `durationMs`, `connectedAt`, `reason`. Add `connection` only from the actual SIP registration/transport owner; do not infer registration from call state or a resolved start command.
 - Use one owner for the call and one canonical Core import. The view never recreates Core to clear a failure. Core's `canStart=false` stays authoritative, including terminal quarantine after unconfirmed cleanup.
 - Preserve Core-owned monotonic duration. The view's 250 ms repaint reads `getSnapshot().durationMs` and never starts or advances call states. Repainting alone cannot confirm an answer.
 - Return sanitized user-facing command errors. UI uses textContent and does not expose native exceptions. Lifecycle ownership, disposal, reattachment after reload, cross-window arbitration and SIP cleanup belong to the integration owner, not view unmount.
 
-Controller records **only demo** terminal events into demo history. Live history must come from Backend through `HistoryPort.load()` and the existing history refresh/retry controls. It must return Date objects in the UI facade, stable IDs, mode, number, status and duration. No client-generated billing/CDR. Server limits and permissions should arrive as sanitized command errors; no client-side implementation of the eight-call rule.
+History classification requires a finite non-negative `connectedAt` from the service, including zero. An `ended` state, hangup reason, positive duration or a previously rendered active screen is not answer evidence. Before confirmation, local cancellation/hangup maps to `cancelled`, no-answer/early remote hangup to `missed`, and disposal/unrecognized reasons to `unknown`; failures remain `failed`. Unconfirmed duration is zero. `HistoryItem` is a discriminated union: `answered` requires numeric answer evidence.
+
+Controller records **only demo** terminal events into demo history. Live history must come from Backend through `HistoryPort.load()` and the existing history refresh/retry controls. It must return Date objects in the UI facade, stable IDs, mode, number, status, answer evidence (`connectedAt`) and duration; map unsupported/missing answer evidence to an honest unknown status. No client-generated billing/CDR. Server limits and permissions should arrive as sanitized command errors; no client-side implementation of the eight-call rule.
 
 ## AudioPort → existing Audio Device Service
 

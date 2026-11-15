@@ -37,8 +37,19 @@ test('actual Electron window: security, navigation, call states, screenshots, si
     await page.getByRole('button',{name:'Обрыв',exact:true}).click();
     await expect(page.locator('#last-result')).toContainText('Соединение потеряно');
     await page.screenshot({animations:'disabled',path:'artifacts/electron-failed-dark.png'});
+    // Actual demo events exercise cancelled, missed and confirmed sub-second calls.
+    for (const outcome of ['cancelled','missed','answered']) {
+      await page.locator('#call').click();
+      if (outcome === 'answered') await page.getByRole('button',{name:'Ответ',exact:true}).click();
+      if (outcome === 'missed') await page.getByRole('button',{name:'Абонент завершил',exact:true}).click();
+      else await page.locator('#hangup').click();
+    }
     await page.getByRole('button',{name:'История',exact:true}).click();
-    await expect(page.locator('.history-row')).toHaveCount(1);
+    await expect(page.locator('.history-row')).toHaveCount(4);
+    await expect(page.locator('.history-details > span')).toHaveText([
+      'Демо · Исходящий · Завершён', 'Демо · Исходящий · Без ответа',
+      'Демо · Исходящий · Отменён', 'Демо · Исходящий · Ошибка',
+    ]);
     await page.screenshot({animations:'disabled',path:'artifacts/electron-history-dark.png'});
     await page.getByRole('button',{name:'Настройки',exact:true}).click();
     await expect(page.locator('#microphone')).toBeDisabled();

@@ -18,12 +18,14 @@
 
 - `npm run typecheck`: строгая проверка JS/JSDoc + контрактов TypeScript.
 - `npm run lint`: ESLint.
-- `npm test`: 19 unit tests — валидация, защита от повторных команд, запрет автоматического ответа, время до/после ответа, история и redial, ошибки команд, terminating/quarantine, cleanup подписчиков, перевод публичного Audio API без media-эффектов.
-- `npm run test:components`: 6 Chromium scenarios — реальный clipboard, редактирование selection, Enter, переходы/пустые состояния/ошибки/retry, сохранение темы, contract-driven audio, stop/late result cleanup. Axe WCAG 2 A/AA + 2.1 AA: Dialer/History/Settings в двух темах; размеры 400×640, 460×780, 760×900, 320×512. Полная видимость call CTA проверяется внутри main при поддерживаемом минимуме, а не только по границе окна.
+- `npm test`: 33 unit tests — валидация, защита от повторных команд, запрет автоматического ответа, время до/после ответа, история и redial, ошибки команд, terminating/quarantine, cleanup подписчиков, перевод публичного Audio API без media-эффектов.
+- `npm run test:components`: 7 Chromium scenarios — реальный clipboard, редактирование selection, Enter, переходы/пустые состояния/ошибки/retry, сохранение темы, contract-driven audio, stop/late result cleanup. Axe WCAG 2 A/AA + 2.1 AA: Dialer/History/Settings в двух темах; размеры 400×640, 460×780, 760×900, 320×512. Полная видимость call CTA проверяется внутри main при поддерживаемом минимуме, а не только по границе окна.
 - `DISPLAY=:98 npm run test:electron`: один составной E2E — настоящее окно, preload, security preferences, реальный переход Connecting → Ringing → Active → Failed, история, настройки, снимки, resize, zoom 125/150%, отсутствие pageerror.
 - `npm run build -- --electron-zip-dir=/tmp/sashatel-electron-zips`: упаковка Linux x64. ZIP проверен по SHA256 из npm Electron checksums.
 - Тот же E2E с `SASHATEL_EXECUTABLE=./dist/SashaTel-linux-x64/SashaTel`: запуск упакованного приложения.
 - `git diff --check`: без ошибок whitespace.
+
+Регрессия из [Tech Lead review 5912232629](https://github.com/suprunmvp-web/sashatel/pull/8#pullrequestreview-5912232629): до исправления новые проверки дали 19 passed / 14 failed, после — 33 passed / 0 failed. Проверены terminal snapshots без ответа, ранний remote hangup, disposed/неизвестная причина, отсутствующий/невалидный timestamp, `connectedAt=0`, connected→ended и отсутствие переноса ответа на следующий вызов. Снимок истории теперь содержит реальные демо-события answered/missed/cancelled/failed. Unknown проверен UI component test через контракт, без добавления фиктивных production-событий.
 
 Тесты исправили регрессии повторного Enter, сброса выбора устройств до отправки команды, недоступного stop во время pending diagnostic, late audio после навигации, контраста вторичного текста и скрытого CTA на минимальном размере.
 

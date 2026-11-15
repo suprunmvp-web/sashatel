@@ -113,3 +113,52 @@ test('live history is not manufactured from client call events', async () => {
   assert.deepEqual(await services.history.load(), []);
   controller.dispose();
 });
+
+// PR #8 review 5912232629: terminal reason and elapsed time are not answer evidence.
+for (const [name, evidence, reason, expected] of [
+  ['local hangup before answer', null, 'local-hangup', 'cancelled'],
+  ['early remote hangup', null, 'remote-hangup', 'missed'],
+  ['disposed before answer', null, 'disposed', 'unknown'],
+  ['unknown reason before answer', null, 'future-reason', 'unknown'],
+  ['no reason before answer', null, null, 'unknown'],
+  ['no answer', null, 'no-answer', 'missed'],
+  ['explicit cancellation', null, 'cancelled', 'cancelled'],
+  ['missing legacy evidence', undefined, 'remote-hangup', 'missed'],
+  ['invalid timestamp', NaN, 'local-hangup', 'cancelled'],
+  ['infinite timestamp', Infinity, 'disposed', 'unknown'],
+  ['negative timestamp', -1, 'disposed', 'unknown'],
+  ['answer at monotonic zero', 0, 'local-hangup', 'answered'],
+  ['confirmed remote hangup', 1200, 'remote-hangup', 'answered'],
+]) {
+  test(`terminal history: ${name}`, async () => {
+    const snapshot = { ...new DemoCallAdapter().getSnapshot(), state: 'ended', callId: 'review-terminal', number: '+79991234567', canStart: true, connectedAt: evidence, reason, durationMs: 5000 };
+    const calls = { mode: 'demo', getSnapshot: () => snapshot, subscribe: () => () => {} };
+    const { controller, services } = fixture(calls);
+    try {
+      const [item] = await services.history.load();
+      assert.equal(item.status, expected);
+      assert.equal(item.connectedAt, expected === 'answered' ? evidence : null);
+      assert.equal(item.durationMs, expected === 'answered' ? 5000 : 0);
+      controller.onCall(snapshot);
+      assert.equal((await services.history.load()).length, 1);
+    } finally { controller.dispose(); }
+  });
+}
+
+test('demo connected → ended preserves answer evidence at zero; next call cannot inherit it', async () => {
+  const { calls, controller, services } = fixture(new DemoCallAdapter(() => 0));
+  try {
+    controller.edit('9991234567'); await controller.start();
+    assert.equal(calls.getSnapshot().connectedAt, null);
+    calls.send('connected'); await controller.end();
+    const [answered] = await services.history.load();
+    assert.equal(answered.status, 'answered');
+    assert.equal(answered.connectedAt, 0);
+    assert.equal(answered.durationMs, 0);
+    await controller.start(); calls.send('remote-ended');
+    const [missed] = await services.history.load();
+    assert.equal(missed.status, 'missed');
+    assert.equal(missed.connectedAt, null);
+    assert.equal(missed.durationMs, 0);
+  } finally { controller.dispose(); }
+});

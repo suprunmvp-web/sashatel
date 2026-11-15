@@ -18,3 +18,14 @@ Own Draft PR: https://github.com/suprunmvp-web/sashatel/pull/8. Initial implemen
 The cloud scheduler confirmed an enabled hourly Desktop UI task, with UI-only scope and no merge permission. It returned inherited environment selection with no resolved environment list. Future cloud shell provisioning/autonomous builds are not yet verified; report a concrete blocker if a run has only connector access. Never claim that a scheduled check proves a successful development run.
 
 On subsequent runs first inspect own PR/head, existing workflow status, new UI Issues, review comments and this log. Update the existing Draft PR for the same task; use a new own branch/PR only for a distinct task. Do not duplicate external Core/Audio work or infer task ownership from the shared GitHub username.
+
+
+## PR #8 Tech Lead review 5912232629 — 2026-11-15
+
+- Source: https://github.com/suprunmvp-web/sashatel/pull/8#pullrequestreview-5912232629, created 18:41:41 UTC. This is an existing PR correction; no new Issue or PR. Own remote/local head matched `ff54b8e`, working tree was clean and no competing own update was present.
+- Defect reproduced: 14 new regression checks failed on the old UI (19 prior unit tests passed). No Core/Audio changes were needed.
+- CallSnapshot now carries service-confirmed `connectedAt`; demo snapshots preserve/reset that evidence. History mapping requires a finite non-negative timestamp, accepts zero, distinguishes cancelled/missed/unknown, and keeps unconfirmed duration at zero. The answered HistoryItem variant requires numeric evidence. View labels reflect those distinctions.
+- Unit checks now 33; component scenarios now 7, including all five history labels. Electron source/packaged flow now also creates cancelled, missed and confirmed demo calls for the actual history screenshot. Results and capture provenance are maintained in artifacts/README and the PR body.
+- This scheduled run successfully resumed the Cloud checkout and executed shell/test commands independently of the owner's Mac. The earlier unresolved environment observation above is historical; it is not a current provisioning blocker. No real SIP or physical audio/macOS proof is claimed.
+
+- Local verification completed: strict typecheck, lint, 33/33 unit tests, 7/7 Chromium scenarios, Electron source E2E, Linux packaging and packaged Electron E2E all passed. Updated actual Electron history/minimum-window captures were visually inspected. Review 5912232629 is implemented in this PR; final GitHub CI evidence is recorded in the PR body after push.

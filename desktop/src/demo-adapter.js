@@ -12,16 +12,14 @@ export class DemoCallAdapter {
   /** @type {'demo'} */
   mode = 'demo';
   /** @type {import('./contracts').CallSnapshot} */
-  snapshot = { connection: 'unavailable', state: 'idle', callId: null, number: '', canStart: true, durationMs: 0, reason: null };
+  snapshot = { connection: 'unavailable', state: 'idle', callId: null, number: '', canStart: true, durationMs: 0, connectedAt: null, reason: null };
   /** @type {Set<(snapshot: Readonly<import('./contracts').CallSnapshot>) => void>} */
   listeners = new Set();
-  /** @type {number | null} */
-  connectedAt = null;
   sequence = 0;
   constructor(/** @type {() => number} */ now = () => performance.now()) { this.now = now; }
   getSnapshot() {
-    return Object.freeze({ ...this.snapshot, durationMs: this.snapshot.state === 'active' && this.connectedAt !== null
-      ? Math.max(0, this.now() - this.connectedAt) : this.snapshot.durationMs });
+    return Object.freeze({ ...this.snapshot, durationMs: this.snapshot.state === 'active' && this.snapshot.connectedAt !== null
+      ? Math.max(0, this.now() - this.snapshot.connectedAt) : this.snapshot.durationMs });
   }
   subscribe(/** @type {(snapshot: Readonly<import('./contracts').CallSnapshot>) => void} */ listener) {
     this.listeners.add(listener);
@@ -32,14 +30,13 @@ export class DemoCallAdapter {
     if (!this.snapshot.canStart) return { ok: false, error: 'Вызов уже выполняется.' };
     const number = normalizePhone(raw);
     if (!number) return { ok: false, error: 'Введите 10 цифр или номер с кодом +7 / 8.' };
-    this.connectedAt = null;
-    this.snapshot = { connection: 'unavailable', state: 'connecting', callId: `demo-${++this.sequence}`, number, canStart: false, durationMs: 0, reason: null };
+    this.snapshot = { connection: 'unavailable', state: 'connecting', callId: `demo-${++this.sequence}`, number, canStart: false, durationMs: 0, connectedAt: null, reason: null };
     this.publish();
     return { ok: true };
   }
   endCall(/** @type {string} */ callId) {
     if (this.snapshot.callId !== callId || this.snapshot.canStart) return { ok: false };
-    this.finish('ended', this.connectedAt === null ? 'cancelled' : 'local-hangup');
+    this.finish('ended', this.snapshot.connectedAt === null ? 'cancelled' : 'local-hangup');
     return { ok: true };
   }
   finish(/** @type {'ended' | 'failed'} */ state, /** @type {string} */ reason) {
@@ -53,12 +50,11 @@ export class DemoCallAdapter {
     if (event === 'ringing' && state === 'connecting') {
       this.snapshot = { ...this.snapshot, state: 'ringing' };
     } else if (event === 'connected' && (state === 'connecting' || state === 'ringing')) {
-      this.connectedAt = this.now();
-      this.snapshot = { ...this.snapshot, state: 'active' };
+      this.snapshot = { ...this.snapshot, state: 'active', connectedAt: this.now() };
     } else if (event === 'connection-lost' || (event === 'rejected' && state !== 'active')) {
       this.finish('failed', event); return;
     } else if (event === 'remote-ended') {
-      this.finish('ended', this.connectedAt === null ? 'no-answer' : 'remote-hangup'); return;
+      this.finish('ended', this.snapshot.connectedAt === null ? 'no-answer' : 'remote-hangup'); return;
     } else return;
     this.publish();
   }

@@ -9,6 +9,8 @@ export interface CallSnapshot {
   number: string;
   canStart: boolean;
   durationMs: number;
+  /** Service-confirmed monotonic answer timestamp. Zero is valid; null means unconfirmed. */
+  connectedAt: number | null;
   reason: string | null;
 }
 export interface CommandResult { ok: boolean; error?: string }
@@ -53,14 +55,17 @@ export interface DesktopServices {
   history: HistoryPort;
   demo?: DemoControls;
 }
-export interface HistoryItem {
+/** Answered history requires explicit service evidence, never a terminal reason or duration. */
+export type HistoryOutcome =
+  | { status: 'answered'; connectedAt: number }
+  | { status: 'cancelled' | 'missed' | 'failed' | 'unknown'; connectedAt: number | null };
+export type HistoryItem = HistoryOutcome & {
   id: string;
   number: string;
   at: Date;
   mode: Mode;
-  status: 'answered' | 'cancelled' | 'failed';
   durationMs: number;
-}
+};
 export interface HistoryPort {
   load(): Promise<readonly HistoryItem[]>;
   /** Only the session demo implements this. Live history must come from Backend. */

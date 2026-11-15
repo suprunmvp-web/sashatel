@@ -2,6 +2,8 @@ import { icon } from './icons.js';
 import { displayNumber, duration, sanitizePhone } from './format.js';
 
 const stateLabels = { idle: 'Готов к набору', connecting: 'Соединяем…', ringing: 'Ожидаем ответа…', active: 'Разговор', terminating: 'Завершаем…', ended: 'Вызов завершён', failed: 'Не удалось соединиться' };
+/** @type {Record<import('./contracts').HistoryItem['status'], string>} */
+const historyStatusLabels = { answered: 'Завершён', cancelled: 'Отменён', missed: 'Без ответа', failed: 'Ошибка', unknown: 'Результат неизвестен' };
 const reasons = {
   cancelled: 'Вызов отменён до ответа.', 'no-answer': 'Абонент не ответил.',
   rejected: 'Абонент отклонил вызов.', 'connection-lost': 'Соединение потеряно.',
@@ -230,7 +232,7 @@ export function mountDesktop(root, controller) {
       const direction = document.createElement('span'); direction.className = 'direction-icon'; direction.innerHTML = icon('arrow');
       const details = document.createElement('div'); details.className = 'history-details';
       const number = document.createElement('strong'); number.textContent = displayNumber(item.number);
-      const status = document.createElement('span'); status.textContent = `${item.mode === 'demo' ? 'Демо · ' : ''}Исходящий · ${item.status === 'answered' ? 'Завершён' : item.status === 'failed' ? 'Ошибка' : 'Без ответа'}`;
+      const status = document.createElement('span'); status.textContent = `${item.mode === 'demo' ? 'Демо · ' : ''}Исходящий · ${historyStatusLabels[item.status] ?? historyStatusLabels.unknown}`;
       const date = document.createElement('time'); date.dateTime = item.at.toISOString(); date.textContent = item.at.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
       details.append(number, status, date);
       const time = document.createElement('span'); time.className = 'history-duration'; time.textContent = duration(item.durationMs); time.setAttribute('aria-label', `Длительность ${time.textContent}`);

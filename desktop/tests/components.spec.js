@@ -86,7 +86,7 @@ test('empty history, failure, cancelled call and theme persistence', async ({pag
   await call(page); await page.getByRole('button',{name:'Отменить вызов',exact:true}).click();
   await page.getByRole('button',{name:'История',exact:true}).click();
   await expect(page.locator('.history-row')).toHaveCount(2);
-  await expect(page.locator('.history-row').first()).toContainText('Без ответа');
+  await expect(page.locator('.history-row').first()).toContainText('Отменён');
   await page.getByRole('button',{name:'Настройки',exact:true}).click();
   await expect(page.getByLabel('Микрофон',{exact:true})).toBeDisabled();
   await expect(page.getByText('Разрешение микрофона не запрашивалось.')).toBeVisible();
@@ -182,4 +182,30 @@ test('pending audio diagnostic can be stopped and a late result is cleaned up af
   await page.getByRole('button',{name:'Телефон',exact:true}).click();
   await page.evaluate(()=>{window.fixture.audio.snapshot.testing='microphone';window.fixture.finishTest();});
   await expect.poll(()=>page.evaluate(()=>window.fixture.audio.snapshot.testing)).toBeNull();
+});
+
+
+test('history labels require service-confirmed answer evidence', async ({page}) => {
+  await setupFixture(page);
+  await page.evaluate(() => {
+    const {calls}=window.fixture;
+    for (const [index, [reason, connectedAt, state]] of [
+      ['disposed', null, 'ended'], ['local-hangup', null, 'ended'],
+      ['remote-hangup', null, 'ended'], ['local-hangup', 0, 'ended'],
+      ['connection-lost', 12, 'failed'],
+    ].entries()) {
+      calls.snapshot={...calls.snapshot, callId:`evidence-${index}`, number:'+79991234567', reason, connectedAt, state, durationMs:5000, canStart:true};
+      calls.publish();
+    }
+  });
+  await page.getByRole('button',{name:'История',exact:true}).click();
+  await expect(page.locator('.history-details > span')).toHaveText([
+    'Демо · Исходящий · Ошибка', 'Демо · Исходящий · Завершён',
+    'Демо · Исходящий · Без ответа', 'Демо · Исходящий · Отменён',
+    'Демо · Исходящий · Результат неизвестен',
+  ]);
+  await expect(page.locator('.history-duration')).toHaveText(['00:05','00:05','00:00','00:00','00:00']);
+  await page.getByRole('button',{name:'Набрать +7 999 123-45-67'}).last().click();
+  await expect(page.locator('#phone')).toHaveValue('+79991234567');
+  await expect(page.locator('#call-screen')).toBeHidden();
 });
