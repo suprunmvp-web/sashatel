@@ -1,2 +1,3 @@
-[mappings]
-Master.csv => ${CSV_QUOTE(${CEL(eventtime)})},${CSV_QUOTE(${CEL(eventtype)})},${CSV_QUOTE(${CEL(channame)})},${CSV_QUOTE(${CEL(uniqueid)})},${CSV_QUOTE(${CEL(linkedid)})},${CSV_QUOTE(${CEL(extra)})}
+[Master.csv]
+format=dsv
+fields=EventTime,EventType,ChanName,UniqueID,LinkedID,EventExtra
