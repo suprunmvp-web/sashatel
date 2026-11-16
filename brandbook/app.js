@@ -340,13 +340,20 @@
     themeButton?.setAttribute('aria-label',mode==='light'?'Переключить на тёмную тему':'Переключить на светлую тему');
     themeButton?.setAttribute('title',mode==='light'?'Тёмная тема':'Светлая тема');
     const glyph=themeButton?.querySelector('.theme-switch-icon');
-    if(glyph){glyph.dataset.icon=mode==='light'?'sun':'moon';window.renderSashaIcons?.();}
+    const dashboardTheme=document.getElementById('dashboard-theme-switch');
+    const dashboardGlyph=dashboardTheme?.querySelector('[data-icon]');
+    if(glyph) glyph.dataset.icon=mode==='light'?'sun':'moon';
+    if(dashboardGlyph) dashboardGlyph.dataset.icon=mode==='light'?'sun':'moon';
+    dashboardTheme?.setAttribute('aria-label',mode==='light'?'Переключить на тёмную тему':'Переключить на светлую тему');
+    dashboardTheme?.setAttribute('title',mode==='light'?'Тёмная тема':'Светлая тема');
+    window.renderSashaIcons?.();
     try{localStorage.setItem('sashatel-brandbook-theme',mode)}catch{}
   }
   let chosenTheme='dark';
   try{chosenTheme=localStorage.getItem('sashatel-brandbook-theme')==='light'?'light':'dark';}catch{}
   setTheme(chosenTheme);
   themeButton?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+  $('#dashboard-theme-switch')?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 
   const dateButton=$('#date-range-button'),datePanel=$('#date-range-panel');
   dateButton?.addEventListener('click',()=>{
