@@ -231,7 +231,7 @@
 @media(max-width:620px) {
   .launch-body { min-height:450px; align-items:center; }
   .launch-screen { padding:245px 24px 30px; }
-  [data-launch-state="auth"] .launch-body { min-height:520px; }
+  .launch-window:not([data-launch-state="phone"]) .launch-body { height:520px; }
   [data-launch-screen="auth"] { padding-top:215px; }
 }
 @media(prefers-reduced-motion:no-preference) {
@@ -243,7 +243,7 @@
   }
 }
 
-.launch-window[data-launch-state="handoff"] .launch-body { background:#100e0c; }
+
 .launch-window[data-launch-state="phone"] > .macos-titlebar,
 .launch-window[data-launch-state="phone"] #launch-particles { display:none; }
 .launch-window[data-launch-state="phone"] .launch-body { justify-content:center; align-items:center; background:radial-gradient(ellipse,#292018,#12100e 74%); padding:22px 12px; }

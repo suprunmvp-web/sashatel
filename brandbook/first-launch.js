@@ -18,29 +18,32 @@
   const phoneWindow = document.getElementById('softphone-window');
   const phoneHome = phoneWindow.parentElement;
   const scene = canvas.parentElement;
-  const poses = {open:[0,0,.9],auth:[.035,-.015,1.06],link:[-.025,.02,.86],ready:[.015,0,1.04],handoff:[-.02,0,1.55]};
-  let previousPose=poses.open;
-  const ease = value => 1 - (1 - Math.min(1, Math.max(0, value))) ** 3;
+  const zoom = {open:.9,auth:1.10,link:.86,ready:2.08,handoff:13};
+  let fromZoom = .32, fromOffset = 0;
+  const ease = value => {
+    const t = Math.min(1, Math.max(0,value));
+    return t*t*(3-2*t);
+  };
+  function zoomAt(now) {
+    const target=zoom[state]??zoom.open;
+    if(reduced.matches)return target;
+    return fromZoom+(target-fromZoom)*(state==='handoff'?Math.min(1,Math.max(0,(now-changed)/920))**2.4:ease((now-changed)/820));
+  }
+
+  function offsetAt(now) {
+    const target=state==='ready'||state==='handoff'?.12:0;
+    return reduced.matches?target:fromOffset+(target-fromOffset)*ease((now-changed)/820);
+  }
 
   function draw(now) {
     if (!context || !width || !height) return;
-    const elapsed = reduced.matches ? 3 : (now - changed) / 1000;
     const time = reduced.matches ? 0 : now / 1000;
     const compact = width < 540;
-    const progress=ease(elapsed/.82);
-    const pose=poses[state];
-    const [shiftX,shiftY,scale]=pose.map((value,index)=>previousPose[index]+(value-previousPose[index])*progress);
-    const x0=width*((compact?.5:.73)+shiftX);
-    const y0=height*((compact?.29:.49)+shiftY);
+    const scale=zoomAt(now);
+    const x0=width*((compact?.5:.73)+offsetAt(now));
+    const y0=height*(compact?.29:.49);
     const radius=Math.min(width*(compact?.26:.21),height*(compact?.23:.34))*scale;
-    const gather=(state==='open'?1.15:state==='auth'?.23:0)*(1-ease(elapsed/1.15));
-    const drawIn=state==='link'?.18*ease(elapsed/1.15):0;
-    const burst=state==='handoff'?ease(elapsed/.85):0;
-    const shake=reduced.matches?0:(1-progress)*.07;
-    canvas.style.filter=reduced.matches?'none':'blur('+((1-progress)*(state==='open'?.7:2.4)+burst*2).toFixed(2)+'px)';
-    const crest = state === 'ready' && !reduced.matches
-      ? Math.sin(Math.PI * Math.min(1, elapsed / 1.1)) ** 2 : 0;
-    const energy = state === 'open' ? .48 : state === 'ready' ? .58 + crest * .46 : .65 + drawIn * .75;
+    const energy=.65;
     context.clearRect(0, 0, width, height);
     const glow = context.createRadialGradient(x0, y0, radius * .27, x0, y0, radius * 1.75);
     glow.addColorStop(0, 'transparent');
@@ -58,15 +61,25 @@
       const rx = x * .91 - y * .42;
       const ry = x * .42 + y * .91;
       const wave = .92 + .065 * Math.sin(dot.azimuth * 8 + dot.height * 13 - time * 1.85);
-      const spread = 1 + gather * dot.drift - drawIn + .11 * crest + burst * dot.drift * 2.8 + shake * Math.sin(dot.pulse+time*23);
-      const r = radius * dot.depth * wave * spread;
+      const flight=state==='handoff'&&!reduced.matches?Math.min(1,Math.max(0,(now-changed)/920))**2.4:0;
+      const depthZoom=1/Math.max(.24,1-flight*(.21+.53*(z+1)/2));
+      const r = radius * dot.depth * wave * depthZoom;
       const projection = 1 + z * .18;
       const flutter = .8 + .2 * Math.sin(time * 2.1 + dot.pulse);
-      context.globalAlpha = energy * (1-burst) * flutter * (.27 + .65 * (z + 1) / 2);
+      context.globalAlpha = energy * flutter * (.27 + .65 * (z + 1) / 2);
       context.fillStyle = dot.warm ? '#f0bc61' : z > .3 ? '#fff3df' : '#a9a19d';
-      context.fillRect(x0 + rx * r * projection, y0 + ry * r * projection, dot.size * projection, dot.size * projection);
+      const px=x0+rx*r*projection, py=y0+ry*r*projection;
+      const size=dot.size*projection*scale*depthZoom;
+      if(flight>.02){
+        context.strokeStyle=context.fillStyle;
+        context.lineWidth=Math.max(.6,size*.38);
+        context.beginPath();
+        context.moveTo(px,py);
+        context.lineTo(px-(px-x0)*flight*.26,py-(py-y0)*flight*.26);
+        context.stroke();
+      }else context.fillRect(px,py,size,size);
     }
-    if(!reduced.matches&&(state==='open'||state==='auth')){
+    if(!reduced.matches){
       for(let i=0;i<73;i++){
         const dot=dots[i];
         const x=((dot.azimuth/tau+time*.043*dot.drift)%1)*width;
@@ -101,9 +114,11 @@
 
   function go(next, focus = true) {
     clearTimeout(timer);
-    previousPose=poses[state]||poses.open;
+    const now=performance.now();
+    fromZoom=next==='open'?.32:zoomAt(now);
+    fromOffset=next==='open'?0:offsetAt(now);
     state = next;
-    changed = performance.now();
+    changed = now;
     windowView.dataset.launchState = state;
     const screen = screens.find(item => item.dataset.launchScreen === next);
     screens.forEach(item => { item.hidden = item !== screen; });
