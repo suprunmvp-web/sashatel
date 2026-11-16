@@ -274,6 +274,70 @@
       "contexts": [
         "theme"
       ]
+    },
+    {
+      "name": "trash-2",
+      "meaning": "Удаление записи или объекта после подтверждения",
+      "contexts": [
+        "action",
+        "table"
+      ]
+    },
+    {
+      "name": "plus",
+      "meaning": "Добавить запись, сотрудника или интеграцию",
+      "contexts": [
+        "action"
+      ]
+    },
+    {
+      "name": "square",
+      "meaning": "Чекбокс — не выбрано",
+      "contexts": [
+        "selection"
+      ]
+    },
+    {
+      "name": "square-check",
+      "meaning": "Чекбокс — выбрано",
+      "contexts": [
+        "selection"
+      ]
+    },
+    {
+      "name": "list-checks",
+      "meaning": "Массовые действия с выбранными строками",
+      "contexts": [
+        "table"
+      ]
+    },
+    {
+      "name": "contact-round",
+      "meaning": "Карточка контакта",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "phone-incoming",
+      "meaning": "Входящий звонок",
+      "contexts": [
+        "calls"
+      ]
+    },
+    {
+      "name": "phone-outgoing",
+      "meaning": "Исходящий звонок",
+      "contexts": [
+        "calls"
+      ]
+    },
+    {
+      "name": "circle-check",
+      "meaning": "Успешное состояние",
+      "contexts": [
+        "status"
+      ]
     }
   ],
   "rulesOfUse": [
@@ -284,6 +348,8 @@
     "Новые иконки сначала утверждаются через реестр.",
     "Для качества телефонного соединения использовать signal (полосы), не wifi. Реальные данные определяют число активных полос.",
     "Состояние развёрнутого сайдбара обозначать panel-left-close, свёрнутого — panel-left-open, обе с доступной подписью.",
-    "В переключателе темы использовать sun/moon SVG, без Unicode-глифов."
+    "В переключателе темы использовать sun/moon SVG, без Unicode-глифов.",
+    "Состояние выбора строки реализовывать нативным <input type=checkbox>, а не декоративной SVG-пиктограммой; square/square-check — только в иллюстрациях.",
+    "Иконка settings воспроизводит утверждённую геометрию из исходного кабинета, одинаково в сайдбаре и макетах."
   ]
 }
