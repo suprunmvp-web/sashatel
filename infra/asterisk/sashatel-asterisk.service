@@ -1,0 +1,28 @@
+[Unit]
+Description=SashaTel internal Asterisk lab
+Wants=network-online.target
+After=network-online.target
+Requires=ufw.service
+After=ufw.service
+
+[Service]
+Type=simple
+User=sashatel-pbx
+Group=sashatel-pbx
+UMask=0077
+RuntimeDirectory=sashatel-asterisk
+StateDirectory=sashatel-asterisk
+LogsDirectory=sashatel-asterisk
+ExecStartPre=+/bin/sh -ec 'LC_ALL=C /usr/sbin/ufw status | /usr/bin/grep -qx "Status: active"'
+ExecStart=/opt/sashatel-asterisk/22.12.0/sbin/asterisk -f -C /etc/sashatel-asterisk/asterisk.conf
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=4096
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
