@@ -338,6 +338,13 @@
       "contexts": [
         "dialer"
       ]
+    },
+    {
+      "name": "folder",
+      "meaning": "Папка «Программы» в ознакомительном сценарии установки macOS",
+      "contexts": [
+        "installation"
+      ]
     }
   ],
   "rulesOfUse": [
