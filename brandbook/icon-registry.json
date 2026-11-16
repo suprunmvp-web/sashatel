@@ -1,0 +1,229 @@
+{
+  "version": "lucide@0.456.0",
+  "rules": {
+    "defaultSize": 18,
+    "secondarySize": 16,
+    "prominentSize": 20,
+    "strokeWidth": 1.75,
+    "strokeLinecap": "round",
+    "strokeLinejoin": "round",
+    "fill": "none",
+    "defaultColor": "currentColor",
+    "noEmojiAsIcons": true,
+    "noUnicodeSymbols": true,
+    "oneSemanticMeaningPerIcon": true
+  },
+  "allowed": [
+    {
+      "name": "phone",
+      "meaning": "Начать исходящий звонок; раздел звонков",
+      "contexts": [
+        "navigation",
+        "action"
+      ]
+    },
+    {
+      "name": "phone-call",
+      "meaning": "Идёт разговор",
+      "contexts": [
+        "status"
+      ]
+    },
+    {
+      "name": "phone-off",
+      "meaning": "Завершить вызов",
+      "contexts": [
+        "call"
+      ]
+    },
+    {
+      "name": "history",
+      "meaning": "История вызовов",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "settings",
+      "meaning": "Настройки приложения",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "wifi",
+      "meaning": "Состояние интернет-соединения",
+      "contexts": [
+        "desktop"
+      ]
+    },
+    {
+      "name": "wifi-off",
+      "meaning": "Соединение отсутствует",
+      "contexts": [
+        "desktop"
+      ]
+    },
+    {
+      "name": "mic",
+      "meaning": "Микрофон включён",
+      "contexts": [
+        "call"
+      ]
+    },
+    {
+      "name": "mic-off",
+      "meaning": "Микрофон выключен",
+      "contexts": [
+        "call"
+      ]
+    },
+    {
+      "name": "pause",
+      "meaning": "Удержание вызова",
+      "contexts": [
+        "call"
+      ]
+    },
+    {
+      "name": "grid-3x3",
+      "meaning": "DTMF-клавиатура",
+      "contexts": [
+        "call"
+      ]
+    },
+    {
+      "name": "ellipsis",
+      "meaning": "Дополнительные действия",
+      "contexts": [
+        "menu"
+      ]
+    },
+    {
+      "name": "search",
+      "meaning": "Поиск",
+      "contexts": [
+        "global"
+      ]
+    },
+    {
+      "name": "bell",
+      "meaning": "Уведомления",
+      "contexts": [
+        "global"
+      ]
+    },
+    {
+      "name": "chevron-down",
+      "meaning": "Раскрывающееся меню",
+      "contexts": [
+        "global"
+      ]
+    },
+    {
+      "name": "layout-dashboard",
+      "meaning": "Обзор",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "chart-no-axes-column",
+      "meaning": "Статистика и аналитика",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "users",
+      "meaning": "Команда",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "contact",
+      "meaning": "Контакты",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "layers",
+      "meaning": "Сценарии",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "plug",
+      "meaning": "Интеграции",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "circle-help",
+      "meaning": "Помощь",
+      "contexts": [
+        "navigation"
+      ]
+    },
+    {
+      "name": "arrow-right",
+      "meaning": "Переход или продолжение",
+      "contexts": [
+        "action"
+      ]
+    },
+    {
+      "name": "copy",
+      "meaning": "Копировать значение",
+      "contexts": [
+        "action"
+      ]
+    },
+    {
+      "name": "download",
+      "meaning": "Экспорт / скачать",
+      "contexts": [
+        "action"
+      ]
+    },
+    {
+      "name": "calendar-days",
+      "meaning": "Диапазон дат",
+      "contexts": [
+        "filter"
+      ]
+    },
+    {
+      "name": "check",
+      "meaning": "Подтверждено / успешно",
+      "contexts": [
+        "status"
+      ]
+    },
+    {
+      "name": "x",
+      "meaning": "Закрыть",
+      "contexts": [
+        "action"
+      ]
+    },
+    {
+      "name": "volume-2",
+      "meaning": "Вывод звука",
+      "contexts": [
+        "call"
+      ]
+    }
+  ],
+  "rulesOfUse": [
+    "Не использовать символы Unicode вместо SVG-иконок.",
+    "Иконки не являются самостоятельной навигацией без tooltip и aria-label.",
+    "Цвет вызова не равен цвету состояния сети.",
+    "Качество интернета — измеряемый статус, не декоративная зелёная Wi‑Fi иконка.",
+    "Новые иконки сначала утверждаются через реестр."
+  ]
+}
