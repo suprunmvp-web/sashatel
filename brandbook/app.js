@@ -431,4 +431,23 @@
     setFocus(-1);
   }
 
+
+  // The iconography section demonstrates the real native checkbox contract.
+  const selectExample=document.getElementById('icon-example-select');
+  const deleteExample=document.getElementById('icon-example-delete');
+  const addExample=document.getElementById('icon-example-add');
+  const iconStatus=document.getElementById('icon-example-status');
+  selectExample?.addEventListener('change',()=>{
+    if(deleteExample)deleteExample.disabled=!selectExample.checked;
+    if(iconStatus)iconStatus.textContent=selectExample.checked?'Одна строка выбрана':'Нет выбранных строк';
+  });
+  addExample?.addEventListener('click',()=>{
+    if(iconStatus)iconStatus.textContent='Демо: добавление доступно. Данные не изменены.';
+  });
+  deleteExample?.addEventListener('click',()=>{
+    if(iconStatus)iconStatus.textContent='Демо: подтверждение удаления. Данные не изменены.';
+    if(selectExample)selectExample.checked=false;
+    deleteExample.disabled=true;
+  });
+
 })();
