@@ -108,8 +108,6 @@
 .date-range-button [data-icon]{width:16px;height:16px}
 .date-range-panel{position:absolute;right:0;top:42px;z-index:20;min-width:254px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:9px;box-shadow:0 12px 32px rgba(0,0,0,.22);display:grid;gap:10px}
 .date-range-panel[hidden]{display:none}
-.date-range-panel label{display:grid;gap:5px;color:var(--sub);font-size:12px}
-.date-range-panel input{min-width:0;width:100%;padding:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:5px;color-scheme:dark}
 .date-range-panel button{background:var(--fg);color:var(--bg);padding:8px;border-radius:5px;border:0;font-size:12px}
 .date-range-panel small{color:var(--sub);line-height:1.4}
 /* Folded desktop navigation, not a second widget laid over the page. */
@@ -183,7 +181,6 @@
 :root[data-theme="light"] .particle-stage{background:radial-gradient(ellipse at 50% 50%,#1b1b20,#0d0d10 88%);color:#fff}
 :root[data-theme="light"] .particle-stage-center{color:#fff}
 :root[data-theme="light"] .header-action{border-color:#dedee3}
-:root[data-theme="light"] .date-range-panel input{color-scheme:light}
 @media(max-width:1180px){.theme-switch-label{display:none}.dash-title{flex-wrap:wrap}.date-range-wrap{margin-left:auto}}
 @media(max-width:700px){.theme-switch{height:30px;padding:0 8px}.date-range-button{font-size:11px}.dashboard.sidebar-collapsed{grid-template-columns:55px minmax(0,1fr)}.sidebar-collapsed .dashboard-content{padding-left:18px;padding-right:18px}}
 @media(prefers-reduced-motion:reduce){.donut-segment,.dashboard{transition:none!important}}
@@ -225,7 +222,6 @@
 :root[data-theme="light"] .dash-utility .notify{color:#17171a}
 :root[data-theme="light"] .dash-utility .date-range-button{border-color:#dedee3;color:#17171a}
 :root[data-theme="light"] .date-range-panel{background:#fff;border-color:#dedee3}
-:root[data-theme="light"] .date-range-panel input{background:#fafafa;color:#17171a}
 @media(max-width:1200px){
   .dash-utility{gap:6px}
   .dash-utility .date-range-button{font-size:10px;max-width:170px}
@@ -286,7 +282,6 @@
 .dash-utility .date-range-button { max-width: 100%; font-size: 11px; }
 .dash-utility .date-range-button [data-icon] { flex-shrink: 0; }
 .dash-utility .user-chip { height: 34px; }
-.date-range-panel { right: 0; width: min(270px, 100%); min-width: 0; }
 .kpis { margin-top: 26px; padding-bottom: 22px; row-gap: 16px; }
 .kpis > div { padding-left: 14px; }
 .kpis strong { font-size: clamp(19px, 4cqw, 29px); }
@@ -339,3 +334,85 @@
 :root[data-theme="light"] #chart-line { stroke: #45454c; }
 :root[data-theme="light"] #chart-grad stop { stop-color: #45454c; }
 :root[data-theme="light"] .chart-legend i { background: #45454c; }
+
+/* Color roles and reference calendar */
+:root { --signal-mustard:#aa843d; --signal-ochre:#765a25; }
+.color-roles { display:grid; grid-template-columns:repeat(auto-fit,minmax(205px,1fr)); margin:28px 0 48px; border-top:1px solid var(--line); }
+.color-roles button { display:flex; align-items:center; gap:12px; padding:13px 8px; border:0; border-bottom:1px solid var(--line); background:transparent; color:var(--fg); text-align:left; cursor:pointer; }
+.color-roles button:hover { background:var(--hover); }
+.color-roles i { flex:0 0 20px; height:20px; border-radius:4px; background:var(--sample); }
+.color-roles small { display:block; margin-top:5px; color:var(--sub); font:11px var(--mono); }
+.donut-accent { fill:none; stroke:var(--signal-mustard); stroke-width:4; pointer-events:none; }
+.donut-legend > div:first-child i { background:var(--signal-mustard); }
+:root[data-theme="light"] { --bg:#eceae5; --surface:#f4f2ed; --hover:#e3e1dc; --line:#cbc8c0; --fg:#25241f; --sub:#54524c; --dim:#625f56; --accent:var(--signal-ochre); }
+:root[data-theme="light"] .site-header { background:rgba(236,234,229,.97); }
+:root[data-theme="light"] .hero { background:radial-gradient(ellipse at 68% 47%,#d8d5cd 0%,var(--bg) 68%); }
+:root[data-theme="light"] .hero-vignette { background:linear-gradient(90deg,var(--bg),#eceae588 48%,transparent),linear-gradient(0deg,var(--bg),transparent 25%); }
+:root[data-theme="light"] .hero h1 em,
+:root[data-theme="light"] .section-title span,
+:root[data-theme="light"] .big-statement span,
+:root[data-theme="light"] .eyebrow,
+:root[data-theme="light"] .section-meta,
+:root[data-theme="light"] .subheading,
+:root[data-theme="light"] .dashboard-nav > span,
+:root[data-theme="light"] .sidebar-support,
+:root[data-theme="light"] .dashboard-foot { color:var(--sub); }
+:root[data-theme="light"] .dashboard,
+:root[data-theme="light"] .date-range-panel { background:var(--surface); border-color:var(--line); }
+:root[data-theme="light"] .dashboard-nav > span.selected { background:var(--hover); color:var(--fg); }
+:root[data-theme="light"] .donut-segment { stroke:var(--surface); }
+:root[data-theme="light"] .donut-segment[data-seg="0"] { fill:#b6b3aa; }
+:root[data-theme="light"] .donut-segment[data-seg="1"],
+:root[data-theme="light"] .donut-legend > div[data-seg="1"] i { fill:#98958c; background:#98958c; }
+:root[data-theme="light"] .donut-accent { stroke:var(--signal-ochre); }
+:root[data-theme="light"] .donut-legend > div:first-child i { background:var(--signal-ochre); }
+:root[data-theme="light"] .kpis,
+:root[data-theme="light"] .chart-section,
+:root[data-theme="light"] .operator-section td,
+:root[data-theme="light"] .operator-section th,
+:root[data-theme="light"] .donut-legend > div { border-color:var(--line); }
+
+.dash-utility { z-index:2; }
+.date-range-panel {
+  width:min(760px,100%);
+  min-width:0;
+  padding:0;
+  grid-template-columns:minmax(125px,.22fr) minmax(0,1fr);
+  gap:0;
+  box-shadow:0 16px 40px #0003;
+}
+.date-picker-main { position:relative; min-width:0; padding:14px; }
+.date-presets { display:grid; align-content:start; gap:3px; padding:9px; border-right:1px solid var(--line); }
+.date-range-panel button { color:var(--fg); background:transparent; }
+.date-range-panel button:hover:not(:disabled) { background:var(--hover); }
+.date-range-panel button:disabled { color:var(--dim); cursor:default; opacity:.58; }
+.date-presets button { min-height:32px; text-align:left; }
+.date-presets button[aria-pressed="true"] { background:var(--hover); font-weight:600; }
+.date-month-navigation { position:absolute; inset:10px 14px auto; display:flex; justify-content:space-between; pointer-events:none; }
+.date-month-navigation button { width:30px; height:30px; padding:0; border:1px solid var(--line); font-size:20px; line-height:1; pointer-events:auto; }
+.date-months { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.date-month h5 { text-align:center; margin:1px 29px 12px; font-size:13px; min-height:26px; display:grid; place-items:center; }
+.date-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); row-gap:3px; }
+.date-days > * { display:grid; place-items:center; min-height:30px; padding:0; font-variant-numeric:tabular-nums; }
+.date-days span { color:var(--sub); font-size:10px; text-transform:uppercase; }
+.date-days button { border-radius:0; }
+.date-days .in-range { background:var(--hover); }
+.date-days .range-start,.date-days .range-end { background:var(--fg); color:var(--bg); font-weight:600; }
+.date-days .range-start { border-radius:7px 0 0 7px; }
+.date-days .range-end { border-radius:0 7px 7px 0; }
+.date-days .range-start.range-end { border-radius:7px; }
+.date-days .range-start:hover,.date-days .range-end:hover { background:var(--fg)!important; }
+.date-days button:focus-visible { z-index:1; outline-offset:-3px; }
+.date-footer { display:flex; align-items:center; flex-wrap:wrap; gap:8px; border-top:1px solid var(--line); margin-top:10px; padding:10px 0 7px; }
+.date-footer output { margin-right:auto; color:var(--sub); font-size:12px; }
+.date-footer button { border:1px solid var(--line); }
+#date-apply { background:var(--fg); color:var(--bg); font-weight:600; }
+@media (max-width:980px) {
+  .date-months { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:620px) {
+  .date-range-panel { grid-template-columns:minmax(0,1fr); }
+  .date-presets { display:flex; overflow-x:auto; border-right:0; border-bottom:1px solid var(--line); }
+  .date-presets button { white-space:nowrap; }
+  .date-footer output { flex:1 0 100%; }
+}

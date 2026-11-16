@@ -32,6 +32,7 @@
     {
       "name": "phone-off",
       "meaning": "Завершить вызов",
+      "geometry": "Горизонтальная трубка, опущенная на рычаг",
       "contexts": [
         "call"
       ]
@@ -321,6 +322,7 @@
     {
       "name": "phone-incoming",
       "meaning": "Входящий звонок",
+      "geometry": "Трубка со стрелкой к центру",
       "contexts": [
         "calls"
       ]
@@ -328,6 +330,7 @@
     {
       "name": "phone-outgoing",
       "meaning": "Исходящий звонок",
+      "geometry": "Трубка со стрелкой от центра",
       "contexts": [
         "calls"
       ]

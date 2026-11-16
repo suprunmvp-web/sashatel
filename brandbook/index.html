@@ -14,6 +14,7 @@
   <script defer src="./icons.js"></script>
   <script defer src="./app.js"></script>
   <script defer src="./softphone.js"></script>
+  <script defer src="./date-picker.js"></script>
 </head>
 <body>
   <a class="skip" href="#content">Перейти к содержимому</a>
@@ -69,7 +70,15 @@
           <div class="swatch swatch-yellow" data-hex="#E8C547"><span>05 / Signal</span><strong>#E8C547</strong></div>
         </div>
         <div class="palette-caption"><p>Пропорция внимания: 95% нейтральных цветов / 5% акцента. Это композиционный принцип, не требование к буквальной площади каждого пикселя.</p><span>Нажмите на цвет, чтобы скопировать HEX</span></div>
-        <div class="semantic-colors"><span>02.1.1 / Semantic statuses</span><p>Красный и зелёный — только для событий и состояний звонков, проверки связи, логов, ошибок и дельт. Не использовать как декоративную вторую акцентную палитру.</p><div class="semantic-samples"><span class="semantic-good"><i></i> Успешно · #39C985</span><span class="semantic-bad"><i></i> Ошибка · #E86A71</span><span class="semantic-warning"><i></i> Внимание · #E8C547</span></div></div>
+        <div class="color-roles" aria-label="Оттенки и статусы">
+          <button type="button" data-hex="#E8C547" style="--sample:#E8C547"><i></i><span>Сигнал<small>#E8C547 · активное состояние</small></span></button>
+          <button type="button" data-hex="#AA843D" style="--sample:#AA843D"><i></i><span>Горчичный<small>#AA843D · дуга и маркер</small></span></button>
+          <button type="button" data-hex="#765A25" style="--sample:#765A25"><i></i><span>Тёмная охра<small>#765A25 · акцент светлой темы</small></span></button>
+          <button type="button" data-hex="#39C985" style="--sample:#39C985"><i></i><span>Успех · тёмная тема<small>#39C985</small></span></button>
+          <button type="button" data-hex="#E86A71" style="--sample:#E86A71"><i></i><span>Ошибка · тёмная тема<small>#E86A71</small></span></button>
+          <button type="button" data-hex="#168353" style="--sample:#168353"><i></i><span>Успех · светлая тема<small>#168353</small></span></button>
+          <button type="button" data-hex="#BD3647" style="--sample:#BD3647"><i></i><span>Ошибка · светлая тема<small>#BD3647</small></span></button>
+        </div>
         <div class="subheading typography-heading"><span>02.2 / Typography</span><span>Geist / Geist Mono</span></div>
         <div class="type-specimen"><div class="specimen-main"><div class="specimen-letter">Ag<span class="specimen-dot">.</span></div><div class="type-note">Гармония пропорций.<br>Точность каждого символа.</div></div><div class="specimen-aside"><div class="type-meta"><span>Headlines / Geist</span><span>500 — Medium</span></div><p class="type-example">Система, которая<br>работает без шума.</p><div class="type-meta lower"><span>Data / Geist Mono</span><span>400 — Regular</span></div><div class="mono-examples">02:34:18<br>+14 320<br>42,8 %</div></div></div>
         <div class="subheading spacing-heading"><span>02.3 / Rhythm</span><span>4 px base unit</span></div>
@@ -99,8 +108,16 @@
           <aside class="dashboard-sidebar"><div class="org"><span class="org-avatar">ПЗ</span><div><strong>ООО «Полезный звонок»</strong><small>Основной аккаунт</small></div><button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Свернуть сайдбар" aria-pressed="false" aria-controls="dashboard-sidebar-nav" title="Свернуть меню"><i data-icon="panel-left"></i></button></div>
             <nav id="dashboard-sidebar-nav" aria-label="Навигация личного кабинета" class="dashboard-nav"><span class="selected" title="Статистика"><i data-icon="activity"></i><em>Статистика</em></span><span title="Транки"><i data-icon="server"></i><em>Транки</em></span><span title="История звонков"><i data-icon="phone"></i><em>История звонков</em></span><span title="Интеграции"><i data-icon="plug"></i><em>Интеграции</em></span><span title="Настройки"><i data-icon="settings"></i><em>Настройки</em></span><span title="Биллинг"><i data-icon="credit-card"></i><em>Биллинг</em></span></nav><span class="sidebar-support" title="Поддержка"><i data-icon="circle-help"></i><em>Поддержка</em></span>
           </aside>
-          <div class="dashboard-content"><div class="dash-utility"><button class="notify" type="button" title="Уведомления" aria-label="Уведомления"><i data-icon="bell"></i><b aria-hidden="true"></b></button><button id="dashboard-theme-switch" class="dashboard-theme-switch" type="button" aria-label="Переключить тему" title="Переключить тему"><i data-icon="moon"></i></button><div class="date-range-wrap"><button class="date-range-button" id="date-range-button" type="button" aria-expanded="false" aria-controls="date-range-panel"><i data-icon="calendar-days"></i><span id="date-range-label">1 ноя — 30 ноя 2026</span></button><div class="date-range-panel" id="date-range-panel" hidden><label>От<input id="date-from" type="date" value="2026-11-01"></label><label>До<input id="date-to" type="date" value="2026-11-30"></label><button id="date-apply" type="button">Применить</button><small>На графике показаны демоданные за ноябрь 2026 г.</small></div></div><span class="user-chip" title="Профиль">ИС</span></div><div class="dash-title"><div><h3>Статистика</h3><p>Аналитика звонков и эффективности команды</p></div></div>
-            <div class="kpis"><div><span>Наборов</span><strong>14 320</strong></div><div><span>Дозвон</span><strong>42,8 %</strong></div><div><span>Средний разговор</span><strong>02:34</strong></div><div><span>Минут</span><strong>36 982</strong></div></div>
+          <div class="dashboard-content"><div class="dash-utility"><button class="notify" type="button" title="Уведомления" aria-label="Уведомления"><i data-icon="bell"></i><b aria-hidden="true"></b></button><button id="dashboard-theme-switch" class="dashboard-theme-switch" type="button" aria-label="Переключить тему" title="Переключить тему"><i data-icon="moon"></i></button><div class="date-range-wrap"><button class="date-range-button" id="date-range-button" type="button" aria-expanded="false" aria-controls="date-range-panel"><i data-icon="calendar-days"></i><span id="date-range-label">1 ноя — 30 ноя 2026</span></button><div class="date-range-panel" id="date-range-panel" role="dialog" aria-label="Выбор периода" hidden>
+                <div id="date-presets" class="date-presets" aria-label="Быстрый выбор периода"></div>
+                <div class="date-picker-main">
+                  <div class="date-month-navigation"><button id="date-prev" type="button" aria-label="Предыдущий месяц">‹</button><button id="date-next" type="button" aria-label="Следующий месяц">›</button></div>
+                  <div id="date-months" class="date-months"></div>
+                  <div class="date-footer"><output id="date-summary" aria-live="polite"></output><button id="date-cancel" type="button">Отмена</button><button id="date-apply" type="button">Применить</button></div>
+                  <small>Демо-дата — 30 ноября 2026 г. График показывает весь ноябрь.</small>
+                </div>
+              </div></div><span class="user-chip" title="Профиль">ИС</span></div><div class="dash-title"><div><h3>Статистика</h3><p>Аналитика звонков и эффективности команды</p></div></div>
+            <div class="kpis"><div><span>Наборов</span><strong>+&nbsp;14 320</strong></div><div><span>Дозвон</span><strong>42,8 %</strong></div><div><span>Средний разговор</span><strong>02:34</strong></div><div><span>Минут</span><strong>+&nbsp;36 982</strong></div></div>
             <div class="chart-section"><div class="chart-top"><h4>Дозвон по дням</h4></div><div class="chart-area" id="chart-area"><div class="chart-scale" aria-hidden="true"><span>60%</span><span>45%</span><span>30%</span><span>15%</span><span>0%</span></div><svg id="rate-chart" role="img" aria-label="Динамика процента дозвона за ноябрь 2026 года" viewBox="0 0 1000 245" preserveAspectRatio="none"><defs><linearGradient id="chart-grad" x1="0%" x2="0%" y1="0%" y2="100%"><stop offset="0" stop-color="#e9e9ec" stop-opacity=".10"/><stop offset="1" stop-color="#e9e9ec" stop-opacity="0"/></linearGradient></defs><g class="grid-lines"></g><path id="chart-fill" fill="url(#chart-grad)"></path><path id="chart-line" fill="none" stroke="#ededf0" stroke-width="1.7" vector-effect="non-scaling-stroke"></path><line id="chart-cross" class="chart-cross" x1="0" x2="0" y1="16" y2="216" opacity="0"></line><circle id="chart-dot" cx="0" cy="0" r="4.5" fill="#e8c547" stroke="#0b0b0d" stroke-width="2" opacity="0"></circle><rect id="chart-hit" x="45" y="16" width="940" height="202" fill="transparent"></rect></svg><div id="chart-tooltip" class="chart-tooltip" role="status" aria-live="off"><span id="tooltip-date">18 ноя</span><strong id="tooltip-value">42,8 %</strong></div></div><div class="chart-axis"><span>1 ноя</span><span>8 ноя</span><span>15 ноя</span><span>22 ноя</span><span>30 ноя</span></div><div class="chart-legend"><i></i> Дозвон, %</div></div>
             <div class="dash-bottom"><section class="donut-section"><h4>Итог набора</h4><div class="donut-layout"><div class="donut donut-interactive" aria-label="Распределение результатов звонков"><svg id="donut-svg" viewBox="0 0 200 200" role="img" aria-label="Доли результатов звонков"></svg><div class="donut-middle"><strong id="donut-value">14 320</strong><span id="donut-caption">всего</span></div></div><div class="donut-legend"><div data-seg="0" tabindex="0"><i></i><span>Ответил человек</span><strong>42,8 %</strong></div><div data-seg="1" tabindex="0"><i></i><span>Автоответчик</span><strong>18,6 %</strong></div><div data-seg="2" tabindex="0"><i></i><span>Не взяли трубку</span><strong>16,9 %</strong></div><div data-seg="3" tabindex="0"><i></i><span>Занято или сброс</span><strong>12,1 %</strong></div><div data-seg="4" tabindex="0"><i></i><span>Абонент недоступен</span><strong>9,6 %</strong></div></div></div></section>
               <section class="operator-section"><h4>Операторы</h4><table><thead><tr><th>Оператор</th><th>Наборов</th><th>Дозвон</th><th>Средний разговор</th></tr></thead><tbody><tr><td>МТС</td><td>5 281</td><td>43,9 %</td><td>02:40</td></tr><tr><td>Билайн</td><td>3 478</td><td>41,7 %</td><td>02:31</td></tr><tr><td>МегаФон</td><td>3 102</td><td>42,1 %</td><td>02:36</td></tr><tr><td>Т2</td><td>2 459</td><td>42,5 %</td><td>02:29</td></tr></tbody></table></section></div>
@@ -165,92 +182,120 @@
       <div class="container section-frame">
         <div class="section-meta"><span>07 / Product experience</span><span>macOS desktop · UX concept · interactive</span></div>
         <h2 class="section-title" id="desktop-title">Made for<br><span>the conversation.</span></h2>
-        <p class="standard-lead">Не ещё один SaaS в отдельном окне. Небольшое нативное приложение, в котором менеджер набирает номер и сосредотачивается на разговоре. Ниже — интерактивные концепты установки и вызова, а не готовый macOS-дистрибутив.</p>
+        <p class="standard-lead">Компактная звонилка для менеджера. Пройдите первый запуск, наберите номер и посмотрите, как окно меняется во время разговора.</p>
 
-        <div class="desktop-divider"><span>01 / INSTALLATION EXPERIENCE</span><span>Animated walkthrough · illustrative, no software download</span></div>
+        <div class="desktop-divider"><span>01 / FIRST LAUNCH</span><span>Интерактивный пример</span></div>
         <div class="install-workspace">
           <div class="install-editorial">
-            <h3>From download.<br>To first call.</h3>
-            <p>Первые действия без инструкции на пять страниц. Статусы понятны, но не перегружены. Движение показывает перемещение приложения, а не украшает пустой экран.</p>
-            <div class="install-steps" role="group" aria-label="Шаги установки приложения">
-              <button type="button" class="install-step is-current" data-install-step="0"><span>01</span><strong>Скачать .dmg</strong><small>Получение приложения</small></button>
-              <button type="button" class="install-step" data-install-step="1"><span>02</span><strong>Перенести в Программы</strong><small>Установка через Finder</small></button>
-              <button type="button" class="install-step" data-install-step="2"><span>03</span><strong>Разрешить микрофон</strong><small>Системный запрос macOS</small></button>
-              <button type="button" class="install-step" data-install-step="3"><span>04</span><strong>Начать работать</strong><small>Открыть звонилку</small></button>
+            <h3>Первый запуск</h3>
+            <p>При открытии приложения частицы сходятся к центру. Затем поле затихает за окном входа. После входа проверка микрофона появляется в момент, когда он понадобится для звонка.</p>
+            <div class="install-steps" role="group" aria-label="Экраны первого запуска">
+              <button type="button" class="install-step is-current" data-launch-step="boot" aria-current="step"><strong>Запуск</strong><small>Частицы собираются вокруг сигнала</small></button>
+              <button type="button" class="install-step" data-launch-step="auth"><strong>Авторизация</strong><small>Одно действие для входа</small></button>
+              <button type="button" class="install-step" data-launch-step="mic"><strong>Микрофон</strong><small>Запрос в контексте звонка</small></button>
             </div>
-            <button id="install-play" class="install-play" type="button"><i data-icon="arrow-right"></i><span>Воспроизвести сценарий</span></button>
+            <button id="launch-replay" class="install-play" type="button"><i data-icon="arrow-right"></i>Повторить первый запуск</button>
           </div>
-          <div class="install-preview" data-install-state="0" aria-live="polite">
-            <div class="macos-titlebar">
-              <div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div>
-              <span id="install-window-title">SashaTel — установка</span>
-              <span>macOS</span>
-            </div>
-            <div class="install-scene">
-              <p class="install-stage-label" id="install-stage-label">01 / Download complete</p>
-              <div class="install-items">
-                <div class="app-file" id="install-app-file"><div class="app-icon"><img src="./assets/logo-reference-trace.svg" width="39" height="20" alt="" /></div><span>Приложение</span></div>
-                <div class="install-arrow" aria-hidden="true"><i data-icon="arrow-right"></i></div>
-                <div class="applications-folder"><i data-icon="folder"></i><span>Программы</span></div>
+          <div class="launch-window" id="launch-window" data-launch-state="boot">
+            <div class="macos-titlebar"><div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div><span>SashaTel</span></div>
+            <div class="launch-body">
+              <canvas id="launch-particles" aria-hidden="true"></canvas>
+              <div class="launch-screen" data-launch-screen="boot">
+                <img src="./assets/logo-reference-trace.svg" alt="SashaTel" width="66" height="34"/>
+                <p role="status">Запускаем SashaTel…</p>
+                <button class="launch-secondary" id="launch-skip" type="button">Перейти ко входу</button>
               </div>
-              <div class="install-permission" id="install-permission" aria-hidden="true">
-                <div class="permission-badge"><i data-icon="mic"></i></div>
-                <strong>Доступ к микрофону</strong>
-                <p>Для разговоров приложению нужен доступ к микрофону.</p>
-                <div><span>Позже</span><span class="permission-allow">Разрешить</span></div>
+              <div class="launch-screen" data-launch-screen="auth" hidden>
+                <img src="./assets/logo-reference-trace.svg" alt="SashaTel" width="54" height="28"/>
+                <h4>Вход в SashaTel</h4><p>Войдите, чтобы открыть рабочую звонилку.</p>
+                <button class="launch-primary" id="launch-login" type="button">Продолжить в демо <i data-icon="arrow-right"></i></button>
               </div>
-              <div class="install-ready" id="install-ready" aria-hidden="true"><i data-icon="circle-check"></i><strong>Готово к работе</strong><p>Откройте звонилку и начните первый вызов.</p><button id="install-open-app" type="button">Открыть интерфейс <i data-icon="arrow-right"></i></button></div>
-              <span class="install-scene-note" id="install-stage-note">Файл загружен. Перейдите к установке.</span>
+              <div class="launch-screen" data-launch-screen="mic" hidden>
+                <i class="launch-mic" data-icon="mic"></i>
+                <h4>Подключите микрофон</h4><p>Он нужен, чтобы собеседник вас слышал.</p>
+                <button class="launch-primary" id="launch-open-phone" type="button">Открыть звонилку <i data-icon="arrow-right"></i></button>
+              </div>
             </div>
           </div>
         </div>
+        <p class="demo-disclaimer">Демо переходов. В рабочем приложении вход открывается через браузер, а разрешение на микрофон запрашивает macOS.</p>
 
         <div class="desktop-divider desktop-second-divider"><span>02 / SOFTPHONE STATES</span><span>Compact window · one task per state</span></div>
         <div class="desktop-experience-layout" id="desktop-phone-demo">
           <div class="softphone-editorial">
-            <h3>Call without<br>the clutter.</h3>
-            <p>Набор, история и настройки доступны в меню. Во время разговора интерфейс сводится к имени собеседника, длительности, качеству связи и трём главным действиям.</p>
-            <div class="softphone-specs">
-              <div><span>Window</span><strong>376 × 528 px</strong></div>
-              <div><span>Typeface</span><strong>Geist</strong></div>
-              <div><span>Navigation</span><strong>Icons only</strong></div>
-              <div><span>Connection</span><strong>Cellular signal indicator</strong></div>
+            <h3>Звонилка для продаж</h3>
+            <p>Откройте приложение, вставьте номер и позвоните. История и звук доступны снизу. Во время вызова остаётся номер абонента, состояние соединения и завершение звонка.</p>
+            <div class="softphone-demo-controls" aria-label="Условия симуляции">
+              <label>Телефония<select id="demo-connection"><option value="online">Подключено</option><option value="connecting">Подключение</option><option value="offline">Нет соединения</option></select></label>
+              <label>Следующий вызов<select id="demo-call"><option value="answer">Абонент ответит</option><option value="no-answer">Без ответа</option><option value="error">Соединение потеряно</option><option value="pending-end">Ожидание подтверждения завершения</option></select></label>
+              <label>Состояние истории<select id="demo-history"><option value="records">Есть записи</option><option value="empty">Пусто</option><option value="error">Ошибка загрузки</option></select></label>
+              <label>Состояние аудио<select id="demo-audio"><option value="ok">Устройства доступны</option><option value="no-signal">Нет сигнала микрофона</option><option value="denied">Микрофон запрещён</option><option value="missing">Микрофон отсутствует</option><option value="unplugged">Гарнитура отключилась</option><option value="unsupported">Система управляет выводом</option></select></label>
+              <button id="demo-number" type="button">Вставить пример номера</button>
+              <button id="demo-end-confirm" type="button" hidden>Подтвердить завершение</button>
             </div>
-            <p class="demo-disclaimer">Интерактивный UX-прототип. Номер примерный, настоящие звонки не осуществляются. Геометрия и сценарии ещё требуют проверки на macOS перед утверждением.</p>
+            <p class="demo-disclaimer">Сценарии симулируются в браузере. Аудиотесты показывают интерфейс проверки с демонстрационным сигналом.</p>
           </div>
           <div class="softphone-display">
             <div class="softphone-window" id="softphone-window" data-call-state="dial" data-panel="dial" role="group" aria-label="Интерактивная desktop-звонилка SashaTel">
-              <div class="softphone-titlebar">
+              <header class="softphone-titlebar">
                 <div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div>
-                <span class="softphone-title">SashaTel</span>
-                <span class="softphone-connection" title="Демонстрация состояния телефонного соединения"><i data-icon="signal"></i><span>Сеть</span></span>
+                <img class="softphone-mark" src="./assets/logo-reference-trace.svg" alt="SashaTel" width="25" height="14">
+              </header>
+              <div class="softphone-status">
+                <span id="phone-availability">Свободен</span>
+                <span class="softphone-connection"><i data-icon="signal"></i><span id="phone-connection-text" role="status">Подключено</span></span>
               </div>
-              <div class="softphone-navigation" role="tablist" aria-label="Режимы звонилки">
-                <button class="selected" type="button" role="tab" aria-selected="true" data-phone-panel="dial" aria-label="Набор номера" title="Набор номера"><i data-icon="grid-3x3"></i></button>
-                <button type="button" role="tab" aria-selected="false" data-phone-panel="history" aria-label="История" title="История"><i data-icon="history"></i></button>
-                <button type="button" role="tab" aria-selected="false" data-phone-panel="settings" aria-label="Настройки" title="Настройки"><i data-icon="settings"></i></button>
-              </div>
-              <div class="phone-panel phone-panel-dial" data-panel-content="dial">
+              <section class="phone-panel phone-panel-dial" data-panel-content="dial" aria-label="Телефон">
                 <label class="phone-number-label" for="phone-number">Номер телефона</label>
-                <div class="phone-number-row"><input id="phone-number" type="tel" inputmode="tel" autocomplete="off" value="+7 995 123-45-67" aria-label="Номер телефона"/><button id="phone-backspace" type="button" title="Удалить последний символ" aria-label="Удалить последний символ"><i data-icon="delete"></i></button></div>
-                <div class="phone-keypad" id="phone-keypad" aria-label="Клавиатура набора номера">
-                  <button type="button" data-digit="1"><strong>1</strong></button><button type="button" data-digit="2"><strong>2</strong><small>ABC</small></button><button type="button" data-digit="3"><strong>3</strong><small>DEF</small></button>
-                  <button type="button" data-digit="4"><strong>4</strong><small>GHI</small></button><button type="button" data-digit="5"><strong>5</strong><small>JKL</small></button><button type="button" data-digit="6"><strong>6</strong><small>MNO</small></button>
-                  <button type="button" data-digit="7"><strong>7</strong><small>PQRS</small></button><button type="button" data-digit="8"><strong>8</strong><small>TUV</small></button><button type="button" data-digit="9"><strong>9</strong><small>WXYZ</small></button>
-                  <button type="button" data-digit="*"><strong>*</strong></button><button type="button" data-digit="0"><strong>0</strong><small>+</small></button><button type="button" data-digit="#"><strong>#</strong></button>
+                <div class="phone-number-row">
+                  <input id="phone-number" type="tel" inputmode="tel" autocomplete="off" placeholder="+7 995 123-45-67" maxlength="32" aria-describedby="phone-number-hint">
+                  <button id="phone-clear" type="button" aria-label="Очистить номер" title="Очистить номер">×</button>
                 </div>
-                <button class="phone-action-start" id="phone-start" type="button"><i data-icon="phone"></i><span>Позвонить</span></button>
-              </div>
-              <div class="phone-panel phone-panel-history" data-panel-content="history" hidden><h4>История звонков</h4><div><i data-icon="phone-outgoing"></i><span>Алексей Климов<small>Сегодня · 02:34</small></span><i data-icon="chevron-down"></i></div><div><i data-icon="phone-incoming"></i><span>Мария Соколова<small>Вчера · 05:12</small></span><i data-icon="chevron-down"></i></div></div>
-              <div class="phone-panel phone-panel-settings" data-panel-content="settings" hidden><h4>Звук и соединение</h4><div><i data-icon="mic"></i><span>Микрофон<small>Системное устройство</small></span></div><div><i data-icon="volume-2"></i><span>Динамики<small>Системное устройство</small></span></div><div><i data-icon="signal"></i><span>Соединение<small>Демо · стабильное</small></span></div></div>
-              <div class="phone-panel phone-panel-call" data-panel-content="call" hidden>
-                <div class="phone-call-progress"><span id="phone-call-state-label">Соединение…</span><strong id="phone-call-timer">00:00</strong></div>
-                <h4>Алексей Климов</h4><p class="phone-call-number" id="phone-call-number">+7 995 123-45-67</p>
+                <p id="phone-number-hint" class="phone-number-hint">+7, 8 или 10 цифр</p>
+                <div class="phone-keypad" id="phone-keypad" aria-label="Клавиатура набора номера">
+                  <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2<small>ABC</small></button><button type="button" data-digit="3">3<small>DEF</small></button>
+                  <button type="button" data-digit="4">4<small>GHI</small></button><button type="button" data-digit="5">5<small>JKL</small></button><button type="button" data-digit="6">6<small>MNO</small></button>
+                  <button type="button" data-digit="7">7<small>PQRS</small></button><button type="button" data-digit="8">8<small>TUV</small></button><button type="button" data-digit="9">9<small>WXYZ</small></button>
+                  <button type="button" data-digit="+" aria-label="Плюс">+</button><button type="button" data-digit="0">0</button><button type="button" id="phone-backspace" aria-label="Удалить символ"><i data-icon="delete"></i></button>
+                </div>
+                <button class="phone-action-start" id="phone-start" type="button" disabled><i data-icon="phone"></i>Позвонить</button>
+              </section>
+              <section class="phone-panel phone-panel-history" data-panel-content="history" hidden aria-label="История">
+                <div class="phone-section-heading"><h4>История</h4><button id="history-refresh" type="button">Обновить</button></div>
+                <p id="history-status" role="status"></p><ul id="history-list"></ul>
+              </section>
+              <section class="phone-panel phone-panel-settings" data-panel-content="settings" hidden aria-label="Настройки">
+                <h4>Настройки</h4>
+                <fieldset><legend>Микрофон</legend>
+                  <label for="phone-mic">Устройство ввода</label><select id="phone-mic"><option>Встроенный микрофон</option><option>USB-гарнитура</option></select>
+                  <button id="audio-mic-test" type="button">Проверить микрофон</button>
+                  <meter id="audio-meter" min="0" max="1" value="0" aria-label="Демонстрационный уровень микрофона" hidden></meter>
+                  <p id="audio-mic-status" role="status"></p>
+                </fieldset>
+                <fieldset><legend>Наушники и динамики</legend>
+                  <label for="phone-output">Устройство вывода</label><select id="phone-output"><option>Динамики Mac</option><option>USB-гарнитура</option></select>
+                  <label for="phone-volume">Громкость приложения</label><input id="phone-volume" type="range" min="0" max="100" value="70">
+                  <button id="audio-output-test" type="button">Проверить звук</button><p id="audio-output-status" role="status"></p>
+                </fieldset>
+                <fieldset><legend>Оформление</legend>
+                  <label for="phone-theme">Тема приложения</label><select id="phone-theme"><option value="system">Системная</option><option value="light">Светлая</option><option value="dark">Тёмная</option></select>
+                </fieldset>
+                <fieldset><legend>О приложении</legend><img class="softphone-mark" src="./assets/logo-reference-trace.svg" alt="" width="25" height="14"><p>SashaTel Desktop · версия макета 1.0</p><p id="phone-about-connection">Подключено</p></fieldset>
+              </section>
+              <section class="phone-panel phone-panel-call" data-panel-content="call" hidden aria-label="Вызов">
+                <div class="phone-call-progress"><span id="phone-call-state-label" role="status">Соединяем…</span><strong id="phone-call-timer" hidden>00:00</strong></div>
+                <h4 id="phone-call-number"></h4>
                 <div class="phone-neural"><canvas id="phone-neural-canvas" aria-hidden="true"></canvas></div>
-                <div class="phone-in-call-actions"><button type="button" id="phone-mute" aria-pressed="false" aria-label="Выключить микрофон" title="Микрофон"><i data-icon="mic"></i></button><button type="button" id="phone-hold" aria-pressed="false" aria-label="Удержать вызов" title="Удержание"><i data-icon="pause"></i></button><button type="button" id="phone-in-call-dtmf" aria-label="Клавиатура набора DTMF" title="Клавиатура"><i data-icon="grid-3x3"></i></button></div>
-                <button type="button" id="phone-hangup" class="phone-action-end"><i data-icon="phone-off"></i><span>Завершить</span></button>
-              </div>
-              <div class="phone-panel phone-panel-ended" data-panel-content="ended" hidden><i data-icon="circle-check"></i><h4>Звонок завершён</h4><p id="phone-ended-time">Продолжительность 00:00</p><button id="phone-another" type="button">Новый вызов</button></div>
+                <button type="button" id="phone-hangup" class="phone-action-end"><i data-icon="phone-off"></i>Завершить</button>
+              </section>
+              <section class="phone-panel phone-panel-ended" data-panel-content="ended" hidden aria-label="Результат вызова">
+                <i id="phone-result-icon" data-icon="circle-check"></i><h4 id="phone-result-title">Звонок завершён</h4><p id="phone-ended-time"></p><button id="phone-another" type="button">К набору номера</button>
+              </section>
+              <nav class="softphone-navigation" aria-label="Разделы звонилки">
+                <button class="selected" type="button" aria-current="page" data-phone-panel="dial"><i data-icon="grid-3x3"></i>Телефон</button>
+                <button type="button" data-phone-panel="history"><i data-icon="history"></i>История</button>
+                <button type="button" data-phone-panel="settings"><i data-icon="settings"></i>Настройки</button>
+              </nav>
             </div>
           </div>
         </div>
@@ -274,12 +319,24 @@
       </div>
     </section>
 
+    <section class="chapter" id="design-review" aria-labelledby="design-review-title">
+      <div class="container section-frame">
+        <div class="section-meta"><span>Правила для исполнителя</span></div>
+        <h2 class="section-title" id="design-review-title">Как принять<br><span>новый интерфейс.</span></h2>
+        <div class="spec-list">
+          <div class="spec-row"><span>Иерархия</span><strong>Одна задача на экране</strong><p>Сначала решите, что человек должен сделать. Отделите фон, рабочую область и главное действие ритмом и типографикой. Каждый контейнер должен объяснять связь элементов.</p></div>
+          <div class="spec-row"><span>Движение</span><strong>Показывает смену состояния</strong><p>На первом запуске частицы собираются, пока приложение готовится. При входе поле затихает. В звонке оно передаёт состояние связи. С уменьшенным движением смысл остаётся читаемым.</p></div>
+          <div class="spec-row"><span>Референсы</span><strong>Заимствуйте принцип</strong><p>У Arc и ChatGPT для macOS изучайте темп первого запуска, ясность главного действия и поведение окна. Для SashaTel применяйте собственный знак, Particle Field и утверждённые иконки.</p></div>
+          <div class="spec-row"><span>Приёмка</span><strong>Покажите работающий сценарий</strong><p>Пройдите основной путь, отмену и ошибку. Приложите кадры обеих тем, проверьте клавиатуру, кириллицу, узкое окно и уменьшенное движение. Для macOS отдельно проверьте системное окно, вход и возврат в приложение.</p></div>
+        </div>
+      </div>
+    </section>
     <section class="chapter specification" id="specification" aria-labelledby="spec-title"><div class="container section-frame"><div class="section-meta"><span>09 / Engineering</span><span>Single source of truth</span></div><h2 class="section-title" id="spec-title">The details<br><span>are the design.</span></h2><div class="spec-list">
       <div class="spec-row"><span>01 / Type</span><strong>Geist / Geist Mono</strong><p>Строгая шкала, без случайных начертаний. Tabular numerals для метрик и таблиц.</p></div>
       <div class="spec-row"><span>02 / Grid</span><strong>4 px base</strong><p>Микроотступы 4–8; связанные элементы 8–16; секции 40–64 px.</p></div>
       <div class="spec-row"><span>03 / Surface</span><strong>One plane</strong><p>Граница 1 px, радиус 4–8 px. Карточки — только когда группировка функциональна.</p></div>
       <div class="spec-row"><span>04 / Motion</span><strong>120–220 ms</strong><p>Состояния меняются плавно и предсказуемо; Particle Field учитывает reduced motion.</p></div>
-      <div class="spec-row"><span>05 / Charts</span><strong>Signal on interaction</strong><p>Светлая тонкая линия и нейтральные сектора. Жёлтый — фокус и выбранный элемент.</p></div>
+      <div class="spec-row"><span>05 / Charts</span><strong>Signal on interaction</strong><p>Контрастная линия и нейтральные сектора. Узкая горчичная дуга связывает ключевой сегмент с легендой. Значения определяют размер секторов.</p></div>
     </div><p class="spec-disclaimer">Это интерактивная концепция брендбука SashaTel. Численные токены — исходный стандарт для обсуждения и фиксации в engineering spec; не заменяют UX-исследование или проверку реального продукта.</p></div></section>
   </main>
   <footer class="footer"><div class="container footer-inner"><div><div class="footer-brand">SashaTel<span>.</span></div><p>Quiet Technology.</p></div><div class="footer-right"><span id="brandbook-updated">Обновлено: 16.11.2026 · 00:35 UTC</span><span>ООО «Полезный звонок»</span><a href="#top">Наверх ↑</a></div></div></footer>

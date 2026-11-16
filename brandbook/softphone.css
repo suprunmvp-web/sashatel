@@ -16,127 +16,131 @@
 .install-play{display:inline-flex;gap:14px;align-items:center;margin-top:28px;padding:11px 0;background:transparent;border:0;color:var(--fg);font-size:14px}
 .install-play [data-icon]{width:17px;height:17px;color:var(--accent)}
 .install-play:hover{color:var(--accent)}
-.install-preview{--install-main:#151518;position:relative;min-height:460px;border:1px solid var(--mac-line);border-radius:13px;overflow:hidden;color:var(--mac-text);background:radial-gradient(ellipse at 50% 55%,#1c1c21,#111114 75%)}
-.macos-titlebar{position:relative;display:flex;justify-content:space-between;align-items:center;height:45px;padding:0 18px;border-bottom:1px solid #29292f;color:#8f8f98;font:11px var(--mono)}
-.macos-lights{display:flex;gap:7px}.macos-lights i{display:block;width:9px;height:9px;border-radius:50%;background:#4a4a51}
-.macos-titlebar>span:nth-child(2){position:absolute;left:50%;transform:translateX(-50%);color:#b3b3bd}
-.install-scene{height:414px;position:relative;overflow:hidden}
-.install-stage-label{font:11px var(--mono);color:#898991;text-transform:uppercase;letter-spacing:.04em;text-align:center;margin:36px 0 0}
-.install-items{position:absolute;inset:125px 0 auto;display:flex;align-items:flex-start;justify-content:center;gap:clamp(24px,4vw,60px)}
-.app-file,.applications-folder{display:flex;flex-direction:column;align-items:center;gap:15px;width:115px;color:#c2c2c9;font-size:13px}
-.app-icon{display:grid;place-items:center;width:86px;height:86px;border-radius:20px;background:linear-gradient(140deg,#2b2b32,#101014);border:1px solid #3d3d45;box-shadow:0 14px 26px #0005}
-.app-icon img{width:43px;height:auto}
-.applications-folder [data-icon]{width:70px;height:76px;color:#9a9aa3;stroke-width:.9}
-.install-arrow{display:grid;place-items:center;min-height:86px;color:#66666e}
-.install-arrow [data-icon]{width:29px;height:29px}
-.install-scene-note{position:absolute;bottom:33px;left:25px;right:25px;font-size:12px;color:#9999a2;text-align:center}
-.install-preview[data-install-state="1"] .app-file{animation:app-transfer 1.75s cubic-bezier(.18,.72,.3,1) both}
-.install-preview[data-install-state="1"] .app-icon{box-shadow:0 0 20px #e8c54722,0 14px 26px #0005}
-.install-preview[data-install-state="3"] .app-icon{box-shadow:0 0 18px #e8c54725}
-@keyframes app-transfer{0%{transform:translateX(0) scale(1);opacity:1}55%{transform:translateX(134px) translateY(-15px) scale(1.05);opacity:1}100%{transform:translateX(180px) scale(.5);opacity:0}}
-.install-permission,.install-ready{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;text-align:center;opacity:0;pointer-events:none;transform:translateY(16px) scale(.97);transition:opacity .35s,transform .5s cubic-bezier(.18,.72,.3,1)}
-.install-permission{left:50%;top:90px;width:min(320px,calc(100% - 44px));margin-left:0;transform:translate(-50%,16px) scale(.97);background:#25252b;border:1px solid #494951;border-radius:12px;padding:23px 22px;box-shadow:0 28px 70px #0009}
-.install-permission .permission-badge{display:grid;place-items:center;width:43px;height:43px;border-radius:12px;background:#35353c;color:#f5f5f7;margin:0 auto 17px}
-.install-permission strong,.install-ready strong{font-size:17px;font-weight:500}
-.install-permission p,.install-ready p{font-size:12px;line-height:1.55;color:#a9a9b3;margin:12px 0 22px}
-.install-permission>div:last-child{display:flex;gap:9px;width:100%}
-.install-permission>div:last-child span{flex:1;border:1px solid #494951;border-radius:6px;padding:10px 4px;font-size:12px}
-.install-permission .permission-allow{background:#eeeeef;color:#141417;border-color:transparent}
-.install-ready{top:132px;left:0;width:100%;padding:0 35px}
-.install-ready>[data-icon]{width:35px;height:35px;color:var(--mac-yellow);margin-bottom:20px}
-.install-ready button{display:flex;align-items:center;gap:10px;border:0;border-radius:7px;padding:12px 19px;background:#f0f0f1;color:#111116;font-size:13px}
-.install-preview[data-install-state="2"] .install-permission{opacity:1;pointer-events:auto;transform:translate(-50%,0) scale(1)}.install-preview[data-install-state="3"] .install-ready{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
-.install-preview[data-install-state="2"] .install-items,.install-preview[data-install-state="3"] .install-items{opacity:.09;filter:blur(5px);transition:opacity .22s,filter .22s}
-/* Product window: only the application has a frame, never nested dashboard cards. */
-.desktop-second-divider{margin-top:120px}
-.softphone-specs{margin:40px 0;max-width:425px;border-top:1px solid var(--line)}
-.softphone-specs>div{display:flex;justify-content:space-between;gap:15px;padding:15px 0;border-bottom:1px solid var(--line);font-size:13px}
-.softphone-specs span{color:var(--sub)}.softphone-specs strong{font-weight:500;color:var(--fg);text-align:right}
-.softphone-editorial .demo-disclaimer{font-size:12px;line-height:1.6;color:var(--dim)}
-.softphone-display{min-height:630px;display:flex;justify-content:center;align-items:center;position:relative;background:radial-gradient(ellipse at 50% 48%,#26262a28,transparent 66%)}
-.softphone-window{width:376px;height:528px;position:relative;flex:none;overflow:hidden;border:1px solid #38383e;border-radius:13px;background:#111114;color:#f5f5f7;box-shadow:0 30px 90px #0005;font-family:var(--font);--mac-bg:#111114}
-.softphone-titlebar{height:43px;display:flex;align-items:center;gap:15px;padding:0 18px;border-bottom:1px solid #29292e}
-.softphone-titlebar .macos-lights i{width:8px;height:8px}
-.softphone-title{font-size:12px;color:#92929b;font-weight:500}
-.softphone-connection{display:flex;align-items:center;gap:5px;color:#b5b5be;font-size:11px;margin-left:auto}
-.softphone-connection>[data-icon]{width:16px;height:16px;color:#bfc0c6}
-.softphone-navigation{display:flex;align-items:center;justify-content:center;gap:42px;height:47px;border-bottom:1px solid #25252b}
-.softphone-navigation button{height:47px;display:grid;place-items:center;width:40px;background:transparent;border:0;border-bottom:2px solid transparent;color:#92929b}
-.softphone-navigation button:hover{color:#f3f3f5}
-.softphone-navigation button.selected{color:#f5f5f7;border-color:#e8c547}
-.softphone-navigation [data-icon]{width:18px;height:18px}
-.softphone-window[data-call-state="ringing"] .softphone-navigation,.softphone-window[data-call-state="active"] .softphone-navigation,.softphone-window[data-call-state="ended"] .softphone-navigation{display:none}
-.softphone-window [hidden]{display:none!important}
-.phone-panel{position:relative;height:438px;overflow:hidden}
-.phone-panel-dial{padding:26px 30px 20px;display:flex;flex-direction:column}
-.phone-number-label{font-size:11px;color:#8e8e97}
-.phone-number-row{display:flex;align-items:center;border-bottom:1px solid #29292e;margin:11px 0 16px;padding-bottom:8px;min-height:42px}
-.phone-number-row input{font-family:var(--font);font-size:23px;line-height:1.1;letter-spacing:-.02em;font-weight:400;background:transparent;color:#f5f5f7;border:0;outline:none;min-width:0;flex:1;max-width:100%}
-.phone-number-row input:focus-visible{outline:1px solid #e8c547;outline-offset:4px;border-radius:2px}
-.phone-number-row button{background:transparent;color:#85858d;border:0;padding:3px 5px;font-size:19px}
-.phone-keypad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,54px);gap:4px 17px;justify-items:center;align-content:center;flex:1}
-.phone-keypad button{display:flex;flex-direction:column;justify-content:center;align-items:center;width:69px;min-height:51px;background:transparent;border:0;border-radius:7px;color:#f4f4f5;transition:background .15s}
-.phone-keypad button:hover{background:#26262b}
-.phone-keypad button strong{font-size:23px;font-weight:400;line-height:1.2}
-.phone-keypad button small{min-height:12px;font-size:10px;letter-spacing:.06em;color:#6c6c76;line-height:1.2}
-.phone-action-start,.phone-action-end{display:flex;align-items:center;justify-content:center;gap:12px;flex:none;width:100%;height:43px;border-radius:7px;font-size:14px;font-weight:500}
-.phone-action-start{background:#f2f2f4;color:#111114;border:0;margin-top:10px}
-.phone-action-start:hover{background:#fff}
-.phone-action-start [data-icon],.phone-action-end [data-icon]{width:18px;height:18px}
-.phone-panel-history,.phone-panel-settings{padding:27px 28px}
-.phone-panel-history h4,.phone-panel-settings h4{margin:0 0 32px;font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.03em}
-.phone-panel-history>div,.phone-panel-settings>div{display:flex;align-items:center;gap:13px;padding:15px 0;border-bottom:1px solid #28282e}
-.phone-panel-history>div>[data-icon],.phone-panel-settings>div>[data-icon]{width:18px;height:18px;color:#a0a0aa}
-.phone-panel-history>div>span,.phone-panel-settings>div>span{display:flex;flex-direction:column;gap:5px;flex:1;font-size:14px}
-.phone-panel-history small,.phone-panel-settings small{font-size:11px;color:#8e8e97}
-.phone-panel-call{height:485px;padding:30px 24px;display:flex;align-items:center;flex-direction:column}
-.phone-call-progress{width:100%;display:flex;align-items:center;justify-content:space-between;color:#9999a1;font-size:12px}
-.phone-call-progress strong{font:12px var(--mono);font-weight:400}
-.phone-panel-call h4{font-size:26px;font-weight:500;letter-spacing:-.04em;text-align:center;margin:38px 0 9px}
-.phone-call-number{font-size:13px;color:#92929b;margin:0}
-.phone-neural{position:relative;width:100%;height:164px;flex:none;margin-top:8px;pointer-events:none}
-.phone-neural canvas{width:100%;height:100%;display:block}
-.phone-in-call-actions{display:flex;gap:22px;margin-top:auto}
-.phone-in-call-actions button{display:grid;place-items:center;width:48px;height:48px;border:1px solid #35353a;border-radius:50%;color:#e7e7e9;background:#232327}
-.phone-in-call-actions button:hover{background:#303035}
-.phone-in-call-actions button[aria-pressed="true"]{background:#e8c547;color:#121214;border-color:transparent}
-.phone-action-end{max-width:220px;background:#c9444c;color:white;border:0;margin-top:24px;margin-bottom:2px}
-.phone-action-end:hover{background:#dd525b}
-.phone-panel-ended{height:485px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 25px;text-align:center}
-.phone-panel-ended>[data-icon]{width:32px;height:32px;color:#e8c547;margin-bottom:20px}
-.phone-panel-ended h4{font-size:24px;letter-spacing:-.03em;font-weight:500;margin:0}
-.phone-panel-ended p{font:12px var(--mono);color:#92929b;margin:15px 0 32px}
-.phone-panel-ended button{padding:12px 28px;background:#f1f1f3;border:0;border-radius:7px;color:#111114;font-size:14px}
-:root[data-theme="light"] .install-preview,:root[data-theme="light"] .softphone-window{color:#f5f5f7}
-@media(max-width:1060px){
-  .install-workspace,.desktop-experience-layout{grid-template-columns:minmax(240px,.8fr) minmax(330px,1.2fr);gap:35px}
-  .install-editorial h3,.softphone-editorial h3{font-size:38px}
+/* Native window chrome and the first-run specimen */
+.macos-titlebar { position:relative; display:flex; align-items:center; height:42px; padding:0 15px; border-bottom:1px solid #303035; color:#aaaab2; font-size:12px; }
+.macos-titlebar > span { position:absolute; left:50%; transform:translateX(-50%); }
+.macos-lights { display:flex; gap:8px; }
+.macos-lights i,.softphone-titlebar .macos-lights i { display:block; width:12px; height:12px; border-radius:50%; }
+.macos-lights i:nth-child(1) { background:#ff5f57; }
+.macos-lights i:nth-child(2) { background:#febc2e; }
+.macos-lights i:nth-child(3) { background:#28c840; }
+.launch-window { min-width:0; border:1px solid #38383f; border-radius:12px; overflow:hidden; background:#101013; color:#f5f5f7; box-shadow:0 24px 65px #0003; }
+.launch-body { position:relative; isolation:isolate; min-height:390px; display:grid; place-items:center; background:radial-gradient(ellipse at center,#202024 0%,#101013 76%); }
+#launch-particles { position:absolute; inset:0; width:100%; height:100%; z-index:-1; opacity:.3; transition:opacity .45s; mask-image:radial-gradient(ellipse at center,#000 15%,transparent 74%); }
+[data-launch-state="boot"] #launch-particles { opacity:1; }
+.launch-screen { width:min(100%,360px); padding:28px; display:grid; justify-items:center; text-align:center; }
+.launch-screen[hidden] { display:none; }
+.launch-screen img { object-fit:contain; }
+.launch-screen h4 { margin:18px 0 0; font-size:clamp(23px,3vw,30px); letter-spacing:-.04em; font-weight:500; }
+.launch-screen p { margin:12px 0 24px; font-size:14px; line-height:1.5; color:#bdbdc4; }
+.launch-screen button { display:flex; justify-content:center; align-items:center; gap:12px; border-radius:7px; padding:11px 15px; font-size:13px; cursor:pointer; }
+.launch-primary { color:#18181b; background:#ededea; border:1px solid #ededea; }
+.launch-secondary { color:#dedee2; background:#151518; border:1px solid #494950; }
+.launch-mic { color:#e8c547; }
+.install-step { grid-template-columns:minmax(0,1fr); }
+[data-launch-screen="boot"] p { margin-top:24px; }
+@media(max-width:620px) { .launch-body { min-height:320px; } }
+@media(prefers-reduced-motion:reduce) { #launch-particles { transition:none; } }
+.desktop-second-divider { margin-top:108px; }
+.softphone-editorial .demo-disclaimer { font-size:12px; line-height:1.6; color:var(--sub); }
+.softphone-demo-controls { display:grid; border-top:1px solid var(--line); margin-bottom:20px; }
+.softphone-demo-controls label { display:grid; grid-template-columns:minmax(100px,1fr) minmax(135px,1.3fr); align-items:center; gap:8px; border-bottom:1px solid var(--line); padding:10px 0; font-size:12px; }
+.softphone-demo-controls select,.softphone-demo-controls button { max-width:100%; min-width:0; padding:8px; color:var(--fg); background:var(--surface); border:1px solid var(--line); border-radius:6px; font:inherit; }
+.softphone-demo-controls button { text-align:left; justify-self:start; margin-top:12px; font-size:12px; }
+.softphone-display { display:flex; justify-content:center; min-width:0; }
+.softphone-window {
+  --phone-bg:#111114; --phone-text:#f0f0f2; --phone-muted:#a8a8b1;
+  --phone-line:#34343b; --phone-hover:#25252a; --phone-accent:#e8c547;
+  --phone-success:#39c985; --phone-danger:#e86a71; --phone-end:#a9283d;
+  display:grid; grid-template-rows:42px 43px minmax(0,1fr) auto;
+  width:min(376px,100%); height:566px; overflow:hidden;
+  border:1px solid var(--phone-line); border-radius:13px;
+  background:var(--phone-bg); color:var(--phone-text); box-shadow:0 28px 72px #0004;
+  color-scheme:dark;
 }
-@media(max-width:760px){
-  .desktop-divider{flex-wrap:wrap;margin-top:68px}
-  .install-workspace,.desktop-experience-layout{grid-template-columns:1fr;gap:36px}
-  .install-editorial h3,.softphone-editorial h3{font-size:40px}
-  .install-preview{min-height:420px}.install-scene{height:375px}
-  .softphone-display{min-height:580px}
-  .desktop-second-divider{margin-top:85px}
+.softphone-window[data-phone-theme="light"] {
+  --phone-bg:#f4f2ed; --phone-text:#24231f; --phone-muted:#55534e;
+  --phone-line:#cbc8c0; --phone-hover:#e5e2db; --phone-accent:#765a25;
+  --phone-success:#168353; --phone-danger:#bd3647;
+  color-scheme:light;
 }
-@media(max-width:420px){
-  .install-preview{min-height:380px}
-  .install-scene{height:335px}
-  .install-items{gap:10px;inset:105px 0 auto}
-  .app-file,.applications-folder{width:90px}
-  .app-icon{width:67px;height:67px;border-radius:15px}
-  .applications-folder [data-icon]{width:58px;height:65px}
-  .install-permission{top:65px}
-  .install-ready{top:105px}
-  .softphone-display{min-height:564px}
-  .softphone-window{transform:scale(.92);transform-origin:center center}
+.softphone-window [hidden] { display:none!important; }
+.softphone-titlebar { display:flex; align-items:center; position:relative; padding:0 15px; border-bottom:1px solid var(--phone-line); }
+.softphone-titlebar .softphone-mark { position:absolute; left:50%; transform:translateX(-50%); }
+.softphone-mark { object-fit:contain; }
+[data-phone-theme="light"] .softphone-mark { filter:invert(1); }
+.softphone-status { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 20px; font-size:11px; color:var(--phone-muted); }
+.softphone-connection { display:flex; align-items:center; gap:7px; }
+.softphone-connection [data-icon] { width:14px; height:14px; }
+[data-connection="online"] .softphone-connection [data-icon] { color:var(--phone-success); }
+[data-connection="offline"] .softphone-connection [data-icon] { color:var(--phone-danger); }
+[data-connection="connecting"] .softphone-connection [data-icon] { color:var(--phone-accent); }
+.softphone-navigation { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--phone-line); padding:0 10px; }
+.softphone-navigation button { display:grid; place-content:center; justify-items:center; gap:5px; min-height:56px; border:0; border-top:2px solid transparent; border-radius:0; background:transparent; color:var(--phone-muted); font-size:11px; }
+.softphone-navigation button.selected { border-top-color:var(--phone-accent); color:var(--phone-text); }
+.softphone-navigation button:hover { background:var(--phone-hover); }
+.softphone-navigation [data-icon] { width:17px; height:17px; }
+.phone-panel { min-height:0; padding:18px 24px 20px; }
+.phone-panel-dial { display:flex; flex-direction:column; }
+.phone-number-label { color:var(--phone-muted); font-size:12px; }
+.phone-number-row { display:flex; align-items:center; gap:6px; min-height:46px; border-bottom:1px solid var(--phone-line); }
+.phone-number-row:focus-within { border-bottom-color:var(--phone-accent); }
+.phone-number-row input { border:0; padding:5px 0; outline:none; min-width:0; flex:1; color:var(--phone-text); background:transparent; font:500 clamp(18px,4vw,25px) var(--font); font-variant-numeric:tabular-nums; letter-spacing:-.04em; }
+.phone-number-row input::placeholder { color:var(--phone-muted); font-weight:400; }
+.phone-number-row button { min-width:30px; min-height:30px; border:0; border-radius:6px; background:transparent; color:var(--phone-muted); font-size:21px; }
+.phone-number-row button:hover { background:var(--phone-hover); }
+.phone-number-hint { min-height:15px; margin:7px 0; color:var(--phone-muted); font-size:11px; }
+.phone-number-row:has([aria-invalid="true"]) + .phone-number-hint { color:var(--phone-danger); }
+.phone-keypad { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(36px,1fr)); gap:3px 6px; flex:1; margin:1px 0 12px; }
+.phone-keypad button { display:grid; place-content:center; justify-items:center; gap:1px; border:0; border-radius:7px; background:transparent; color:var(--phone-text); font:400 22px/1 var(--font); }
+.phone-keypad button:hover { background:var(--phone-hover); }
+.phone-keypad small { color:var(--phone-muted); font:9px/1 var(--mono); letter-spacing:.04em; }
+.phone-keypad [data-icon] { width:18px; height:18px; }
+.phone-action-start,.phone-action-end,.phone-panel-ended button { display:flex; align-items:center; justify-content:center; gap:9px; min-height:43px; width:100%; border:0; border-radius:7px; font:500 14px var(--font); }
+.phone-action-start,.phone-panel-ended button { background:var(--phone-text); color:var(--phone-bg); }
+.phone-action-start:disabled,.phone-action-end:disabled { background:var(--phone-hover); color:var(--phone-muted); cursor:default; }
+.softphone-window button:focus-visible { outline:2px solid var(--phone-accent); outline-offset:-2px; }
+.phone-action-start [data-icon],.phone-action-end [data-icon] { width:17px; height:17px; }
+.phone-panel-history,.phone-panel-settings { overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.phone-panel h4 { font-size:22px; line-height:1.15; font-weight:500; letter-spacing:-.04em; margin:0 0 14px; }
+.phone-section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.phone-panel-history button,.phone-panel-settings button { border:1px solid var(--phone-line); padding:6px 8px; border-radius:6px; color:var(--phone-text); background:transparent; font-size:11px; }
+.phone-panel-history button:hover,.phone-panel-settings button:hover { background:var(--phone-hover); }
+.phone-panel-history ul { padding:0; margin:0; list-style:none; }
+.phone-panel-history li { border-top:1px solid var(--phone-line); display:flex; gap:8px; justify-content:space-between; align-items:center; padding:10px 0; }
+.phone-panel-history li strong { font-size:13px; font-weight:500; }
+.phone-panel-history li small { display:block; margin-top:3px; color:var(--phone-muted); font-size:11px; }
+.phone-panel-history [data-status="Отвечен"] { color:var(--phone-success); }
+.phone-panel-history [data-status="Ошибка"] { color:var(--phone-danger); }
+.phone-panel-history p,.phone-panel-settings p { color:var(--phone-muted); font-size:12px; line-height:1.45; }
+.phone-panel-settings fieldset { border:0; border-top:1px solid var(--phone-line); margin:0 0 16px; padding:10px 0 0; display:grid; gap:7px; min-width:0; }
+.phone-panel-settings legend { padding:0 6px 0 0; font-weight:500; font-size:13px; }
+.phone-panel-settings label { color:var(--phone-muted); font-size:11px; }
+.phone-panel-settings select { padding:6px; width:100%; font:12px var(--font); background:var(--phone-bg); color:var(--phone-text); border:1px solid var(--phone-line); border-radius:5px; }
+.phone-panel-settings meter,.phone-panel-settings input { width:100%; accent-color:var(--phone-accent); }
+.phone-panel-settings button { justify-self:start; }
+.phone-panel-settings p { margin:0; }
+.phone-panel-settings p:empty { display:none; }
+.phone-panel-call { display:flex; flex-direction:column; align-items:center; gap:14px; }
+.phone-call-progress { display:flex; align-items:center; justify-content:space-between; align-self:stretch; color:var(--phone-muted); font-size:12px; }
+.phone-call-progress strong { font:12px var(--mono); }
+.phone-panel-call h4 { margin:30px 0 0; font-size:clamp(23px,4vw,30px); font-variant-numeric:tabular-nums; text-align:center; }
+.phone-neural { display:grid; place-items:center; flex:1; width:100%; min-height:0; }
+.phone-neural canvas { width:100%; height:210px; max-height:100%; display:block; }
+.phone-action-end { margin:0 0 8px; width:min(240px,100%); background:var(--phone-end); color:#fff; }
+.phone-panel-ended { display:grid; place-content:center; justify-items:center; text-align:center; }
+.phone-panel-ended > [data-icon] { width:29px; height:29px; color:var(--phone-accent); margin-bottom:18px; }
+[data-call-state="failed"] .phone-panel-ended > [data-icon] { color:var(--phone-danger); }
+.phone-panel-ended p { color:var(--phone-muted); font-size:13px; line-height:1.5; margin:0 0 22px; }
+.phone-panel-ended button { width:auto; padding:0 16px; }
+@media(max-width:1060px) {
+  .install-workspace,.desktop-experience-layout { grid-template-columns:minmax(220px,.82fr) minmax(295px,1.18fr); gap:28px; }
 }
-@media(prefers-reduced-motion:reduce){
-  .app-file,.install-permission,.install-ready{animation:none!important;transition:none!important}
-  .install-preview[data-install-state="1"] .app-file{opacity:.3;transform:translateX(110px) scale(.7)}
-  .phone-keypad button,.phone-action-end{transition:none}
+@media(max-width:760px) {
+  .desktop-divider { flex-wrap:wrap; margin-top:68px; }
+  .install-workspace,.desktop-experience-layout { grid-template-columns:minmax(0,1fr); gap:24px; }
 }
-
-.phone-number-row #phone-backspace{display:inline-grid;place-items:center;width:30px;height:32px;padding:0;flex:0 0 30px}
-.phone-number-row #phone-backspace [data-icon]{width:18px;height:18px}
+@media(max-width:420px) {
+  .phone-panel { padding-inline:14px; }
+  .softphone-status { padding-inline:14px; }
+}

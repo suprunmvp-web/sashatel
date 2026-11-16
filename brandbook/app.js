@@ -29,7 +29,7 @@
   menu?.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(open));mobile.hidden=!open;});
   $$('#mobile-nav a').forEach(a=>a.addEventListener('click',()=>{mobile.hidden=true;menu.setAttribute('aria-expanded','false');}));
   const toast=$('#copy-toast');let toastTimeout;
-  $$('.swatch').forEach(el=>{el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label','Скопировать '+el.dataset.hex);const copy=async()=>{try{await navigator.clipboard.writeText(el.dataset.hex);toast.textContent=el.dataset.hex+' скопирован';}catch{toast.textContent='Цвет: '+el.dataset.hex;}toast.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>toast.classList.remove('show'),1650);};el.addEventListener('click',copy);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();copy();}});});
+  $$('[data-hex]').forEach(el=>{if(el.tagName!=='BUTTON'){el.tabIndex=0;el.setAttribute('role','button');}el.setAttribute('aria-label','Скопировать '+el.dataset.hex);const copy=async()=>{try{await navigator.clipboard.writeText(el.dataset.hex);toast.textContent=el.dataset.hex+' скопирован';}catch{toast.textContent='Цвет: '+el.dataset.hex;}toast.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>toast.classList.remove('show'),1650);};el.addEventListener('click',copy);el.addEventListener('keydown',e=>{if(el.tagName!=='BUTTON'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();copy();}});});
   const anchors=$$('.top-nav a'),sections=anchors.map(a=>$(a.getAttribute('href')));
   if('IntersectionObserver'in window){const ob=new IntersectionObserver(entries=>{for(let e of entries){if(e.isIntersecting){let a=anchors.find(a=>a.getAttribute('href')==='#'+e.target.id);anchors.forEach(x=>x.classList.toggle('active',x===a));}}},{rootMargin:'-27% 0px -65% 0px'});sections.filter(Boolean).forEach(s=>ob.observe(s));}
   // One time-continuous, exactly looping 48-second motion field.
@@ -214,7 +214,7 @@
           if (py < 0 || py > height || px < 0 || px > width) continue;
           const dx = Math.abs(x - pulsePosition);
           const signal = Math.exp(-Math.pow(dx / pulseRadius, 2));
-          let alpha = particle.opacity * fade * (stage ? .89 : .63);
+          let alpha = particle.opacity * fade * (stage || opts.launch ? .89 : .63);
           const localSpark = stage ? Math.max(0, neuralA * neuralB) * (volume * .6 + articulation * 1.4) : 0;
           if (particle.gold) alpha *= .76 + 1.10 * signal + localSpark * 1.9;
           else alpha *= .92 + .14 * signal + localSpark * .42;
@@ -232,8 +232,8 @@
         const dt = lastTime === null ? 0 : Math.min((now - lastTime) / 1000, .05);
         if (lastTime !== null) elapsed = (elapsed + dt) % LOOP_SECONDS;
         lastTime = now;
-        const targetMorph = stage && (demonstration || audioAttached) ? 1 : 0;
-        shapeMix += (targetMorph - shapeMix) * Math.min(1, dt * 1.45);
+        const targetMorph = opts.launch || (stage && (demonstration || audioAttached)) ? 1 : 0;
+        shapeMix += (targetMorph - shapeMix) * Math.min(1, dt * (opts.launch ? 2.8 : 1.45));
         if (Math.abs(shapeMix - targetMorph) < .0002) shapeMix = targetMorph;
         const sound = demonstration && stage ? demoSpeech(elapsed) : liveAudioLevel();
         // Fast attack, slower release for individual syllables; sample-to-sample
@@ -248,7 +248,7 @@
       function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; lastTime = null; }
       function start() {
         stop();
-        if (motionQuery.matches) { shapeMix = stage && (demonstration || audioAttached) ? 1 : 0; paint(0, 0, 0, shapeMix); return; }
+        if (motionQuery.matches) { shapeMix = opts.launch || (stage && (demonstration || audioAttached)) ? 1 : 0; paint(0, 0, 0, shapeMix); return; }
         if (inView && !document.hidden) raf = requestAnimationFrame(tick);
       }
       const observer = 'IntersectionObserver' in window
@@ -262,6 +262,11 @@
       else window.addEventListener('resize', () => { build(); start(); }, { passive: true });
       document.addEventListener('visibilitychange', start);
       motionQuery.addEventListener?.('change', start);
+      if(opts.launch)canvas.addEventListener('restartfield',()=>{
+        elapsed=0;
+        shapeMix=0;
+        start();
+      });
       build(); start();
       stages.push({ stage, paint, build });
     }
@@ -298,6 +303,7 @@
   window.SashaTelParticle = SashaTelParticle;
   SashaTelParticle.init($('#hero-particles'), { count: 2400, seed: 31, stage: false });
   SashaTelParticle.init($('#showcase-particles'), { count: 3600, seed: 96, stage: true });
+  SashaTelParticle.init($('#launch-particles'), { count: 1150, seed: 57, launch: true });
   const particleDemoButton = $('#particle-demo');
   particleDemoButton?.addEventListener('click', () => {
     const enabled = !SashaTelParticle.demo;
@@ -384,51 +390,6 @@
   themeButton?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
   $('#dashboard-theme-switch')?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 
-  const dateButton=$('#date-range-button'), datePanel=$('#date-range-panel');
-  const dateFrom=$('#date-from'), dateTo=$('#date-to');
-  let appliedRange=[dateFrom.value,dateTo.value];
-  function setDatePanel(open,restoreFocus=false){
-    dateButton.setAttribute('aria-expanded',String(open));
-    datePanel.hidden=!open;
-    if(open){
-      [dateFrom.value,dateTo.value]=appliedRange;
-      dateTo.setCustomValidity('');
-      dateFrom.focus();
-    }else if(restoreFocus){
-      dateButton.focus();
-    }
-  }
-  dateButton.addEventListener('click',()=>setDatePanel(datePanel.hidden));
-  const fmtDate=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'});
-  dateTo.addEventListener('input',()=>dateTo.setCustomValidity(''));
-  $('#date-apply').addEventListener('click',()=>{
-    dateTo.setCustomValidity('');
-    if(!dateFrom.value){dateFrom.focus();return;}
-    if(!dateTo.value){dateTo.focus();return;}
-    if(dateFrom.value>dateTo.value){
-      dateTo.setCustomValidity('Дата окончания должна быть не раньше даты начала.');
-      dateTo.reportValidity();
-      return;
-    }
-    appliedRange=[dateFrom.value,dateTo.value];
-    const [start,end]=appliedRange.map(value=>new Date(value+'T12:00:00Z'));
-    const startYear=start.getUTCFullYear(), endYear=end.getUTCFullYear();
-    const first=fmtDate.format(start)+(startYear===endYear?'':` ${startYear}`);
-    $('#date-range-label').textContent=`${first} — ${fmtDate.format(end)} ${endYear}`;
-    setDatePanel(false,true);
-  });
-  document.addEventListener('pointerdown',event=>{
-    if(!datePanel.hidden&&!datePanel.contains(event.target)&&!dateButton.contains(event.target)){
-      setDatePanel(false);
-    }
-  });
-  document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&!datePanel.hidden){
-      event.preventDefault();
-      setDatePanel(false,true);
-    }
-  });
-
   // Original SashaTel donut interaction model: value-proportional SVG arcs,
   // subtle separation, focus/hover magnification and matching legend emphasis.
   const donutSvg=$('#donut-svg'),donutBox=$('.donut-layout'),donutRows=$$('.donut-legend [data-seg]');
@@ -458,24 +419,36 @@
       path.setAttribute('aria-label',data[i].name+': '+data[i].value.toLocaleString('ru-RU')+'%');
       donutSvg.appendChild(path);el.push(path);start+=arc;
     }
+    const accent=document.createElementNS(NS,'path');
+    const [accentStartX,accentStartY]=xy(outer-2,-Math.PI/2+gap);
+    const [accentEndX,accentEndY]=xy(outer-2,-Math.PI/2+gap+Math.PI*.1);
+    accent.setAttribute('d',`M ${accentStartX} ${accentStartY} A 78 78 0 0 1 ${accentEndX} ${accentEndY}`);
+    accent.setAttribute('class','donut-accent');
+    el[0].after(accent);
     const value=$('#donut-value'),caption=$('#donut-caption');
     function setFocus(index){
       donutBox.classList.toggle('donut-focused',index>=0);
+      accent.style.opacity=index<0||index===0?'1':'0';
       el.forEach((path,i)=>path.classList.toggle('is-active',i===index));
       donutRows.forEach((row,i)=>row.classList.toggle('is-active',i===index));
       if(value) value.textContent=index<0?'14 320':data[index].value.toLocaleString('ru-RU')+'%';
       if(caption) caption.textContent=index<0?'всего':data[index].name;
     }
+    const resetPointer=()=>{
+      const focused=document.activeElement;
+      const key=donutBox.contains(focused)?focused.dataset.seg:undefined;
+      setFocus(key===undefined?-1:Number(key));
+    };
     el.forEach((path,i)=>{
       path.addEventListener('pointerenter',()=>setFocus(i));
       path.addEventListener('focus',()=>setFocus(i));
-      path.addEventListener('pointerleave',()=>setFocus(-1));
+      path.addEventListener('pointerleave',resetPointer);
       path.addEventListener('blur',()=>setFocus(-1));
     });
     donutRows.forEach((row,i)=>{
       row.addEventListener('pointerenter',()=>setFocus(i));
       row.addEventListener('focus',()=>setFocus(i));
-      row.addEventListener('pointerleave',()=>setFocus(-1));
+      row.addEventListener('pointerleave',resetPointer);
       row.addEventListener('blur',()=>setFocus(-1));
       row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setFocus(i)}});
     });
