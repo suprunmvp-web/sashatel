@@ -169,3 +169,28 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 - New Particle Field modes require a purpose, performance budget, and screenshot/animation review.
 - Archive deprecated mockups; they are **not** allowed precedents.
 - Repo: `suprunmvp-web/sashatel`, brandbook at `brandbook/`. Vercel project should use that root; don't overwrite the existing production `/index.html`.
+
+
+## 11. Product refinements — interactive demo reference (2026-11-16)
+
+**Light/dark themes:** Both themes must use semantic tokens, not CSS inversions of screenshots. Neutral base shifts from graphite to off-white; yellow remains a sparse action/focus signal with adjusted contrast; red and green are reserved for semantically meaningful call events, logs, incident states and measured trends. Theme toggling is demonstrable in the HTML brandbook and its choice is persisted for subsequent visits. Do not assume the core telephony product has adopted the light theme until approved.
+
+| Semantic event token | Dark | Light | Meaning |
+|---|---|---|---|
+| `--success` | `#39C985` | `#168353` | call completed, verified successful operation, positive real delta |
+| `--danger` | `#E86A71` | `#BD3647` | failed attempt, hangup destructive action, SIP error |
+| `--warning` | `#E8C547` | `#A27A17` | caution / attention needed, never an unverified positive state |
+
+**Organization sidebar:** When expanded, show the organization switcher and labeled navigation rows. When collapsed, show its monogram and accessible icon-only navigation; provide a visible panel-left toggle with an accessible name and tooltip. The minimized state persists in the demo. Collapsing must not alter main content geometry unexpectedly, hide the ability to reopen the menu, or imply an entirely different product.
+
+**Phone signal:** Never substitute a Wi‑Fi arcs icon for call/network quality. Use a cellular/signal-level bar icon (`signal`). The count/opacity of bars must represent a measured value in production. Distinguish connection available from RTP/audio quality when both are shown; do not assume good audio from mere network connectivity.
+
+**Date-range selector:** Format compact Russian ranges as `4 окт — 17 окт 2026`. Values displayed in the date selector must actually be the selected range. In an HTML demonstration, changing the selector may update the label while the mock statistics remain static, but a visible note must disclose that. Production must refetch/aggregate for that selected period and handle incomplete/empty ranges.
+
+**Stats navigation and icon mapping (reference):** `activity` Statistics, `server` Trunks, `phone` History of calls, `plug` Integrations, `settings` Settings, `credit-card` Billing. No duplicated placeholder glyphs; icons must be applied from the approved registry.
+
+**Donut behavior:** Adapted from the original product's SVG donut, not a static CSS ring. Segment angle reflects real percentages. Each segment can be hovered or keyboard-focused to emphasize that segment and update the center value and matching legend row; dim the others. No extra yellow stroke draped on top. Red and yellow may color actual categories where semantically justified, but never distort category areas.
+
+**Notification bell:** It has a fixed icon-button hit box, correct centered icon alignment, and a small separate dot for unread activity. If the dot pulses, its glow is subtle and respects reduced motion. Do not use the glowing yellow as an actual notification indicator when the inbox has no unread state.
+
+**Quality gate:** Test expanded/collapsed sidebar, light/dark theme, search focus, notification alignment, date popover open/close/keyboard behavior and donut hover/focus in a real browser before claiming production readiness.
