@@ -305,25 +305,54 @@
     particleDemoButton.setAttribute('aria-pressed', String(enabled));
     particleDemoButton.textContent = enabled ? 'Завершить демо звонка' : 'Демо звонка · живое кольцо';
   });
-  const values30=[31,37,39,35,30,32,37,35,31,29,36,38,37,41,39,42,40,44,42.8,39,44,45,43,48,50,47,44,46,49,52];
-  const values7=values30.slice(-7);const values90=Array.from({length:90},(_,i)=>Math.max(19,Math.min(58,28+i*.19+Math.sin(i*.27)*4+Math.sin(i*.73)*2)));
-  const svg=$('#rate-chart'),grid=$('.grid-lines'),line=$('#chart-line'),fill=$('#chart-fill'),cross=$('#chart-cross'),dot=$('#chart-dot'),hit=$('#chart-hit'),tooltip=$('#chart-tooltip');let activeValues=values30;
-  const X=i=>45+i*940/(activeValues.length-1),Y=v=>216-v/60*191;
-  let pts=[];function render(period){activeValues=period===7?values7:period===90?values90:values30;pts=activeValues.map((v,i)=>[X(i),Y(v)]);grid.innerHTML='';for(let i=0;i<=5;i++){let y=16+i*200/5;grid.insertAdjacentHTML('beforeend',`<line x1="45" x2="985" y1="${y}" y2="${y}"></line><text x="1" y="${y+4}">${60-i*12}%</text>`);}let d=`M ${pts[0][0]} ${pts[0][1]}`;for(let i=1;i<pts.length;i++){let [x,y]=pts[i], [px,py]=pts[i-1],mid=(px+x)/2;d+=` C ${mid} ${py}, ${mid} ${y}, ${x} ${y}`;}line.setAttribute('d',d);fill.setAttribute('d',d+' L 985 216 L 45 216 Z');clearHover();}
-  const days=['1','2','3','4','5','6','7'];function focus(i){i=Math.max(0,Math.min(activeValues.length-1,i));const [x,y]=pts[i];cross.setAttribute('x1',x);cross.setAttribute('x2',x);cross.style.opacity='1';dot.setAttribute('cx',x);dot.setAttribute('cy',y);dot.style.opacity='1';let p=activeValues.length===7?`${days[i]} день`:activeValues.length===90?`${i+1} день`:`${i+1} ноя`;$('#tooltip-date').textContent=p;$('#tooltip-value').textContent=activeValues[i].toLocaleString('ru-RU',{maximumFractionDigits:1})+' %';tooltip.style.left=`${x/1000*100}%`;tooltip.style.top=`${y/245*100}%`;tooltip.classList.add('show');}
-  function clearHover(){cross.style.opacity='0';dot.style.opacity='0';tooltip.classList.remove('show');}
-  hit.addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect();const raw=(e.clientX-r.left)/r.width*1000;focus(Math.round((raw-45)/(940)*(activeValues.length-1)));});hit.addEventListener('pointerleave',clearHover);hit.addEventListener('click',e=>{const r=svg.getBoundingClientRect();const raw=(e.clientX-r.left)/r.width*1000;focus(Math.round((raw-45)/(940)*(activeValues.length-1)));});
-  $('.period-toggle button').forEach(btn=>btn.addEventListener('click',()=>{$('.period-toggle button').forEach(el=>{const yes=el===btn;el.classList.toggle('active',yes);el.setAttribute('aria-pressed',String(yes));});render(Number(btn.dataset.period));}));render(30);
+  const rates=[31,37,39,35,30,32,37,35,31,29,36,38,37,41,39,42,40,44,42.8,39,44,45,43,48,50,47,44,46,49,52];
+  const chart=$('#rate-chart'), cross=$('#chart-cross'), dot=$('#chart-dot'), tooltip=$('#chart-tooltip');
+  const width=1000, top=16, bottom=216, left=8, right=992;
+  const points=rates.map((value,i)=>[left+i*(right-left)/(rates.length-1),bottom-value/60*(bottom-top)]);
+  const grid=$('.grid-lines');
+  for(let i=0;i<=4;i++){
+    const y=top+i*(bottom-top)/4;
+    grid.insertAdjacentHTML('beforeend',`<line x1="${left}" x2="${right}" y1="${y}" y2="${y}"></line>`);
+  }
+  const stroke=points.map(([x,y],i)=>i===0?`M ${x} ${y}`:`L ${x} ${y}`).join(' ');
+  $('#chart-line').setAttribute('d',stroke);
+  $('#chart-fill').setAttribute('d',`${stroke} L ${right} ${bottom} L ${left} ${bottom} Z`);
+  const hit=$('#chart-hit');
+  hit.setAttribute('x',left);
+  hit.setAttribute('width',right-left);
+  function showRate(event){
+    const bounds=chart.getBoundingClientRect();
+    const chartX=(event.clientX-bounds.left)/bounds.width*width;
+    const i=Math.max(0,Math.min(rates.length-1,Math.round((chartX-left)/(right-left)*(rates.length-1))));
+    const [x,y]=points[i];
+    cross.setAttribute('x1',x);
+    cross.setAttribute('x2',x);
+    cross.style.opacity='1';
+    dot.setAttribute('cx',x);
+    dot.setAttribute('cy',y);
+    dot.style.opacity='1';
+    $('#tooltip-date').textContent=`${i+1} ноя`;
+    $('#tooltip-value').textContent=rates[i].toLocaleString('ru-RU')+' %';
+    tooltip.style.left=`clamp(42px, ${x/width*100}%, calc(100% - 42px))`;
+    tooltip.style.top=`${y/245*100}%`;
+    tooltip.classList.add('show');
+  }
+  hit.addEventListener('pointermove',showRate);
+  hit.addEventListener('click',showRate);
+  hit.addEventListener('pointerleave',()=>{
+    cross.style.opacity='0';
+    dot.style.opacity='0';
+    tooltip.classList.remove('show');
+  });
 
   // Editable demo states; no mutation of real customer statistics.
   const dashboard=$('.dashboard'),sideToggle=$('#sidebar-toggle');
   function setSidebar(collapsed){
     dashboard?.classList.toggle('sidebar-collapsed',collapsed);
     if(sideToggle){
-      sideToggle.setAttribute('aria-expanded',String(!collapsed));
+      sideToggle.setAttribute('aria-pressed',String(collapsed));
       sideToggle.setAttribute('aria-label',collapsed?'Развернуть сайдбар':'Свернуть сайдбар');
       sideToggle.title=collapsed?'Развернуть меню':'Свернуть меню';
-      sideToggle.querySelector('[data-icon]')?.setAttribute('data-icon',collapsed?'panel-left-open':'panel-left-close');
       window.renderSashaIcons?.();
     }
     try { localStorage.setItem('sashatel-sidebar-collapsed',String(collapsed)); }catch{}
@@ -355,32 +384,54 @@
   themeButton?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
   $('#dashboard-theme-switch')?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 
-  const dateButton=$('#date-range-button'),datePanel=$('#date-range-panel');
-  dateButton?.addEventListener('click',()=>{
-    const open=dateButton.getAttribute('aria-expanded')!=='true';
+  const dateButton=$('#date-range-button'), datePanel=$('#date-range-panel');
+  const dateFrom=$('#date-from'), dateTo=$('#date-to');
+  let appliedRange=[dateFrom.value,dateTo.value];
+  function setDatePanel(open,restoreFocus=false){
     dateButton.setAttribute('aria-expanded',String(open));
-    if(datePanel) datePanel.hidden=!open;
+    datePanel.hidden=!open;
+    if(open){
+      [dateFrom.value,dateTo.value]=appliedRange;
+      dateTo.setCustomValidity('');
+      dateFrom.focus();
+    }else if(restoreFocus){
+      dateButton.focus();
+    }
+  }
+  dateButton.addEventListener('click',()=>setDatePanel(datePanel.hidden));
+  const fmtDate=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'});
+  dateTo.addEventListener('input',()=>dateTo.setCustomValidity(''));
+  $('#date-apply').addEventListener('click',()=>{
+    dateTo.setCustomValidity('');
+    if(!dateFrom.value){dateFrom.focus();return;}
+    if(!dateTo.value){dateTo.focus();return;}
+    if(dateFrom.value>dateTo.value){
+      dateTo.setCustomValidity('Дата окончания должна быть не раньше даты начала.');
+      dateTo.reportValidity();
+      return;
+    }
+    appliedRange=[dateFrom.value,dateTo.value];
+    const [start,end]=appliedRange.map(value=>new Date(value+'T12:00:00Z'));
+    const startYear=start.getUTCFullYear(), endYear=end.getUTCFullYear();
+    const first=fmtDate.format(start)+(startYear===endYear?'':` ${startYear}`);
+    $('#date-range-label').textContent=`${first} — ${fmtDate.format(end)} ${endYear}`;
+    setDatePanel(false,true);
   });
-  const fmtDate=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short'});
-  const fmtYear=new Intl.DateTimeFormat('ru-RU',{year:'numeric'});
-  $('#date-apply')?.addEventListener('click',()=>{
-    const start=$('#date-from')?.value,end=$('#date-to')?.value;
-    if(!start||!end||start>end){$('#date-from')?.focus();return;}
-    // Date-only strings are interpreted in UTC to avoid timezone drift.
-    const a=new Date(start+'T12:00:00Z'),b=new Date(end+'T12:00:00Z');
-    const year=fmtYear.format(b);
-    $('#date-range-label').textContent=fmtDate.format(a)+' — '+fmtDate.format(b)+' '+year;
-    datePanel.hidden=true;dateButton?.setAttribute('aria-expanded','false');
+  document.addEventListener('pointerdown',event=>{
+    if(!datePanel.hidden&&!datePanel.contains(event.target)&&!dateButton.contains(event.target)){
+      setDatePanel(false);
+    }
   });
-  document.addEventListener('pointerdown',e=>{
-    if(datePanel&&!datePanel.hidden&&!datePanel.contains(e.target)&&!dateButton?.contains(e.target)){
-      datePanel.hidden=true;dateButton?.setAttribute('aria-expanded','false');
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!datePanel.hidden){
+      event.preventDefault();
+      setDatePanel(false,true);
     }
   });
 
   // Original SashaTel donut interaction model: value-proportional SVG arcs,
   // subtle separation, focus/hover magnification and matching legend emphasis.
-  const donutSvg=$('#donut-svg'),donutBox=$('.donut-layout'),donutRows=$('.donut-legend [data-seg]');
+  const donutSvg=$('#donut-svg'),donutBox=$('.donut-layout'),donutRows=$$('.donut-legend [data-seg]');
   if(donutSvg&&donutBox){
     const data=[
       {name:'Ответил человек',value:42.8,count:6129},

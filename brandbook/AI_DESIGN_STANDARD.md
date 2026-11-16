@@ -124,7 +124,7 @@ The site demo synthesizes uneven 'syllable' events: it is not a recording or rea
 Navigation → generous headline and short value statement → one obvious CTA → understated product preview. Particle Field stays behind negative space. Never put the full dashboard in the hero. At 390px, text and controls must wrap/stack without horizontal scrolling.
 
 ### Organization workspace
-Top-left = organization switcher; top-right = search, notifications, account profile. Sidebar nav = Overview, Statistics, Calls, Contacts, Team, Scenarios, Integrations, Settings. No personal user image near organization name. Navigation is plain text/icon rows, with *one* selected surface + narrow yellow marker.
+Top-left = organization switcher; top-right = notifications, theme, date range, account profile. Sidebar nav = Overview, Statistics, Calls, Contacts, Team, Scenarios, Integrations, Settings. No personal user image near organization name. Navigation is plain text/icon rows, with *one* selected surface + narrow yellow marker.
 
 ### Statistics
 Preserve functional hierarchy: title, subheading, four horizontally aligned KPIs, answer-rate-over-time line chart, call-outcome donut/legend, operator breakdown table. Demo KPI: **+14 320** call attempts, **42.8%** connection, **02:34** average talk, **+36 982** minutes. The + is part of the agreed demo presentation, not a claim that the underlying raw count is a positive financial delta. Live product must follow correct metric semantics.
@@ -181,7 +181,7 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 | `--danger` | `#E86A71` | `#BD3647` | failed attempt, hangup destructive action, SIP error |
 | `--warning` | `#E8C547` | `#A27A17` | caution / attention needed, never an unverified positive state |
 
-**Organization sidebar:** When expanded, show the organization switcher and labeled navigation rows. When collapsed, show its monogram and accessible icon-only navigation; provide a visible panel-left toggle with an accessible name and tooltip. The minimized state persists in the demo. Collapsing must not alter main content geometry unexpectedly, hide the ability to reopen the menu, or imply an entirely different product.
+**Organization sidebar:** When expanded, show the organization header above a separator and labeled navigation rows. When collapsed, show its monogram and accessible icon-only navigation; provide a visible panel-left toggle at the end of the organization header with an accessible name, pressed state and tooltip. The minimized state persists in the demo. Collapsing must not alter main content geometry unexpectedly, hide the ability to reopen the menu, or imply an entirely different product.
 
 **Phone signal:** Never substitute a Wi‑Fi arcs icon for call/network quality. Use a cellular/signal-level bar icon (`signal`). The count/opacity of bars must represent a measured value in production. Distinguish connection available from RTP/audio quality when both are shown; do not assume good audio from mere network connectivity.
 
@@ -193,7 +193,7 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 
 **Notification bell:** It has a fixed icon-button hit box, correct centered icon alignment, and a small separate dot for unread activity. If the dot pulses, its glow is subtle and respects reduced motion. Do not use the glowing yellow as an actual notification indicator when the inbox has no unread state.
 
-**Quality gate:** Test expanded/collapsed sidebar, light/dark theme, search focus, notification alignment, date popover open/close/keyboard behavior and donut hover/focus in a real browser before claiming production readiness.
+**Quality gate:** Test expanded/collapsed sidebar, light/dark theme, notification alignment, date popover open/close/keyboard behavior and donut hover/focus in a real browser before claiming production readiness.
 
 
 ## 12. macOS softphone and installation specification (prototype, not approved shipping UI)
@@ -208,6 +208,6 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 
 **Icon decisions:** reuse the original telephony app's `settings` SVG geometry as the standard, not the malformed approximated gear. Contact uses consistent address-book / person-card shape. Approved operations include `trash-2` (delete with confirmation), `plus` (add), `square` and `square-check` illustrations, `check`, `phone-incoming`, `phone-outgoing`, `grid-3x3`, `mic`, `mic-off`, `pause`, `volume-2`. For actual selections use native semantic HTML `<input type="checkbox">` with programmatic checked state and keyboard support, not just a painted icon.
 
-**Profile utilities in analytics:** the date-range selector and compact theme switch must be visible in the **same utility row as notifications and the account chip**, not only in the brandbook's global navigation. At smaller viewports, the search line may wrap to a second row; date controls must still remain adjacent to user tools.
+**Profile utilities in analytics:** the date-range selector and compact theme switch must be visible in the **same utility row as notifications and the account chip**, not only in the brandbook's global navigation. Keep the date range next to the account chip as the toolbar adapts.
 
 **Acceptance steps:** play install demo start-to-finish and jump to any step; open the softphone; enter/edit a number; switch history/settings; place a *simulated* call; observe connecting then active; toggle mute, hold and DTMF; end and begin a new call. Test keyboard focus, narrow widths and reduced motion. Do not call this production ready without a native macOS/electron test and accessibility review.
