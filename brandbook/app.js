@@ -214,7 +214,7 @@
           if (py < 0 || py > height || px < 0 || px > width) continue;
           const dx = Math.abs(x - pulsePosition);
           const signal = Math.exp(-Math.pow(dx / pulseRadius, 2));
-          let alpha = particle.opacity * fade * (stage || opts.launch ? .89 : .63);
+          let alpha = particle.opacity * fade * (stage ? .89 : .63);
           const localSpark = stage ? Math.max(0, neuralA * neuralB) * (volume * .6 + articulation * 1.4) : 0;
           if (particle.gold) alpha *= .76 + 1.10 * signal + localSpark * 1.9;
           else alpha *= .92 + .14 * signal + localSpark * .42;
@@ -232,8 +232,8 @@
         const dt = lastTime === null ? 0 : Math.min((now - lastTime) / 1000, .05);
         if (lastTime !== null) elapsed = (elapsed + dt) % LOOP_SECONDS;
         lastTime = now;
-        const targetMorph = opts.launch || (stage && (demonstration || audioAttached)) ? 1 : 0;
-        shapeMix += (targetMorph - shapeMix) * Math.min(1, dt * (opts.launch ? 2.8 : 1.45));
+        const targetMorph = stage && (demonstration || audioAttached) ? 1 : 0;
+        shapeMix += (targetMorph - shapeMix) * Math.min(1, dt * 1.45);
         if (Math.abs(shapeMix - targetMorph) < .0002) shapeMix = targetMorph;
         const sound = demonstration && stage ? demoSpeech(elapsed) : liveAudioLevel();
         // Fast attack, slower release for individual syllables; sample-to-sample
@@ -248,7 +248,7 @@
       function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; lastTime = null; }
       function start() {
         stop();
-        if (motionQuery.matches) { shapeMix = opts.launch || (stage && (demonstration || audioAttached)) ? 1 : 0; paint(0, 0, 0, shapeMix); return; }
+        if (motionQuery.matches) { shapeMix = stage && (demonstration || audioAttached) ? 1 : 0; paint(0, 0, 0, shapeMix); return; }
         if (inView && !document.hidden) raf = requestAnimationFrame(tick);
       }
       const observer = 'IntersectionObserver' in window
@@ -262,11 +262,6 @@
       else window.addEventListener('resize', () => { build(); start(); }, { passive: true });
       document.addEventListener('visibilitychange', start);
       motionQuery.addEventListener?.('change', start);
-      if(opts.launch)canvas.addEventListener('restartfield',()=>{
-        elapsed=0;
-        shapeMix=0;
-        start();
-      });
       build(); start();
       stages.push({ stage, paint, build });
     }
@@ -303,7 +298,6 @@
   window.SashaTelParticle = SashaTelParticle;
   SashaTelParticle.init($('#hero-particles'), { count: 2400, seed: 31, stage: false });
   SashaTelParticle.init($('#showcase-particles'), { count: 3600, seed: 96, stage: true });
-  SashaTelParticle.init($('#launch-particles'), { count: 1150, seed: 57, launch: true });
   const particleDemoButton = $('#particle-demo');
   particleDemoButton?.addEventListener('click', () => {
     const enabled = !SashaTelParticle.demo;
@@ -419,16 +413,9 @@
       path.setAttribute('aria-label',data[i].name+': '+data[i].value.toLocaleString('ru-RU')+'%');
       donutSvg.appendChild(path);el.push(path);start+=arc;
     }
-    const accent=document.createElementNS(NS,'path');
-    const [accentStartX,accentStartY]=xy(outer-2,-Math.PI/2+gap);
-    const [accentEndX,accentEndY]=xy(outer-2,-Math.PI/2+gap+Math.PI*.1);
-    accent.setAttribute('d',`M ${accentStartX} ${accentStartY} A 78 78 0 0 1 ${accentEndX} ${accentEndY}`);
-    accent.setAttribute('class','donut-accent');
-    el[0].after(accent);
     const value=$('#donut-value'),caption=$('#donut-caption');
     function setFocus(index){
       donutBox.classList.toggle('donut-focused',index>=0);
-      accent.style.opacity=index<0||index===0?'1':'0';
       el.forEach((path,i)=>path.classList.toggle('is-active',i===index));
       donutRows.forEach((row,i)=>row.classList.toggle('is-active',i===index));
       if(value) value.textContent=index<0?'14 320':data[index].value.toLocaleString('ru-RU')+'%';

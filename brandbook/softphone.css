@@ -144,3 +144,48 @@
   .phone-panel { padding-inline:14px; }
   .softphone-status { padding-inline:14px; }
 }
+
+/* First run has its own optical field and editorial type. The working dialer uses Geist. */
+.install-workspace { grid-template-columns:minmax(210px,.6fr) minmax(0,1.4fr); }
+.launch-window { border-radius:17px; background:#131211; box-shadow:0 27px 70px #0005; }
+.launch-window .macos-titlebar { border-color:#ffffff14; background:#1b1a18; }
+.launch-body { min-height:460px; display:flex; align-items:center; background:radial-gradient(ellipse at 73% 50%,#282017 0%,#141311 47%,#131211 74%); }
+#launch-particles { z-index:-1; opacity:1; mask-image:none; }
+.launch-screen { width:min(57%,420px); min-width:0; padding:36px 0 35px clamp(22px,4.2vw,64px); justify-items:start; text-align:left; }
+.launch-screen h4 { margin:0; color:#f5ecdd; font:400 clamp(32px,4vw,59px)/.99 Georgia,serif; letter-spacing:-.055em; text-wrap:balance; }
+.launch-screen h4 span { color:#e8c547; font-style:italic; }
+.launch-screen p { color:#cbc1b2; margin:15px 0 23px; }
+.launch-app-mark { display:grid; place-items:center; width:68px; height:68px; margin-bottom:23px; border-radius:18px; border:1px solid #ffffff2b; background:linear-gradient(145deg,#413a30,#211d19); box-shadow:0 7px 24px #0005,inset 0 1px #ffffff19; }
+.launch-screen button { min-height:42px; }
+.launch-primary { background:#efe5d4; border-color:#efe5d4; color:#231d17; }
+.launch-secondary { margin-top:8px; color:#ded2c0; background:#211d19; border-color:#ffffff24; }
+.launch-primary:hover { background:#fff3dd; }
+.launch-secondary:hover { background:#332b21; }
+.launch-brush { animation:launch-brush .85s cubic-bezier(.2,.75,.28,1) both; }
+.launch-screen p,.launch-screen button { animation:launch-text .38s .17s ease both; }
+@keyframes launch-brush {
+  from { clip-path:polygon(0 0,0 0,0 100%,0 100%); filter:blur(3px); transform:translateY(7px); }
+  60% { clip-path:polygon(0 0,92% 0,74% 100%,0 100%); }
+  to { clip-path:polygon(0 0,130% 0,115% 100%,0 100%); filter:blur(0); transform:translateY(0); }
+}
+@keyframes launch-text { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+.phone-panel-dial { padding-top:23px; }
+.phone-number-row { min-height:53px; }
+.phone-number-row input { font-size:clamp(22px,4vw,30px); font-weight:400; }
+.phone-keypad button { font-size:25px; transition:background .18s,transform .22s cubic-bezier(.2,.75,.28,1); }
+.phone-keypad button:active { transform:scale(.9); }
+.phone-action-start:not(:disabled) { background:var(--phone-accent); color:#17130b; }
+[data-phone-theme="light"] .phone-action-start:not(:disabled) { color:#fff; }
+.softphone-navigation { margin-inline:12px; padding:0; }
+@media(max-width:900px) { .install-workspace { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:620px) {
+  .launch-body { min-height:470px; align-items:end; background:radial-gradient(ellipse at 50% 26%,#282017 0%,#131211 66%); }
+  .launch-screen { width:100%; padding:24px; }
+  .launch-app-mark { width:42px; height:42px; border-radius:12px; margin-bottom:11px; }
+  .launch-app-mark img { width:26px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .launch-brush,.launch-screen p,.launch-screen button { animation:none; }
+  .phone-keypad button { transition:none; }
+  .phone-keypad button:active { transform:none; }
+}

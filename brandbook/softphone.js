@@ -3,40 +3,6 @@
 (()=>{'use strict';
 const $=q=>document.querySelector(q), $$=q=>Array.from(document.querySelectorAll(q));
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-const launch=$('#launch-window'), launchSteps=$$('[data-launch-step]');
-let bootTimer;
-function launchState(state, moveFocus=false){
-  clearTimeout(bootTimer);
-  launch.dataset.launchState=state;
-  if(state==='boot')$('#launch-particles').dispatchEvent(new Event('restartfield'));
-  $$('[data-launch-screen]').forEach(screen=>{screen.hidden=screen.dataset.launchScreen!==state;});
-  launchSteps.forEach(button=>{
-    const on=button.dataset.launchStep===state;
-    button.classList.toggle('is-current',on);
-    button.setAttribute('aria-current',on?'step':'false');
-  });
-  if(state==='boot'){
-    bootTimer=setTimeout(()=>launchState('auth',launch.contains(document.activeElement)),reduced.matches?250:1800);
-  }
-  if(moveFocus)launch.querySelector('[data-launch-screen]:not([hidden]) button').focus({preventScroll:true});
-}
-
-launchSteps.forEach(button=>button.addEventListener('click',()=>launchState(button.dataset.launchStep)));
-$('#launch-replay').addEventListener('click',()=>launchState('boot'));
-$('#launch-skip').addEventListener('click',()=>launchState('auth',true));
-$('#launch-login').addEventListener('click',()=>launchState('mic',true));
-$('#launch-open-phone').addEventListener('click',()=>{
-  $('#desktop-phone-demo').scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'center'});
-  window.setSashaPhonePanel('dial');
-});
-const launchObserver=new IntersectionObserver(entries=>{
-  if(entries.some(entry=>entry.isIntersecting)){
-    launchObserver.disconnect();
-    if(launch.dataset.launchState==='boot')launchState('boot');
-  }
-},{threshold:.25});
-launchObserver.observe(launch);
-
 const phone=$('#softphone-window'), number=$('#phone-number');
 const nav=$('.softphone-navigation'), navButtons=$$('[data-phone-panel]');
 const panels=$$('.phone-panel[data-panel-content]');

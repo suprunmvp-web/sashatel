@@ -337,8 +337,7 @@
 
 /* Color roles and reference calendar */
 :root { --signal-mustard:#aa843d; --signal-ochre:#765a25; }
-.donut-accent { fill:none; stroke:var(--signal-mustard); stroke-width:4; pointer-events:none; }
-.donut-legend > div:first-child i { background:var(--signal-mustard); }
+.donut-legend > div:last-child i { background:var(--signal-mustard); }
 :root[data-theme="light"] { --bg:#eceae5; --surface:#f4f2ed; --hover:#e3e1dc; --line:#cbc8c0; --fg:#25241f; --sub:#54524c; --dim:#625f56; --accent:var(--signal-ochre); }
 :root[data-theme="light"] .site-header { background:rgba(236,234,229,.97); }
 :root[data-theme="light"] .hero { background:radial-gradient(ellipse at 68% 47%,#d8d5cd 0%,var(--bg) 68%); }
@@ -359,8 +358,7 @@
 :root[data-theme="light"] .donut-segment[data-seg="0"] { fill:#b6b3aa; }
 :root[data-theme="light"] .donut-segment[data-seg="1"],
 :root[data-theme="light"] .donut-legend > div[data-seg="1"] i { fill:#98958c; background:#98958c; }
-:root[data-theme="light"] .donut-accent { stroke:var(--signal-ochre); }
-:root[data-theme="light"] .donut-legend > div:first-child i { background:var(--signal-ochre); }
+:root[data-theme="light"] .donut-legend > div:last-child i { background:var(--signal-ochre); }
 :root[data-theme="light"] .kpis,
 :root[data-theme="light"] .chart-section,
 :root[data-theme="light"] .operator-section td,
@@ -424,3 +422,11 @@
   .palette .swatch,.palette .swatch:nth-child(n+5):nth-child(-n+7) { grid-column:auto; padding:12px; }
   .palette .swatch:nth-child(7) { grid-column:1 / -1; }
 }
+
+
+.dashboard-sidebar .org { display:grid; grid-template-columns:32px minmax(0,1fr) 32px; min-height:57px; }
+.dashboard-sidebar .org strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dashboard-sidebar .org small { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-collapsed .dashboard-sidebar .org { display:flex; }
+.donut-segment[data-seg="4"] { fill:var(--signal-mustard); }
+:root[data-theme="light"] .donut-segment[data-seg="4"] { fill:var(--signal-ochre); }

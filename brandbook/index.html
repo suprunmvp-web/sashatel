@@ -14,6 +14,7 @@
   <script defer src="./icons.js"></script>
   <script defer src="./app.js"></script>
   <script defer src="./softphone.js"></script>
+  <script defer src="./first-launch.js"></script>
   <script defer src="./date-picker.js"></script>
 </head>
 <body>
@@ -102,7 +103,7 @@
       </div>
       <div class="dashboard-wrap">
         <div class="dashboard" aria-label="Демонстрационный интерфейс аналитики SashaTel">
-          <aside class="dashboard-sidebar"><div class="org"><span class="org-avatar">ПЗ</span><div><strong>ООО «Полезный звонок»</strong><small>Основной аккаунт</small></div><button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Свернуть сайдбар" aria-pressed="false" aria-controls="dashboard-sidebar-nav" title="Свернуть меню"><i data-icon="panel-left"></i></button></div>
+          <aside class="dashboard-sidebar"><div class="org"><span class="org-avatar">ПЗ</span><div><strong tabindex="0" title="ООО «Полезный звонок»">ООО «Полезный звонок»</strong><small>Основной аккаунт</small></div><button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Свернуть сайдбар" aria-pressed="false" aria-controls="dashboard-sidebar-nav" title="Свернуть меню"><i data-icon="panel-left"></i></button></div>
             <nav id="dashboard-sidebar-nav" aria-label="Навигация личного кабинета" class="dashboard-nav"><span class="selected" title="Статистика"><i data-icon="activity"></i><em>Статистика</em></span><span title="Транки"><i data-icon="server"></i><em>Транки</em></span><span title="История звонков"><i data-icon="phone"></i><em>История звонков</em></span><span title="Интеграции"><i data-icon="plug"></i><em>Интеграции</em></span><span title="Настройки"><i data-icon="settings"></i><em>Настройки</em></span><span title="Биллинг"><i data-icon="credit-card"></i><em>Биллинг</em></span></nav><span class="sidebar-support" title="Поддержка"><i data-icon="circle-help"></i><em>Поддержка</em></span>
           </aside>
           <div class="dashboard-content"><div class="dash-utility"><button class="notify" type="button" title="Уведомления" aria-label="Уведомления"><i data-icon="bell"></i><b aria-hidden="true"></b></button><button id="dashboard-theme-switch" class="dashboard-theme-switch" type="button" aria-label="Переключить тему" title="Переключить тему"><i data-icon="moon"></i></button><div class="date-range-wrap"><button class="date-range-button" id="date-range-button" type="button" aria-expanded="false" aria-controls="date-range-panel"><i data-icon="calendar-days"></i><span id="date-range-label">1 ноя — 30 ноя 2026</span></button><div class="date-range-panel" id="date-range-panel" role="dialog" aria-label="Выбор периода" hidden>
@@ -184,38 +185,44 @@
         <div class="desktop-divider"><span>01 / FIRST LAUNCH</span><span>Интерактивный пример</span></div>
         <div class="install-workspace">
           <div class="install-editorial">
-            <h3>Первый запуск</h3>
-            <p>При открытии приложения частицы сходятся к центру. Затем поле затихает за окном входа. После входа проверка микрофона появляется в момент, когда он понадобится для звонка.</p>
-            <div class="install-steps" role="group" aria-label="Экраны первого запуска">
-              <button type="button" class="install-step is-current" data-launch-step="boot" aria-current="step"><strong>Запуск</strong><small>Частицы собираются вокруг сигнала</small></button>
-              <button type="button" class="install-step" data-launch-step="auth"><strong>Авторизация</strong><small>Одно действие для входа</small></button>
-              <button type="button" class="install-step" data-launch-step="mic"><strong>Микрофон</strong><small>Запрос в контексте звонка</small></button>
-            </div>
-            <button id="launch-replay" class="install-play" type="button"><i data-icon="arrow-right"></i>Повторить первый запуск</button>
+            <h3>От открытия<br>до первого звонка.</h3>
+            <p>Пройдите путь менеджера: открыть приложение, войти в рабочий аккаунт и дождаться подключения линии.</p>
+            <button id="launch-replay" class="install-play" type="button"><i data-icon="history"></i>Повторить первый запуск</button>
           </div>
-          <div class="launch-window" id="launch-window" data-launch-state="boot">
+          <div class="launch-window" id="launch-window" data-launch-state="open">
             <div class="macos-titlebar"><div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div><span>SashaTel</span></div>
             <div class="launch-body">
               <canvas id="launch-particles" aria-hidden="true"></canvas>
-              <div class="launch-screen" data-launch-screen="boot">
-                <img src="./assets/logo-reference-trace.svg" alt="SashaTel" width="66" height="34"/>
-                <p role="status">Запускаем SashaTel…</p>
+              <div class="launch-screen" data-launch-screen="open">
+                <div class="launch-app-mark"><img src="./assets/logo-reference-trace.svg" alt="" width="43" height="23"></div>
+                <h4 class="launch-brush">SashaTel</h4>
+                <p>Первый запуск приложения</p>
+                <button class="launch-primary" id="launch-open" type="button">Открыть <i data-icon="arrow-right"></i></button>
+              </div>
+              <div class="launch-screen" data-launch-screen="boot" hidden>
+                <h4 class="launch-brush">Открываем линию.</h4><p role="status">Запускаем SashaTel…</p>
                 <button class="launch-secondary" id="launch-skip" type="button">Перейти ко входу</button>
               </div>
               <div class="launch-screen" data-launch-screen="auth" hidden>
-                <img src="./assets/logo-reference-trace.svg" alt="SashaTel" width="54" height="28"/>
-                <h4>Вход в SashaTel</h4><p>Войдите, чтобы открыть рабочую звонилку.</p>
-                <button class="launch-primary" id="launch-login" type="button">Продолжить в демо <i data-icon="arrow-right"></i></button>
+                <h4 class="launch-brush">На<span> связи.</span></h4><p>Войдите в рабочий аккаунт.</p>
+                <button class="launch-primary" id="launch-login" type="button">Войти через браузер <i data-icon="arrow-right"></i></button>
               </div>
-              <div class="launch-screen" data-launch-screen="mic" hidden>
-                <i class="launch-mic" data-icon="mic"></i>
-                <h4>Подключите микрофон</h4><p>Он нужен, чтобы собеседник вас слышал.</p>
+              <div class="launch-screen" data-launch-screen="waiting" hidden>
+                <h4 class="launch-brush">Продолжите в браузере.</h4><p role="status">Ожидаем подтверждения входа.</p>
+                <button class="launch-primary" id="launch-confirm" type="button">Подтвердить вход в демо</button>
+                <button class="launch-secondary" id="launch-cancel" type="button">Вернуться ко входу</button>
+              </div>
+              <div class="launch-screen" data-launch-screen="link" hidden>
+                <h4 class="launch-brush">Подключаем телефонию.</h4><p role="status">Готовим рабочую линию…</p>
+              </div>
+              <div class="launch-screen" data-launch-screen="ready" hidden>
+                <h4 class="launch-brush">Линия готова.</h4><p>Можно сделать первый звонок.</p>
                 <button class="launch-primary" id="launch-open-phone" type="button">Открыть звонилку <i data-icon="arrow-right"></i></button>
               </div>
             </div>
           </div>
         </div>
-        <p class="demo-disclaimer">Демо переходов. В рабочем приложении вход открывается через браузер, а разрешение на микрофон запрашивает macOS.</p>
+        <p class="demo-disclaimer">Интерактивный прототип первого запуска. Вход и подключение к телефонии симулируются.</p>
 
         <div class="desktop-divider desktop-second-divider"><span>02 / SOFTPHONE STATES</span><span>Compact window · one task per state</span></div>
         <div class="desktop-experience-layout" id="desktop-phone-demo">
@@ -322,8 +329,8 @@
         <h2 class="section-title" id="design-review-title">Как принять<br><span>новый интерфейс.</span></h2>
         <div class="spec-list">
           <div class="spec-row"><span>Иерархия</span><strong>Одна задача на экране</strong><p>Сначала решите, что человек должен сделать. Отделите фон, рабочую область и главное действие ритмом и типографикой. Каждый контейнер должен объяснять связь элементов.</p></div>
-          <div class="spec-row"><span>Движение</span><strong>Показывает смену состояния</strong><p>На первом запуске частицы собираются, пока приложение готовится. При входе поле затихает. В звонке оно передаёт состояние связи. С уменьшенным движением смысл остаётся читаемым.</p></div>
-          <div class="spec-row"><span>Референсы</span><strong>Заимствуйте принцип</strong><p>У Arc и ChatGPT для macOS изучайте темп первого запуска, ясность главного действия и поведение окна. Для SashaTel применяйте собственный знак, Particle Field и утверждённые иконки.</p></div>
+          <div class="spec-row"><span>Движение</span><strong>Показывает смену состояния</strong><p>На первом запуске частицы собираются в объём. При подключении линии поле кратко усиливается. В звонке движение передаёт состояние разговора. С уменьшенным движением смысл остаётся читаемым.</p></div>
+          <div class="spec-row"><span>Референсы</span><strong>Заимствуйте принцип</strong><p>У Zen — выразительный первый экран, у Apple Watch — визуальное подтверждение подключения, у Linear — иерархия рабочего окна. Применяйте знак, Particle Field и иконки SashaTel.</p></div>
           <div class="spec-row"><span>Приёмка</span><strong>Покажите работающий сценарий</strong><p>Пройдите основной путь, отмену и ошибку. Приложите кадры обеих тем, проверьте клавиатуру, кириллицу, узкое окно и уменьшенное движение. Для macOS отдельно проверьте системное окно, вход и возврат в приложение.</p></div>
         </div>
       </div>
@@ -333,7 +340,7 @@
       <div class="spec-row"><span>02 / Grid</span><strong>4 px base</strong><p>Микроотступы 4–8; связанные элементы 8–16; секции 40–64 px.</p></div>
       <div class="spec-row"><span>03 / Surface</span><strong>One plane</strong><p>Граница 1 px, радиус 4–8 px. Карточки — только когда группировка функциональна.</p></div>
       <div class="spec-row"><span>04 / Motion</span><strong>120–220 ms</strong><p>Состояния меняются плавно и предсказуемо; Particle Field учитывает reduced motion.</p></div>
-      <div class="spec-row"><span>05 / Charts</span><strong>Signal on interaction</strong><p>Контрастная линия и нейтральные сектора. Узкая горчичная дуга связывает ключевой сегмент с легендой. Значения определяют размер секторов.</p></div>
+      <div class="spec-row"><span>05 / Charts</span><strong>Signal on interaction</strong><p>Контрастная линия и нейтральные сектора. Горчичная заливка выделяет целый сектор, цвет повторяется в легенде. Значения определяют размер секторов.</p></div>
     </div><p class="spec-disclaimer">Это интерактивная концепция брендбука SashaTel. Численные токены — исходный стандарт для обсуждения и фиксации в engineering spec; не заменяют UX-исследование или проверку реального продукта.</p></div></section>
   </main>
   <footer class="footer"><div class="container footer-inner"><div><div class="footer-brand">SashaTel<span>.</span></div><p>Quiet Technology.</p></div><div class="footer-right"><span id="brandbook-updated">Обновлено: 16.11.2026 · 00:35 UTC</span><span>ООО «Полезный звонок»</span><a href="#top">Наверх ↑</a></div></div></footer>
