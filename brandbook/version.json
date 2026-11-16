@@ -1,8 +1,8 @@
 {
-  "version": "1.1.24",
-  "updatedAt": "2026-11-16T01:05:13Z",
+  "version": "1.1.25",
+  "updatedAt": "2026-11-16T01:06:49Z",
   "timezone": "UTC",
   "source": "github-actions",
-  "commit": "997674c67a3ccf37fbc50e900dc6fdcc4a0d8dc2",
+  "commit": "691705e438820995520a59f4f35e741ac9b6d3e1",
   "scope": "brandbook"
 }
