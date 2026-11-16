@@ -133,6 +133,21 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     }
   });
 
+  await t.test('critical tenant suspension hangs up an active fake call', async () => {
+    const a = await fixture({number:'+74950001032'});
+    const call = await control.authorize(a.token,'active-revoke',destination);
+    const gateway = new FakeAri();
+    await control.processOne(a.tenant,gateway);
+    assert.equal((await control.calls(a.token,call.call_id)).state,'ringing');
+    await admin.query('UPDATE control.organizations SET active=false WHERE id=$1',[a.tenant]);
+    await control.processOne(a.tenant,gateway);
+    assert.deepEqual([...gateway.attempts.values()],['ended']);
+    const { rows: [stored] } = await admin.query(
+      'SELECT c.state,w.available FROM control.calls c JOIN control.wallets w USING(organization_id) WHERE c.id=$1',
+      [call.call_id]);
+    assert.deepEqual(stored,{state:'ended',available:'100'});
+  });
+
   await t.test('ambiguous originate reconciles without redial and terminal delivery charges once', async () => {
     const a = await fixture({number:'+74950001040'});
     const call = await control.authorize(a.token,'timeout',destination);
