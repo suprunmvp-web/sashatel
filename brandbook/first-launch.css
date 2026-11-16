@@ -1,0 +1,95 @@
+
+/* SashaTel / macOS product experience — illustrative prototype, not a real installer */
+.desktop-experience{--mac-bg:#101013;--mac-surface:#18181c;--mac-hover:#222227;--mac-line:#303035;--mac-text:#f5f5f7;--mac-muted:#92929b;--mac-yellow:#e8c547}
+.desktop-divider{margin:94px 0 38px;display:flex;justify-content:space-between;gap:24px;align-items:center;border-top:1px solid var(--line);padding-top:22px;font:11px var(--mono);color:var(--sub)}
+.desktop-divider>span:first-child{color:var(--accent)}
+.install-workspace{display:grid;grid-template-columns:minmax(260px,.72fr) minmax(400px,1.28fr);gap:clamp(35px,7vw,110px);align-items:center}
+.install-editorial h3{font-size:clamp(36px,4.1vw,62px);letter-spacing:-.055em;font-weight:500;line-height:1.12;margin:0 0 25px}
+.install-editorial>p{font-size:15px;line-height:1.7;color:var(--sub);max-width:445px;margin:0 0 40px}
+.install-play{display:inline-flex;gap:14px;align-items:center;margin-top:28px;padding:11px 0;background:transparent;border:0;color:var(--fg);font-size:14px}
+.install-play [data-icon]{width:17px;height:17px;color:var(--accent)}
+.install-play:hover{color:var(--accent)}
+/* Native window chrome and the first-run specimen */
+.macos-titlebar { position:relative; display:flex; align-items:center; height:42px; padding:0 15px; border-bottom:1px solid #303035; color:#aaaab2; font-size:12px; }
+.macos-titlebar > span { position:absolute; left:50%; transform:translateX(-50%); }
+.macos-lights { display:flex; gap:8px; }
+.macos-lights i { display:block; width:12px; height:12px; border-radius:50%; }
+.macos-lights i:nth-child(1) { background:#ff5f57; }
+.macos-lights i:nth-child(2) { background:#febc2e; }
+.macos-lights i:nth-child(3) { background:#28c840; }
+.launch-window { min-width:0; border:1px solid #38383f; border-radius:12px; overflow:hidden; background:#101013; color:#f5f5f7; box-shadow:0 24px 65px #0003; }
+.launch-body { position:relative; isolation:isolate; min-height:390px; display:grid; place-items:center; background:radial-gradient(ellipse at center,#202024 0%,#101013 76%); }
+#launch-particles { position:absolute; inset:0; width:100%; height:100%; z-index:-1; opacity:.3; transition:opacity .45s; mask-image:radial-gradient(ellipse at center,#000 15%,transparent 74%); }
+[data-launch-state="boot"] #launch-particles { opacity:1; }
+.launch-screen { width:min(100%,360px); padding:28px; display:grid; justify-items:center; text-align:center; }
+.launch-screen[hidden] { display:none; }
+.launch-screen img { object-fit:contain; }
+.launch-screen h4 { margin:18px 0 0; font-size:clamp(23px,3vw,30px); letter-spacing:-.04em; font-weight:500; }
+.launch-screen p { margin:12px 0 24px; font-size:14px; line-height:1.5; color:#bdbdc4; }
+.launch-screen button { display:flex; justify-content:center; align-items:center; gap:12px; border-radius:7px; padding:11px 15px; font-size:13px; cursor:pointer; }
+.launch-primary { color:#18181b; background:#ededea; border:1px solid #ededea; }
+[data-launch-screen="boot"] p { margin-top:24px; }
+@media(max-width:620px) { .launch-body { min-height:320px; } }
+@media(prefers-reduced-motion:reduce) { #launch-particles { transition:none; } }
+.install-workspace { grid-template-columns:minmax(210px,.6fr) minmax(0,1.4fr); }
+.launch-window { border-radius:17px; background:#131211; box-shadow:0 27px 70px #0005; }
+.launch-window .macos-titlebar { border-color:#ffffff14; background:#1b1a18; }
+.launch-body { min-height:460px; display:flex; align-items:center; background:radial-gradient(ellipse at 73% 50%,#382919 0%,#141311 47%,#131211 74%); }
+#launch-particles { z-index:-1; opacity:1; mask-image:none; }
+.launch-screen { width:min(57%,420px); min-width:0; padding:36px 0 35px clamp(22px,4.2vw,64px); justify-items:start; text-align:left; }
+.launch-screen h4 { margin:0; color:#f5ecdd; font:400 clamp(32px,4vw,59px)/.99 Georgia,serif; letter-spacing:-.055em; text-wrap:balance; }
+.launch-screen h4 span { color:#e8c547; font-style:italic; }
+.launch-screen p { color:#cbc1b2; margin:15px 0 23px; }
+.launch-screen button { min-height:42px; }
+.launch-primary { background:#e8c5470c; border-color:#e8c54744; color:#f5ecdd; }
+.launch-primary:hover { background:#e8c5471e; border-color:#e8c54788; }
+.launch-brush { animation:launch-brush .85s cubic-bezier(.2,.75,.28,1) both; }
+.launch-screen p,.launch-screen button { animation:launch-text .38s .17s ease both; }
+@keyframes launch-brush {
+  from { clip-path:polygon(0 0,0 0,0 100%,0 100%); filter:blur(3px); transform:translateY(7px); }
+  60% { clip-path:polygon(0 0,92% 0,74% 100%,0 100%); }
+  to { clip-path:polygon(0 0,130% 0,115% 100%,0 100%); filter:blur(0); transform:translateY(0); }
+}
+@keyframes launch-text { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:900px) { .install-workspace { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:620px) {
+  .launch-body { min-height:470px; align-items:end; background:radial-gradient(ellipse at 50% 26%,#382919 0%,#131211 66%); }
+  .launch-screen { width:100%; padding:24px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .launch-brush,.launch-screen p,.launch-screen button { animation:none; }
+}
+
+.launch-window { position:relative; }
+.launch-window .macos-titlebar { position:absolute; inset:0 0 auto; z-index:2; background:transparent; border:0; }
+.launch-body { min-height:500px; }
+.launch-form { width:min(100%,270px); display:grid; gap:12px; margin-top:20px; }
+.launch-form label { display:grid; gap:5px; color:#e1d5c3; font-size:12px; }
+.launch-form input { width:100%; min-height:42px; background:#211d19c9; border:1px solid #53483b; border-radius:8px; padding:8px 12px; color:#f6eee1; font:inherit; }
+.launch-form input:focus-visible { outline:2px solid #c89349; outline-offset:1px; }
+.launch-form button { justify-self:start; margin:0; }
+@media(max-width:620px) { .launch-body { min-height:520px; } .launch-screen { padding-bottom:24px; } }
+
+.launch-screen h4 { letter-spacing:-.035em; }
+.launch-form { gap:9px; margin-top:23px; }
+.launch-form label { gap:6px; }
+.launch-password-row { position:relative; margin-top:-3px; }
+.launch-password-row input { padding-right:82px; }
+.launch-password-row button {
+  position:absolute; inset:3px 4px 3px auto; min-height:0;
+  padding:0 8px; border:0; background:transparent; color:#d4bf9e; font-size:11px;
+}
+.launch-form > .launch-primary { margin-top:8px; }
+@media(max-width:620px) {
+  .launch-body { height:520px; align-items:center; }
+  .launch-screen { padding:245px 24px 30px; }
+  [data-launch-screen="auth"] { padding-top:215px; }
+}
+@media(prefers-reduced-motion:no-preference) {
+  [data-launch-screen="ready"] .launch-brush { animation-delay:.18s; }
+
+}
+
+.launch-password-row button { width:38px; display:grid; place-items:center; }
+.launch-password-row button [data-icon] { width:18px; height:18px; }
+.launch-password-row input { padding-right:48px; }

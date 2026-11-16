@@ -10,10 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
-  <link rel="stylesheet" href="./softphone.css">
+  <link rel="stylesheet" href="./first-launch.css">
   <script defer src="./icons.js"></script>
   <script defer src="./app.js"></script>
-  <script defer src="./softphone.js"></script>
   <script defer src="./first-launch.js"></script>
   <script defer src="./date-picker.js"></script>
 </head>
@@ -183,7 +182,7 @@
       <div class="container section-frame">
         <div class="section-meta"><span>07 / Product experience</span><span>macOS desktop · UX concept · interactive</span></div>
         <h2 class="section-title" id="desktop-title">Made for<br><span>the conversation.</span></h2>
-        <p class="standard-lead">Компактная звонилка для менеджера. Пройдите первый запуск, наберите номер и посмотрите, как окно меняется во время разговора.</p>
+        <p class="standard-lead">Первый запуск SashaTel для macOS: от открытия приложения до подключения линии.</p>
 
         <div class="desktop-divider"><span>01 / FIRST LAUNCH</span><span>Интерактивный пример</span></div>
         <div class="install-workspace">
@@ -223,84 +222,6 @@
         </div>
         <p class="demo-disclaimer">Интерактивный прототип первого запуска. Введите любые тестовые данные. Поля обрабатываются локально, телефония симулируется.</p>
 
-        <div class="desktop-divider desktop-second-divider"><span>02 / SOFTPHONE STATES</span><span>Compact window · one task per state</span></div>
-        <div class="desktop-experience-layout" id="desktop-phone-demo">
-          <div class="softphone-editorial">
-            <h3>Звонилка для продаж</h3>
-            <p>Откройте приложение, вставьте номер и позвоните. История и звук доступны снизу. Во время вызова остаётся номер абонента, состояние соединения и завершение звонка.</p>
-            <div class="softphone-demo-controls" aria-label="Условия симуляции">
-              <label>Телефония<select id="demo-connection"><option value="online">Подключено</option><option value="connecting">Подключение</option><option value="offline">Нет соединения</option></select></label>
-              <label>Следующий вызов<select id="demo-call"><option value="answer">Абонент ответит</option><option value="no-answer">Без ответа</option><option value="error">Соединение потеряно</option><option value="pending-end">Ожидание подтверждения завершения</option></select></label>
-              <label>Состояние истории<select id="demo-history"><option value="records">Есть записи</option><option value="empty">Пусто</option><option value="error">Ошибка загрузки</option></select></label>
-              <label>Состояние аудио<select id="demo-audio"><option value="ok">Устройства доступны</option><option value="no-signal">Нет сигнала микрофона</option><option value="denied">Микрофон запрещён</option><option value="missing">Микрофон отсутствует</option><option value="unplugged">Гарнитура отключилась</option><option value="unsupported">Система управляет выводом</option></select></label>
-              <button id="demo-number" type="button">Вставить пример номера</button>
-              <button id="demo-end-confirm" type="button" hidden>Подтвердить завершение</button>
-            </div>
-            <p class="demo-disclaimer">Сценарии симулируются в браузере. Вызовы симулируются. Проверка микрофона использует звук с устройства, проверка выхода воспроизводит короткий тон.</p>
-          </div>
-          <div class="softphone-display">
-            <div class="softphone-window" id="softphone-window" data-call-state="dial" data-panel="dial" role="group" aria-label="Интерактивная desktop-звонилка SashaTel">
-              <header class="softphone-titlebar">
-                <div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div>
-              </header>
-              <div class="softphone-status">
-                <span id="phone-availability">Свободен</span>
-                <span class="softphone-connection"><i class="phone-line-light" aria-hidden="true"></i><span id="phone-connection-text" role="status">Подключено</span></span>
-              </div>
-              <section class="phone-panel phone-panel-dial" data-panel-content="dial" aria-label="Телефон">
-                <label class="phone-number-label" for="phone-number">Номер телефона</label>
-                <div class="phone-number-row">
-                  <input id="phone-number" type="tel" inputmode="tel" autocomplete="off" placeholder="+7 995 123-45-67" maxlength="32" aria-describedby="phone-number-hint">
-                  <button id="phone-clear" type="button" aria-label="Очистить номер" title="Очистить номер">×</button>
-                </div>
-                <p id="phone-number-hint" class="phone-number-hint">Россия · +7</p>
-                <div class="phone-keypad" id="phone-keypad" aria-label="Клавиатура набора номера">
-                  <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2<small>ABC</small></button><button type="button" data-digit="3">3<small>DEF</small></button>
-                  <button type="button" data-digit="4">4<small>GHI</small></button><button type="button" data-digit="5">5<small>JKL</small></button><button type="button" data-digit="6">6<small>MNO</small></button>
-                  <button type="button" data-digit="7">7<small>PQRS</small></button><button type="button" data-digit="8">8<small>TUV</small></button><button type="button" data-digit="9">9<small>WXYZ</small></button>
-                  <button type="button" data-digit="+" aria-label="Плюс">+</button><button type="button" data-digit="0">0</button><button type="button" id="phone-backspace" aria-label="Удалить символ"><i data-icon="delete"></i></button>
-                </div>
-                <button class="phone-action-start" id="phone-start" type="button" disabled><i data-icon="phone"></i>Позвонить</button>
-              </section>
-              <section class="phone-panel phone-panel-history" data-panel-content="history" hidden aria-label="История">
-                <div class="phone-section-heading"><h4>История</h4><button id="history-refresh" type="button">Обновить</button></div>
-                <p id="history-status" role="status"></p><ul id="history-list"></ul>
-              </section>
-              <section class="phone-panel phone-panel-settings" data-panel-content="settings" hidden aria-label="Настройки">
-                <h4>Звук</h4>
-                <fieldset><legend>Микрофон</legend>
-                  <label for="phone-mic">Устройство ввода</label><select id="phone-mic"><option value="">Системный микрофон</option></select>
-                  <button id="audio-mic-test" type="button">Проверить микрофон</button>
-                  <meter id="audio-meter" min="0" max="1" value="0" aria-label="Уровень микрофона" hidden></meter>
-                  <p id="audio-mic-status" role="status"></p>
-                </fieldset>
-                <fieldset><legend>Наушники и динамики</legend>
-                  <label for="phone-output">Устройство вывода</label><select id="phone-output"><option>Динамики Mac</option><option>USB-гарнитура</option></select>
-                  <label for="phone-volume">Громкость приложения</label><input id="phone-volume" type="range" min="0" max="100" value="70">
-                  <button id="audio-output-test" type="button">Проверить звук</button><p id="audio-output-status" role="status"></p>
-                </fieldset>
-                <fieldset><legend>Оформление</legend>
-                  <label for="phone-theme">Тема приложения</label><select id="phone-theme"><option value="system">Системная</option><option value="light">Светлая</option><option value="dark">Тёмная</option></select>
-                </fieldset>
-                <fieldset><legend>О приложении</legend><img class="softphone-mark" src="./assets/logo-reference-trace.svg" alt="" width="25" height="14"><p>SashaTel Desktop · версия макета 1.0</p><p id="phone-about-connection">Подключено</p></fieldset>
-              </section>
-              <section class="phone-panel phone-panel-call" data-panel-content="call" hidden aria-label="Вызов">
-                <div class="phone-call-progress"><span id="phone-call-state-label" role="status">Соединяем…</span><strong id="phone-call-timer" hidden>00:00</strong></div>
-                <h4 id="phone-call-number"></h4>
-                <div class="phone-neural"><canvas id="phone-neural-canvas" aria-hidden="true"></canvas></div>
-                <button type="button" id="phone-hangup" class="phone-action-end"><i data-icon="phone-off"></i>Завершить</button>
-              </section>
-              <section class="phone-panel phone-panel-ended" data-panel-content="ended" hidden aria-label="Результат вызова">
-                <i id="phone-result-icon" data-icon="circle-check"></i><h4 id="phone-result-title">Звонок завершён</h4><p id="phone-ended-time"></p><button id="phone-another" type="button">К набору номера</button>
-              </section>
-              <nav class="softphone-navigation" aria-label="Разделы звонилки">
-                <button class="selected" type="button" aria-current="page" data-phone-panel="dial"><i data-icon="grid-3x3"></i>Телефон</button>
-                <button type="button" data-phone-panel="history"><i data-icon="history"></i>История</button>
-                <button type="button" data-phone-panel="settings"><i data-icon="settings"></i>Звук</button>
-              </nav>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 

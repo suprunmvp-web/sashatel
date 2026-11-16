@@ -346,9 +346,9 @@
     },
     {
       "name": "delete",
-      "meaning": "Удалить последний символ номера (Backspace)",
+      "meaning": "Удалить предыдущий символ (Backspace)",
       "contexts": [
-        "dialer"
+        "text-input"
       ]
     },
     {

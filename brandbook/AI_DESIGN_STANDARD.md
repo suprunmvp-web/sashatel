@@ -1,6 +1,6 @@
 # SashaTel — Design Standard for GPT and UI Engineers
 Version: 1.1 · Brand owner: ООО «Полезный звонок» · Product: SashaTel  
-**Status:** design language approved; numeric token values are implementation baseline subject to QA. Desktop softphone layout **not approved**. Reference-traced vector is **not the original logo**.
+**Status:** design language approved; numeric token values are implementation baseline subject to QA. Reference-traced vector is **not the original logo**.
 
 ## 0. How an AI agent must use this document
 
@@ -116,7 +116,7 @@ This is the brand's **one** bespoke audio-inspired visual language. It must be i
 **Forbidden:** analytics, donut charts, KPIs, dense tables, settings forms, every sidebar item, loading spinners without a product reason, or multiple different waveform treatments on one screen.
 
 ### Real audio integration contract
-The site demo synthesizes uneven 'syllable' events: it is not a recording or real microphone input. The real softphone must supply an existing authorized `MediaStream` to `SashaTelParticle.attachAudioStream(stream)`; `detachAudioStream()` on end. Never request microphone permission merely for brandbook decoration. Do not record/store audio in the visualizer. React to measured RMS level and attack transients, not fictional sound health.
+The site demo synthesizes uneven 'syllable' events: it is not a recording or real microphone input. A production call visualizer must supply an existing authorized `MediaStream` to `SashaTelParticle.attachAudioStream(stream)`; `detachAudioStream()` on end. Never request microphone permission merely for brandbook decoration. Do not record/store audio in the visualizer. React to measured RMS level and attack transients, not fictional sound health.
 
 ## 7. Screen contracts
 
@@ -130,9 +130,6 @@ Top-left = organization switcher; top-right = notifications, theme, date range, 
 Preserve functional hierarchy: title, subheading, four horizontally aligned KPIs, answer-rate-over-time line chart, call-outcome donut/legend, operator breakdown table. Demo KPI: **+14 320** call attempts, **42.8%** connection, **02:34** average talk, **+36 982** minutes. The + is part of the agreed demo presentation, not a claim that the underlying raw count is a positive financial delta. Live product must follow correct metric semantics.
 
 Chart default: 1.5–2px neutral line; hover/focus: small yellow marker, vertical guide, concise date/value tooltip. Animate state changes but not endlessly pulsing data. Donut segments convey actual values; one accent can indicate focus.
-
-### Desktop softphone
-**UX not approved.** Do not use old generated mockups as source of truth. Build only when information architecture, actual dimensions, call states and controls are agreed. Baseline operator need: fast dialing, history/settings outside an active call, network quality visible, audio device and mute reliable, active call prioritizes name/timer/actions. Use existing Electron/telephony requirements, not marketing-screen aesthetics.
 
 ## 8. Interaction, accessibility, responsive
 
@@ -170,7 +167,6 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 - Archive deprecated mockups; they are **not** allowed precedents.
 - Repo: `suprunmvp-web/sashatel`, brandbook at `brandbook/`. Vercel project should use that root; don't overwrite the existing production `/index.html`.
 
-
 ## 11. Product refinements — interactive demo reference (2026-11-16)
 
 **Light/dark themes:** Both themes must use semantic tokens, not CSS inversions of screenshots. Neutral base shifts from graphite to off-white; yellow remains a sparse action/focus signal with adjusted contrast; red and green are reserved for semantically meaningful call events, logs, incident states and measured trends. Theme toggling is demonstrable in the HTML brandbook and its choice is persisted for subsequent visits. Do not assume the core telephony product has adopted the light theme until approved.
@@ -195,35 +191,17 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 
 **Quality gate:** Test expanded/collapsed sidebar, light/dark theme, notification alignment, date popover open/close/keyboard behavior and donut hover/focus in a real browser before claiming production readiness.
 
-
-## 12. macOS first launch and softphone
+## 12. macOS first launch
 
 **Platform chrome:** Use native macOS title-bar controls in production. The reference HTML shows the three colored controls in their close/minimize/zoom order, at 12 CSS px with 8 px separation. The brandbook simulates the product window and does not change operating-system state.
 
-**First-run sequence:** Keep window controls over the scene. Present login and password inside the window. Use Georgia Regular and Italic for first-run display text, Geist for labels and controls, and Geist Mono for the timer. The field gathers as the form opens and brightens while the line connects. Production must validate credentials and show an actionable sign-in error in place. The HTML walkthrough processes fields locally, clears them on submit, and offers a demo entry. No credential is sent or stored.
+**First-run sequence:** Keep window controls over the scene. Present login and password inside the window. Use Georgia Regular and Italic for first-run display text, Geist for labels and controls, and Geist Mono for the timer. The field zooms smoothly as the form opens and while the line connects. Production must validate credentials and show an actionable sign-in error in place. The HTML walkthrough processes fields locally, clears them on submit. No credential is sent or stored.
 
-**References:** [Zen](https://zen-browser.app/) informs the restrained editorial welcome, with serif typography limited to first run. [Apple Watch setup](https://support.apple.com/en-us/109015) informs the visible connection moment and a clear alternative when the first path fails. [macOS Tahoe](https://support.apple.com/en-us/122868) informs depth and window materials. [ChatGPT](https://help.openai.com/en/articles/20001276-moving-to-the-new-chatgpt-desktop-app) informs the open-to-sign-in sequence. [Linear](https://linear.app/now/how-we-redesigned-the-linear-ui) informs the working dialer's hierarchy. [Screen Studio](https://screen.studio/) informs transitions that direct attention. SashaTel uses its own mark and particles throughout.
+**References:** [Zen](https://zen-browser.app/) informs the restrained editorial welcome, with serif typography limited to first run. [Apple Watch setup](https://support.apple.com/en-us/109015) informs the visible connection moment and a clear alternative when the first path fails. [macOS Tahoe](https://support.apple.com/en-us/122868) informs depth and window materials. [ChatGPT](https://help.openai.com/en/articles/20001276-moving-to-the-new-chatgpt-desktop-app) informs the open-to-sign-in sequence. [Linear](https://linear.app/now/how-we-redesigned-the-linear-ui) informs the interface hierarchy. [Screen Studio](https://screen.studio/) informs transitions that direct attention. SashaTel uses its own mark and particles throughout.
 
-**Desktop motion:** The site field is a continuous waveform and call ring. First run uses a softly lit rotating volume. Widely dispersed particles converge for roughly 1.65 seconds, then drift during sign-in. The telephony handshake receives one brief acceleration and warm glow before Ready. Use a diagonal mask to reveal the display headlines. Keep text real and selectable. Reduced motion renders a still volume, shows headings immediately, and shortens simulated waits. The working dialer uses Geist and short press feedback.
+**Desktop motion:** The site field is a continuous waveform and call ring. First run uses a softly lit rotating volume. The volume grows into view at launch and zooms continuously through sign-in. At Ready, it drifts beyond the right edge and sheds warm particles. Use a diagonal mask to reveal the display headlines. Keep text real and selectable. Reduced motion renders a still volume, shows headings immediately, and shortens simulated waits.
 
-**Product scope:** SashaTel Desktop is a compact tool for B2B outbound calls. Keep analytics, billing, CRM, employee administration and trunk settings in the web products. The production shell opens on Phone. Its bottom navigation contains Phone, History and Settings. The HTML reference window is 376 × 566 CSS px, with a narrow layout checked separately. Keep navigation visible when telephony is unavailable and hide it while a call is in progress or awaiting confirmation.
-
-**Dialing:** The empty field has a format example and the action is disabled. Accept ten national digits, eleven digits starting with 8, or an international +7 number, including pasted spacing and punctuation. Canonicalize to +7 plus ten digits. The keypad follows the approved 1–9 / +, 0, delete arrangement, with small letter groups from the functional brief. Separate clear-all from backspace. Backspace removes the selection or preceding character. Enter and «Позвонить» invoke the same command. The action requires a valid number, confirmed telephony availability and no outstanding call. Guard against duplicate commands at the UI and telephony boundaries.
-
-**Connection and call lifecycle:** Show «Свободен» / «Занят» separately from service connectivity («Подключено», «Подключение», «Нет соединения»). The connectivity source is telephony, not generic internet reachability. Progress is «Соединяем…» → «Идут гудки…» → «Разговор». Show the timer only after confirmed answer, using the telephony start time. «Завершить» cancels an unanswered call or ends an active conversation. Disable it while «Завершаем звонок…» and keep new calls blocked until confirmation. After confirmation show «Звонок завершён» or «Вызов отменён» and return to the dialer. For «Не удалось соединиться», show the known reason and a route back. On renderer restart, query telephony for the current call, including any pending termination and confirmed answer timestamp, before enabling the dialer. Hide mute, audio switching, hold and DTMF from the MVP specimen. Escalate additions to the product team before designing them into the primary flow.
-
-**History:** Every outbound row shows number, local date/time, result and confirmed duration where applicable. Use «Отвечен», «Без ответа», «Отменён», «Ошибка» and «Не определён» as distinct outcomes. «Повторить» copies the number into Phone and waits for the user to initiate the call. «Обновить» refetches history. Design loading, empty, error and retry. The production source is persistent server history. The HTML example uses local fixtures and adds results for the current session.
-
-**Settings:** Show device selectors for input and output and the application volume control. During microphone testing show a meter driven by measured input and the detected/no-signal result, plus a stop action. Explain denied permission, missing devices and disconnected headsets. Output testing provides play/stop and asks whether the signal was heard. When routing is controlled by macOS, disable the selector and explain where to set it. Store Light, Dark and System preferences and follow OS changes in System mode. The About block shows the mark, name, actual application version and application connectivity. Browser demo controls sit outside the window, and mock audio is marked as simulated.
-
-**Audio visual:** use the *same* SashaTel Particle Field vocabulary as the brandbook's call mode; a compact micro-particle neural ring is permissible. It may respond to measured audio energy; the HTML demo uses synthetic syllable-like movement, never a real recording or audio stream. Do not stack an additional SoundCloud-style waveform. Reduced motion produces a stable ring.
-
-**Icon decisions:** reuse the original telephony app's `settings` SVG geometry as the standard, not the malformed approximated gear. Contact uses consistent address-book / person-card shape. Approved operations include `trash-2` (delete with confirmation), `plus` (add), `square` and `square-check` illustrations, `check`, `phone-incoming`, `phone-outgoing`, `grid-3x3`, `mic`, `mic-off`, `pause`, `volume-2`. For actual selections use native semantic HTML `<input type="checkbox">` with programmatic checked state and keyboard support, not just a painted icon.
-
-**Profile utilities in analytics:** the date-range selector and compact theme switch must be visible in the **same utility row as notifications and the account chip**, not only in the brandbook's global navigation. Keep the date range next to the account chip as the toolbar adapts.
-
-**Acceptance steps:** replay first launch, reach authorization, verify empty-field validation, connect the simulated line and open the dialer; open the softphone; enter/edit a number; switch history/settings; place a simulated call; observe connecting, ringing, active and terminating; verify the timer threshold and pending-end lock; verify failed and cancelled calls, history refresh and redial, and audio errors. Test keyboard focus, narrow widths and reduced motion. Do not call this production ready without a native macOS/electron test and accessibility review.
-
+**Acceptance steps:** Replay first launch, verify empty-field validation, show and hide the password, then reach the simulated line-ready state. Check keyboard focus, narrow widths and reduced motion.
 
 ## 13. Acceptance criteria for future product work
 
@@ -235,6 +213,4 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 
 **Web Particle Field themes:** On dark, use warm glows and bright neutral particles. On light, redraw with graphite #25241F and Ochre #765A25, with a light surrounding surface and a graphite caption. Apply the color change to a static frame under reduced motion as well.
 
-**First-run handoff:** Replay opens the initial scene and rebuilds the particle volume. After Launch, keep the same particle simulation. Start each zoom from the current scale. Ready doubles the field and lets it drift beyond the right edge. End first run at Ready. Warm particles lift off the field and drift past the edge of the window. The phone remains available as a standalone specimen in the brandbook. Reduced motion renders a still field.
-
-**Phone entry and live audio:** Center the dialing field. A leading 8 selects +7. National digits typed from an empty field appear inside the +7 mask. Request microphone access only when the user starts a test. Derive the meter from the selected input, with quick attack and a short release. Stop the microphone on leaving the audio panel. The browser uses its current output for the test tone.
+**First-run motion:** Replay opens the initial scene and rebuilds the particle volume. After Launch, keep the same particle simulation. Start each zoom from the current scale. Ready doubles the field and lets it drift beyond the right edge. End first run at Ready. Warm particles lift off the field and drift past the edge of the window. Reduced motion renders a still field.
