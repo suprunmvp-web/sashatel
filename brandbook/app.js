@@ -2,6 +2,29 @@
   'use strict';
   const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $=(q)=>document.querySelector(q), $$=(q)=>Array.from(document.querySelectorAll(q));
+
+  // Use version.json as the single source for release number and update time.
+  async function hydrateVersion() {
+    try {
+      const response = await fetch('./version.json', { cache: 'no-store' });
+      if (!response.ok) return;
+      const meta = await response.json();
+      if (!/^\d+\.\d+\.\d+$/.test(String(meta.version || ''))) return;
+      const date = new Date(meta.updatedAt);
+      if (Number.isNaN(date.getTime())) return;
+      const stamp = new Intl.DateTimeFormat('ru-RU', {
+        timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).format(date).replace(',', ' ·');
+      const version = document.getElementById('brandbook-version');
+      const updated = document.getElementById('brandbook-updated');
+      if (version) { version.textContent = 'V ' + meta.version; version.title = 'Обновлено: ' + stamp + ' UTC'; }
+      if (updated) updated.textContent = 'Обновлено: ' + stamp + ' UTC';
+      document.documentElement.dataset.brandbookVersion = meta.version;
+    } catch (error) { console.warn('Version metadata not available', error); }
+  }
+  hydrateVersion();
+
   const menu=$('.mobile-menu'), mobile=$('#mobile-nav');
   menu?.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(open));mobile.hidden=!open;});
   $$('#mobile-nav a').forEach(a=>a.addEventListener('click',()=>{mobile.hidden=true;menu.setAttribute('aria-expanded','false');}));
