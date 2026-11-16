@@ -149,7 +149,7 @@
 .install-workspace { grid-template-columns:minmax(210px,.6fr) minmax(0,1.4fr); }
 .launch-window { border-radius:17px; background:#131211; box-shadow:0 27px 70px #0005; }
 .launch-window .macos-titlebar { border-color:#ffffff14; background:#1b1a18; }
-.launch-body { min-height:460px; display:flex; align-items:center; background:radial-gradient(ellipse at 73% 50%,#282017 0%,#141311 47%,#131211 74%); }
+.launch-body { min-height:460px; display:flex; align-items:center; background:radial-gradient(ellipse at 73% 50%,#382919 0%,#141311 47%,#131211 74%); }
 #launch-particles { z-index:-1; opacity:1; mask-image:none; }
 .launch-screen { width:min(57%,420px); min-width:0; padding:36px 0 35px clamp(22px,4.2vw,64px); justify-items:start; text-align:left; }
 .launch-screen h4 { margin:0; color:#f5ecdd; font:400 clamp(32px,4vw,59px)/.99 Georgia,serif; letter-spacing:-.055em; text-wrap:balance; }
@@ -179,7 +179,7 @@
 .softphone-navigation { margin-inline:12px; padding:0; }
 @media(max-width:900px) { .install-workspace { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:620px) {
-  .launch-body { min-height:470px; align-items:end; background:radial-gradient(ellipse at 50% 26%,#282017 0%,#131211 66%); }
+  .launch-body { min-height:470px; align-items:end; background:radial-gradient(ellipse at 50% 26%,#382919 0%,#131211 66%); }
   .launch-screen { width:100%; padding:24px; }
   .launch-app-mark { width:42px; height:42px; border-radius:12px; margin-bottom:11px; }
   .launch-app-mark img { width:26px; }
@@ -199,7 +199,6 @@
 .launch-form input:focus-visible { outline:2px solid #c89349; outline-offset:1px; }
 .launch-form button { justify-self:start; margin:0; }
 .launch-form .launch-secondary { background:transparent; border-color:transparent; padding-left:0; }
-[data-launch-screen="open"] .launch-primary,[data-launch-screen="ready"] .launch-primary { margin-top:23px; }
 .phone-window-title { margin-inline:auto; padding-right:36px; font-size:11px; color:var(--phone-muted); }
 .softphone-window { background:radial-gradient(ellipse at 50% 35%,color-mix(in srgb,var(--phone-accent) 9%,transparent),transparent 63%),var(--phone-bg); }
 .softphone-titlebar { border-color:transparent; }
@@ -227,27 +226,17 @@
 }
 .launch-form > .launch-primary { margin-top:8px; }
 .launch-form > .launch-secondary { min-height:32px; }
-[data-launch-screen="ready"] .launch-primary { margin-top:18px; }
 @media(max-width:620px) {
   .launch-body { min-height:450px; align-items:center; }
   .launch-screen { padding:245px 24px 30px; }
-  .launch-window:not([data-launch-state="phone"]) .launch-body { height:520px; }
   [data-launch-screen="auth"] { padding-top:215px; }
 }
 @media(prefers-reduced-motion:no-preference) {
   [data-launch-screen="ready"] .launch-brush { animation-delay:.18s; }
-  [data-launch-screen="ready"] .launch-primary { animation:launch-text .38s .52s both, launch-glint .72s .56s both; }
-  @keyframes launch-glint {
-    0%,100% { border-color:#e8c54744; box-shadow:0 0 0 transparent; }
-    43% { border-color:#e8c547a6; box-shadow:0 0 21px #e8c54722; }
-  }
+
 }
 
 
-.launch-window[data-launch-state="phone"] > .macos-titlebar,
-.launch-window[data-launch-state="phone"] #launch-particles { display:none; }
-.launch-window[data-launch-state="phone"] .launch-body { justify-content:center; align-items:center; background:radial-gradient(ellipse,#292018,#12100e 74%); padding:22px 12px; }
-.launch-window[data-launch-state="phone"] .softphone-window { animation:launch-text .42s ease both; }
 .launch-password-row button { width:38px; display:grid; place-items:center; }
 .launch-password-row button [data-icon] { width:18px; height:18px; }
 .launch-password-row input { padding-right:48px; }
@@ -265,4 +254,3 @@
 .phone-panel-settings meter { height:14px; border-radius:3px; }
 .phone-panel-settings meter::-webkit-meter-bar { border-radius:3px; }
 .phone-panel-settings meter::-webkit-meter-optimum-value { border-radius:3px; background:linear-gradient(90deg,#a88a48,#e8c547); }
-@media(prefers-reduced-motion:reduce) { .launch-window[data-launch-state="phone"] .softphone-window { animation:none; } }

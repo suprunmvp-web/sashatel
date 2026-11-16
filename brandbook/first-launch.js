@@ -15,10 +15,7 @@
   let frame = 0, timer = 0, visible = false, width = 0, height = 0, changed = performance.now();
   let state = 'open';
   const linkDuration = 1150;
-  const phoneWindow = document.getElementById('softphone-window');
-  const phoneHome = phoneWindow.parentElement;
-  const scene = canvas.parentElement;
-  const zoom = {open:.9,auth:1.10,link:.86,ready:2.08,handoff:13};
+  const zoom = {open:.9,auth:1.10,link:.86,ready:2.08};
   let fromZoom = .32, fromOffset = 0;
   const ease = value => {
     const t = Math.min(1, Math.max(0,value));
@@ -27,11 +24,11 @@
   function zoomAt(now) {
     const target=zoom[state]??zoom.open;
     if(reduced.matches)return target;
-    return fromZoom+(target-fromZoom)*(state==='handoff'?Math.min(1,Math.max(0,(now-changed)/920))**2.4:ease((now-changed)/820));
+    return fromZoom+(target-fromZoom)*ease((now-changed)/820);
   }
 
   function offsetAt(now) {
-    const target=state==='ready'||state==='handoff'?.12:0;
+    const target=state==='ready'?.12:0;
     return reduced.matches?target:fromOffset+(target-fromOffset)*ease((now-changed)/820);
   }
 
@@ -43,12 +40,12 @@
     const x0=width*((compact?.5:.73)+offsetAt(now));
     const y0=height*(compact?.29:.49);
     const radius=Math.min(width*(compact?.26:.21),height*(compact?.23:.34))*scale;
-    const energy=.65;
+    const energy=.78;
     context.clearRect(0, 0, width, height);
     const glow = context.createRadialGradient(x0, y0, radius * .27, x0, y0, radius * 1.75);
     glow.addColorStop(0, 'transparent');
-    glow.addColorStop(.28, `rgba(222,164,67,${.17 * energy})`);
-    glow.addColorStop(.48, `rgba(149,94,40,${.23 * energy})`);
+    glow.addColorStop(.28, `rgba(248,195,111,${.17 * energy})`);
+    glow.addColorStop(.48, `rgba(195,124,65,${.23 * energy})`);
     glow.addColorStop(1, 'transparent');
     context.fillStyle = glow;
     context.fillRect(x0-radius*2, y0-radius*2, radius*4, radius*4);
@@ -61,31 +58,25 @@
       const rx = x * .91 - y * .42;
       const ry = x * .42 + y * .91;
       const wave = .92 + .065 * Math.sin(dot.azimuth * 8 + dot.height * 13 - time * 1.85);
-      const flight=state==='handoff'&&!reduced.matches?Math.min(1,Math.max(0,(now-changed)/920))**2.4:0;
-      const depthZoom=1/Math.max(.24,1-flight*(.21+.53*(z+1)/2));
-      const r = radius * dot.depth * wave * depthZoom;
+      const r = radius * dot.depth * wave;
       const projection = 1 + z * .18;
       const flutter = .8 + .2 * Math.sin(time * 2.1 + dot.pulse);
       context.globalAlpha = energy * flutter * (.27 + .65 * (z + 1) / 2);
-      context.fillStyle = dot.warm ? '#f0bc61' : z > .3 ? '#fff3df' : '#a9a19d';
-      const px=x0+rx*r*projection, py=y0+ry*r*projection;
-      const size=dot.size*projection*scale*depthZoom;
-      if(flight>.02){
-        context.strokeStyle=context.fillStyle;
-        context.lineWidth=Math.max(.6,size*.38);
-        context.beginPath();
-        context.moveTo(px,py);
-        context.lineTo(px-(px-x0)*flight*.26,py-(py-y0)*flight*.26);
-        context.stroke();
-      }else context.fillRect(px,py,size,size);
+      context.fillStyle = dot.warm ? '#f4c479' : z > .3 ? '#fff3db' : '#c7af96';
+      const size=dot.size*projection*scale;
+      context.fillRect(x0+rx*r*projection,y0+ry*r*projection,size,size);
     }
     if(!reduced.matches){
-      for(let i=0;i<73;i++){
+      for(let i=0;i<54;i++){
         const dot=dots[i];
-        const x=((dot.azimuth/tau+time*.043*dot.drift)%1)*width;
-        const y=height*(.73+.24*(dot.height+1)/2)+6*Math.sin(time*1.4+dot.pulse);
-        context.globalAlpha=.11+.16*(.5+.5*Math.sin(time+dot.pulse));
-        context.fillStyle=dot.warm?'#e5b667':'#c9b9a2';
+        const age=(time*(.13+.06*dot.drift)+i*.6180339)%1;
+        const drift=age*age*Math.hypot(width,height);
+        const angle=dot.azimuth+.23*Math.sin(time*.4+dot.pulse);
+        const distance=radius*.82+drift;
+        const x=x0+Math.cos(angle)*distance;
+        const y=y0+Math.sin(angle)*distance*.8;
+        context.globalAlpha=.56*Math.min(1,age*12,(1-age)*8);
+        context.fillStyle=dot.warm?'#ffd992':'#f3d8b6';
         context.fillRect(x,y,dot.size,dot.size);
       }
     }
@@ -98,7 +89,7 @@
   }
   function render() {
     cancelAnimationFrame(frame);
-    if (!visible || document.hidden || state==='phone') return;
+    if (!visible || document.hidden) return;
     if (reduced.matches) draw(performance.now());
     else frame = requestAnimationFrame(tick);
   }
@@ -147,7 +138,6 @@
   const openSignIn = () => { resetForm(); go('auth'); };
   document.getElementById('launch-open').addEventListener('click', openSignIn);
   document.getElementById('launch-replay').addEventListener('click', () => {
-    phoneHome.append(phoneWindow);
     resetForm();
     go('open');
   });
@@ -155,14 +145,6 @@
     event.preventDefault();
     resetForm();
     go('link');
-  });
-  document.getElementById('launch-open-phone').addEventListener('click', () => {
-    go('handoff',false);
-    timer=setTimeout(()=>{
-      scene.append(phoneWindow);
-      go('phone',false);
-      window.setSashaPhonePanel('dial');
-    },reduced.matches?0:920);
   });
   new ResizeObserver(size).observe(canvas);
   go('open',false);
