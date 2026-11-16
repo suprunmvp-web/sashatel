@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "revision": "pilot-001",
+  "bind_ipv4": null,
+  "registrar": "pbx.uiscom.ru",
+  "registrar_port": 5060,
+  "proxy": null,
+  "proxy_port": null,
+  "transport": null,
+  "caller_id": null,
+  "destination": null,
+  "codecs": [],
+  "signaling_cidrs": [],
+  "rtp_cidrs": []
+}
