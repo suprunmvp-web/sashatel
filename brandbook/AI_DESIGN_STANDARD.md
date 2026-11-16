@@ -194,3 +194,20 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 **Notification bell:** It has a fixed icon-button hit box, correct centered icon alignment, and a small separate dot for unread activity. If the dot pulses, its glow is subtle and respects reduced motion. Do not use the glowing yellow as an actual notification indicator when the inbox has no unread state.
 
 **Quality gate:** Test expanded/collapsed sidebar, light/dark theme, search focus, notification alignment, date popover open/close/keyboard behavior and donut hover/focus in a real browser before claiming production readiness.
+
+
+## 12. macOS softphone and installation specification (prototype, not approved shipping UI)
+
+**Design intent:** a quiet, precise, lightweight native-style desktop utility. The macOS softphone is deliberately separated from the larger SaaS analytics interface. Base prototype window: `376 × 528 CSS px`. The macOS title bar and its left traffic-light controls are *visual mockups*, not true OS-integrated window controls. Production must use the Electron/macOS window lifecycle and focus behavior from the SashaTel source.
+
+**Installation reference:** the onboarding pace and clarity of modern macOS apps such as Arc or ChatGPT, *not* their copyrighted interface assets. The brandbook demonstrates four conceptual phases: download the .dmg, drag the app to Applications, explain and grant microphone permission through the real system dialog, open the app. The HTML walkthrough never downloads a binary, changes system permissions or pretends an OS dialog is real. No request for actual microphone access is made by the brandbook.
+
+**Call-flow states:** idle dial pad → connecting → active conversation → completed. The number input supports paste, selection, backspace, click and digit keypad. History and settings are **icon-only tabs with aria-label/tooltips** on the menu state; during ringing and conversation the tabs disappear. Show technical network/cellular-signal quality in the chrome, not Wi-Fi arcs. During connection, do not show a fake successful duration. During conversation, center the customer name and keep time, mute, hold, DTMF and hang-up visible; avoid oversized microphone button, branded decorations, neon borders or card piles. End state should give a clear next action.
+
+**Audio visual:** use the *same* SashaTel Particle Field vocabulary as the brandbook's call mode; a compact micro-particle neural ring is permissible. It may respond to measured audio energy; the HTML demo uses synthetic syllable-like movement, never a real recording or audio stream. Do not stack an additional SoundCloud-style waveform. Reduced motion produces a stable ring.
+
+**Icon decisions:** reuse the original telephony app's `settings` SVG geometry as the standard, not the malformed approximated gear. Contact uses consistent address-book / person-card shape. Approved operations include `trash-2` (delete with confirmation), `plus` (add), `square` and `square-check` illustrations, `check`, `phone-incoming`, `phone-outgoing`, `grid-3x3`, `mic`, `mic-off`, `pause`, `volume-2`. For actual selections use native semantic HTML `<input type="checkbox">` with programmatic checked state and keyboard support, not just a painted icon.
+
+**Profile utilities in analytics:** the date-range selector and compact theme switch must be visible in the **same utility row as notifications and the account chip**, not only in the brandbook's global navigation. At smaller viewports, the search line may wrap to a second row; date controls must still remain adjacent to user tools.
+
+**Acceptance steps:** play install demo start-to-finish and jump to any step; open the softphone; enter/edit a number; switch history/settings; place a *simulated* call; observe connecting then active; toggle mute, hold and DTMF; end and begin a new call. Test keyboard focus, narrow widths and reduced motion. Do not call this production ready without a native macOS/electron test and accessibility review.
