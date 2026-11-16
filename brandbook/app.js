@@ -340,7 +340,7 @@
     themeButton?.setAttribute('aria-label',mode==='light'?'Переключить на тёмную тему':'Переключить на светлую тему');
     themeButton?.setAttribute('title',mode==='light'?'Тёмная тема':'Светлая тема');
     const glyph=themeButton?.querySelector('.theme-switch-icon');
-    if(glyph) glyph.textContent=mode==='light'?'☾':'◐';
+    if(glyph){glyph.dataset.icon=mode==='light'?'sun':'moon';window.renderSashaIcons?.();}
     try{localStorage.setItem('sashatel-brandbook-theme',mode)}catch{}
   }
   let chosenTheme='dark';
