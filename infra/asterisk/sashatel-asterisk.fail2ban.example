@@ -1,0 +1,10 @@
+[asterisk]
+enabled = true
+backend = polling
+logpath = /var/log/sashatel-asterisk/security
+findtime = 600
+maxretry = 6
+bantime = 900
+banaction = ufw
+port = 5060
+protocol = udp
