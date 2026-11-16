@@ -24,6 +24,7 @@ paths["circle-check"]="<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m8 12 2.5
 paths["arrow-right"]="<path d=\"M5 12h14m-6-6 6 6-6 6\"/>";
 paths["download"]="<path d=\"M12 3v12m-5-5 5 5 5-5M5 20h14\"/>";
 paths['delete']='<path d="M10 5 2 12l8 7h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m18 9-6 6m0-6 6 6"/>';
+paths.folder='<path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2z"/>';
 function render(){
  document.querySelectorAll('[data-icon]').forEach(node=>{
    const name=node.dataset.icon; const path=paths[name];
