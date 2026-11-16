@@ -259,3 +259,18 @@
  .icon-specimen>div:nth-last-child(-n+3){border-bottom:1px solid var(--line)}
  .icon-specimen>div:nth-last-child(-n+2){border-bottom:0}
 }
+
+
+/* Real input semantics under the iconography reference */
+.icon-actions-specimen{margin:34px 0 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.icon-action-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;min-height:66px;padding:13px 0}
+.icon-action-row+.icon-action-row{border-top:1px solid var(--line)}
+.icon-action-row label{display:inline-flex;align-items:center;gap:13px;cursor:pointer;color:var(--fg);font-size:14px}
+.icon-action-row label input{appearance:auto;accent-color:var(--accent);width:16px;height:16px;margin:0;cursor:pointer}
+.icon-action-meta{margin-left:auto;font:11px var(--mono);color:var(--sub)}
+.icon-action-row button{display:inline-flex;gap:9px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:transparent;color:var(--fg);font-size:13px}
+.icon-action-row button:hover:not(:disabled){background:var(--hover)}
+.icon-action-row button:disabled{opacity:.36;cursor:not-allowed}
+.icon-action-row [data-icon]{width:16px;height:16px}
+.icon-action-row #icon-example-status{font:11px var(--mono);color:var(--sub);margin-left:auto}
+@media(max-width:720px){.icon-action-meta{display:none}.icon-action-row #icon-example-status{margin-left:0;flex-basis:100%}}
