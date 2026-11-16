@@ -13,6 +13,7 @@ cd "$work"
 curl --proto '=https' -fsSLO "$base/$archive"
 curl --proto '=https' -fsSLo upstream.sha256 "$base/asterisk-$version.sha256"
 sha256sum --check --strict upstream.sha256
+sha256sum "$archive"
 tar -xzf "$archive"
 cd "asterisk-$version"
 ./configure --prefix="/opt/sashatel-asterisk/$version" --libdir="/opt/sashatel-asterisk/$version/lib" --with-pjproject-bundled --without-dahdi
