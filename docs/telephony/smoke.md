@@ -1,6 +1,6 @@
 # Приёмка стенда
 
-Выполняется на Ubuntu после согласования этапа B. В PR приложить только обезличенные результаты. Два отдельных софтфона с выключенным автоответом и адресами VPN из runbook. В качестве registrar и SIP domain указать VPN IP Asterisk, UDP 5060. User/Auth ID совпадают с номером. Кодек PCMA или PCMU. Использовать отдельные наушники и микрофоны.
+Выполняется на Ubuntu после согласования этапа B. В PR приложить только обезличенные результаты. Сценарий покрывает внутренний SIP-стенд. Backend entitlement, ARI, WebRTC, Desktop и PSTN требуют отдельной приёмки с #14. Два отдельных софтфона с выключенным автоответом и адресами VPN из runbook. В качестве registrar и SIP domain указать VPN IP Asterisk, UDP 5060. User/Auth ID совпадают с номером. Кодек PCMA или PCMU. Использовать отдельные наушники и микрофоны.
 
 ```bash
 pbx() {
@@ -10,9 +10,14 @@ sudo systemctl is-active sashatel-asterisk
 pbx 'core show version'
 pbx 'pjsip show transports'
 pbx 'pjsip show endpoints'
-pbx 'pjsip show contacts'
+contacts=$(pbx 'pjsip show contacts')
+for account in 1001 1002; do
+    printf '%s\n' "$contacts" | grep -E "Contact:[[:space:]]+$account/.*[[:space:]]Avail[[:space:]]"
+done
 pbx 'dialplan show from-1001'
 pbx 'dialplan show from-1002'
+pbx 'module show like cel_custom.so' | grep -E '^cel_custom[.]so[[:space:]].*Running'
+pbx 'module show like cdr_custom.so' | grep -E '^cdr_custom[.]so[[:space:]].*Running'
 pbx 'cel show status'
 pbx 'cdr show status'
 pbx 'core show channels count'
@@ -34,12 +39,17 @@ sudo fail2ban-client status asterisk
 | Восстановление | После остановки при 0 активных каналов запустить службу, дождаться повторной регистрации и повторить успешный вызов. Проверить сохранение данных и логи. |
 
 ```bash
+pbx 'core show channels count' | grep -Fx '0 active channels'
 pbx 'core show channels concise'
 pbx 'bridge show all'
+sudo test -s /var/log/sashatel-asterisk/cel-custom/Master.csv
+sudo test -s /var/log/sashatel-asterisk/cdr-custom/Master.csv
 sudo tail -n 25 /var/log/sashatel-asterisk/cel-custom/Master.csv
 sudo tail -n 10 /var/log/sashatel-asterisk/cdr-custom/Master.csv
 sudo journalctl -u sashatel-asterisk -b --no-pager
 ```
+
+До каждого вызова снять число строк обоих файлов (0, если файла ещё нет). После вызова проверить рост обоих файлов и сопоставить новые записи с его каналами. Для PASS обязательны слышимость в обе стороны, отказ регистрации вне VPN и 0 каналов после teardown.
 
 CDR — start, answer, end, src, dst, disposition, billsec, uniqueid, linkedid. CEL — eventtime, eventtype, channame, uniqueid, linkedid, extra. Читать как CSV с кавычками. Настроить хост на UTC. Регистрация и OPTIONS не доказывают ответ. ANSWER и CDR не доказывают слышимость. Для медиа требуется проверка аудио в каждом направлении. [CEL Specification](https://docs.asterisk.org/Configuration/Reporting/Channel-Event-Logging-CEL/CEL-Specification/)
 
@@ -52,3 +62,7 @@ CDR — start, answer, end, src, dst, disposition, billsec, uniqueid, linkedid. 
 | UFW, SSH, fail2ban | Команды, unit и jail | Статическая сверка портов | Rules, listeners, auth failures и блокировка |
 | CEL/CDR и teardown | Шаблоны и сценарии | Статическая сверка конфигурации | Двустороннее аудио, CSV, завершение и restart |
 | Backend и WebRTC | Контракт и границы | Документ | Следующий этап |
+
+## Локальная проверка A.1
+
+Из корня того же commit выполнить `python3 infra/asterisk/verify-static.py`. VPN guard тестируется с подставными ответами iproute2, включая down, неправильный тип, адрес и маршрут. Ubuntu systemd, настоящий WireGuard и PBX остаются в приёмке этапа B.
