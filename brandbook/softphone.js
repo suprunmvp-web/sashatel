@@ -20,13 +20,43 @@ function normalizedNumber(value){
   if(/^8\d{10}$/.test(cleaned))return '+7'+cleaned.slice(1);
   return /^\d{10}$/.test(cleaned)?'+7'+cleaned:null;
 }
+function nationalDigits(value){
+  const digits=value.replace(/\D/g,'');
+  if(value.startsWith('+7')||(!value.startsWith('+')&&(digits.startsWith('8')||digits.length===11&&digits.startsWith('7'))))return digits.slice(1,11);
+  return digits.slice(0,10);
+}
+function formatInput(){
+  const raw=number.value;
+  if(!raw||raw==='+'){refreshDial();return;}
+  const national=nationalDigits(raw);
+  const before=nationalDigits(raw.slice(0,number.selectionStart)).length;
+  let formatted='+7';
+  if(national)formatted+=' ('+national.slice(0,3);
+  if(national.length>=3)formatted+=')';
+  if(national.length>3)formatted+=' '+national.slice(3,6);
+  if(national.length>6)formatted+='-'+national.slice(6,8);
+  if(national.length>8)formatted+='-'+national.slice(8);
+  number.value=formatted;
+  let cursor=2, seen=0;
+  while(cursor<formatted.length&&seen<before){
+    if(/\d/.test(formatted[cursor]))seen++;
+    cursor++;
+  }
+  number.setSelectionRange(cursor,cursor);
+  refreshDial();
+}
+function replaceNumber(value){
+  number.value=value;
+  number.setSelectionRange(value.length,value.length);
+  formatInput();
+}
 function refreshDial(){
-  const invalid=Boolean(number.value&&!normalizedNumber(number.value));
+  const invalid=number.value.length>=18&&!normalizedNumber(number.value);
   number.setAttribute('aria-invalid',String(invalid));
   startButton.disabled=state!=='dial'||connection.value!=='online'||!normalizedNumber(number.value);
   $('#phone-clear').disabled=!number.value;
   $('#phone-number-hint').textContent=connection.value!=='online'?'Ожидаем подключения телефонии':
-    invalid?'Введите номер из 10 цифр или с +7 / 8':'+7, 8 или 10 цифр';
+    invalid?'Введите номер из 10 цифр или с +7 / 8':'Россия · +7';
 }
 function visible(which){
   panels.forEach(panel=>{panel.hidden=panel.dataset.panelContent!==which;});
@@ -46,7 +76,7 @@ function setPanel(panel){
 }
 window.setSashaPhonePanel=setPanel;
 navButtons.forEach(button=>button.addEventListener('click',()=>setPanel(button.dataset.phonePanel)));
-number.addEventListener('input',refreshDial);
+number.addEventListener('input',formatInput);
 number.addEventListener('keydown',event=>{
   if(event.key==='Enter'&&!event.isComposing&&!startButton.disabled)startButton.click();
 });
@@ -58,13 +88,25 @@ $$('#phone-keypad [data-digit]').forEach(button=>button.addEventListener('click'
   if(changed.lastIndexOf('+')>0)return;
   number.setRangeText(digit,from,to,'end');
   number.focus();
-  refreshDial();
+  formatInput();
 }));
-$('#phone-backspace').addEventListener('click',()=>{
-  const from=number.selectionStart,to=number.selectionEnd;
-  number.setRangeText('',from===to?Math.max(0,from-1):from,to,'end');
-  number.focus();
-  refreshDial();
+function eraseDigit(){
+  let from=number.selectionStart;
+  const to=number.selectionEnd;
+  if(from===to){
+    if(from<=2&&number.value.startsWith('+7')){replaceNumber('');return;}
+    while(from>2&&!/\d/.test(number.value[from-1]))from--;
+    if(from>0)from--;
+  }
+  number.setRangeText('',from,to,'end');
+  formatInput();
+}
+$('#phone-backspace').addEventListener('click',()=>{eraseDigit();number.focus();});
+number.addEventListener('beforeinput',event=>{
+  if(event.inputType==='deleteContentBackward'&&number.value){
+    event.preventDefault();
+    eraseDigit();
+  }
 });
 $('#phone-clear').addEventListener('click',()=>{
   number.value='';
@@ -148,7 +190,7 @@ function renderHistory(loading=false){
     details.append(label,meta,result);
     repeat.type='button';repeat.textContent='Повторить';
     repeat.setAttribute('aria-label','Перенести номер '+label.textContent+' на экран набора');
-    repeat.addEventListener('click',()=>{number.value=record.number;setPanel('dial');refreshDial();});
+    repeat.addEventListener('click',()=>{replaceNumber(record.number);setPanel('dial');refreshDial();});
     row.append(details,repeat);
     historyList.append(row);
   }
@@ -210,7 +252,7 @@ endButton.addEventListener('click',()=>{
 });
 confirmEnd.addEventListener('click',confirmCallEnd);
 $('#phone-another').addEventListener('click',()=>changeState('dial'));
-$('#demo-number').addEventListener('click',()=>{if(state==='dial'){number.value=number.placeholder;setPanel('dial');refreshDial();}});
+$('#demo-number').addEventListener('click',()=>{if(state==='dial'){replaceNumber(number.placeholder);setPanel('dial');refreshDial();}});
 function updateConnection(){
   const label=connectionLabels[connection.value];
   phone.dataset.connection=connection.value;
@@ -223,11 +265,13 @@ connection.addEventListener('change',updateConnection);
 
 const audio=$('#demo-audio'), micButton=$('#audio-mic-test'), outputButton=$('#audio-output-test');
 const micStatus=$('#audio-mic-status'), outputStatus=$('#audio-output-status'), meter=$('#audio-meter');
-let micInterval=0, outputTesting=false;
+let micFrame=0, micStream, micSource, micRequest=0, micActive=false, outputTesting=false;
 const micErrors={denied:'Разрешите микрофон в Системных настройках → Конфиденциальность и безопасность → Микрофон.',missing:'Микрофон не найден. Подключите устройство.',unplugged:'Гарнитура отключилась. Подключите её снова или выберите другое устройство.'};
 const outputErrors={unplugged:'Гарнитура отключилась. Подключите её снова или выберите другое устройство.',unsupported:'Устройство вывода задаётся в системных настройках.'};
 function stopMic(){
-  clearInterval(micInterval);micInterval=0;
+  micRequest++;micActive=false;cancelAnimationFrame(micFrame);
+  micSource?.disconnect();micSource=null;
+  micStream?.getTracks().forEach(track=>track.stop());micStream=null;
   meter.hidden=true;meter.value=0;
   micButton.textContent='Проверить микрофон';
 }
@@ -244,15 +288,62 @@ function updateAudio(){
   micButton.disabled=Boolean(micErrors[mode]);
   outputButton.disabled=mode==='unplugged';
 }
-micButton.addEventListener('click',()=>{
-  if(micInterval){stopMic();return;}
-  const noSignal=audio.value==='no-signal';
-  meter.hidden=false;
+const micSelect=$('#phone-mic');
+async function listMics(){
+  if(!navigator.mediaDevices?.enumerateDevices)return;
+  const selected=micSelect.value;
+  const inputs=(await navigator.mediaDevices.enumerateDevices()).filter(device=>device.kind==='audioinput'&&device.deviceId&&device.deviceId!=='default');
+  micSelect.replaceChildren(new Option('Системный микрофон',''));
+  inputs.forEach((device,index)=>micSelect.add(new Option(device.label||'Микрофон '+(index+1),device.deviceId)));
+  if(inputs.some(device=>device.deviceId===selected))micSelect.value=selected;
+}
+micSelect.addEventListener('change',()=>{stopMic();micStatus.textContent='';});
+micButton.addEventListener('click',async()=>{
+  if(micActive){stopMic();micStatus.textContent='';return;}
+  const request=++micRequest;
+  micActive=true;
   micButton.textContent='Остановить проверку';
-  micStatus.textContent=noSignal?'Сигнал не обнаружен · симуляция':'Сигнал обнаружен · симуляция';
-  meter.value=noSignal?0:.55;
-  micInterval=setInterval(()=>{meter.value=noSignal?0:.45+Math.sin(performance.now()/280)*.22;},180);
+  if(audio.value==='no-signal'){
+    meter.hidden=false;meter.value=0;micStatus.textContent='Сигнал не обнаружен · тестовый сценарий';return;
+  }
+  micStatus.textContent='Ожидаем доступ к микрофону…';
+  try{
+    const sound=prepareSound();
+    const deviceId=micSelect.value;
+    const stream=await navigator.mediaDevices.getUserMedia({audio:deviceId?{deviceId:{exact:deviceId}}:true});
+    if(request!==micRequest){stream.getTracks().forEach(track=>track.stop());return;}
+    micStream=stream;
+    if(!await sound)throw new Error('Audio unavailable');
+    if(request!==micRequest)return;
+    const analyser=audioContext.createAnalyser();
+    analyser.fftSize=1024;
+    micSource=audioContext.createMediaStreamSource(stream);
+    micSource.connect(analyser);
+    listMics().catch(()=>{});
+    stream.getAudioTracks()[0]?.addEventListener('ended',()=>{if(request===micRequest){stopMic();micStatus.textContent='Микрофон отключился.';}});
+    const samples=new Float32Array(analyser.fftSize);
+    let peak=0, lastVoice=0;
+    meter.hidden=false;
+    function measure(now){
+      analyser.getFloatTimeDomainData(samples);
+      let square=0;
+      for(const sample of samples)square+=sample*sample;
+      const level=Math.min(1,Math.sqrt(square/samples.length)*6);
+      peak=Math.max(level,peak*.84);
+      meter.value=peak;
+      if(level>.06)lastVoice=now;
+      const label=lastVoice&&now-lastVoice<650?'Сигнал обнаружен':'Скажите пару слов';
+      if(micStatus.textContent!==label)micStatus.textContent=label;
+      micFrame=requestAnimationFrame(measure);
+    }
+    micFrame=requestAnimationFrame(measure);
+  }catch(error){
+    if(request!==micRequest)return;
+    stopMic();
+    micStatus.textContent=error.name==='NotAllowedError'?'Разрешите доступ к микрофону в браузере.':'Микрофон недоступен. Проверьте устройство.';
+  }
 });
+window.addEventListener('pagehide',stopMic);
 outputButton.addEventListener('click',async()=>{
   if(outputTesting){stopOutput();outputStatus.textContent='Проверка остановлена.';return;}
   outputTesting=true;

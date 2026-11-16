@@ -14,6 +14,8 @@
     "oneSemanticMeaningPerIcon": true
   },
   "allowed": [
+    {"name":"eye","meaning":"Показать пароль","contexts":["authentication"]},
+    {"name":"eye-off","meaning":"Скрыть пароль","contexts":["authentication"]},
     {
       "name": "phone",
       "meaning": "Начать исходящий звонок; раздел звонков",

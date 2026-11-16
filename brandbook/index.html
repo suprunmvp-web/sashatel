@@ -155,6 +155,8 @@
           <div><i data-icon="signal"></i><strong>signal</strong><small>Телефонная связь</small></div>
           <div><i data-icon="mic-off"></i><strong>mic-off</strong><small>Mute</small></div>
           <div><i data-icon="phone-off"></i><strong>phone-off</strong><small>Завершить</small></div>
+          <div><i data-icon="eye"></i><strong>eye</strong><small>Показать пароль</small></div>
+          <div><i data-icon="eye-off"></i><strong>eye-off</strong><small>Скрыть пароль</small></div>
           <div><i data-icon="panel-left"></i><strong>panel-left</strong><small>Свернуть или развернуть панель</small></div>
           <div><i data-icon="search"></i><strong>search</strong><small>Поиск</small></div>
           <div><i data-icon="bell"></i><strong>bell</strong><small>Уведомления</small></div>
@@ -205,10 +207,9 @@
                   <label for="launch-password">Пароль</label>
                   <div class="launch-password-row">
                     <input id="launch-password" type="password" required autocomplete="off">
-                    <button id="launch-password-toggle" type="button" aria-controls="launch-password" aria-label="Показать пароль">Показать</button>
+                    <button id="launch-password-toggle" type="button" aria-controls="launch-password" aria-label="Показать пароль"><i data-icon="eye"></i></button>
                   </div>
                   <button class="launch-primary" type="submit">Войти <i data-icon="arrow-right"></i></button>
-                  <button class="launch-secondary" id="launch-example" type="button">Использовать демо-вход</button>
                 </form>
               </div>
               <div class="launch-screen" data-launch-screen="link" hidden>
@@ -221,7 +222,7 @@
             </div>
           </div>
         </div>
-        <p class="demo-disclaimer">Интерактивный прототип первого запуска. Для знакомства выберите демо-вход. Поля обрабатываются локально, телефония симулируется.</p>
+        <p class="demo-disclaimer">Интерактивный прототип первого запуска. Введите любые тестовые данные. Поля обрабатываются локально, телефония симулируется.</p>
 
         <div class="desktop-divider desktop-second-divider"><span>02 / SOFTPHONE STATES</span><span>Compact window · one task per state</span></div>
         <div class="desktop-experience-layout" id="desktop-phone-demo">
@@ -236,13 +237,12 @@
               <button id="demo-number" type="button">Вставить пример номера</button>
               <button id="demo-end-confirm" type="button" hidden>Подтвердить завершение</button>
             </div>
-            <p class="demo-disclaimer">Сценарии симулируются в браузере. Вызов и микрофон симулируются. Проверка звука воспроизводит короткий тон через текущий выход.</p>
+            <p class="demo-disclaimer">Сценарии симулируются в браузере. Вызовы симулируются. Проверка микрофона использует звук с устройства, проверка выхода воспроизводит короткий тон.</p>
           </div>
           <div class="softphone-display">
             <div class="softphone-window" id="softphone-window" data-call-state="dial" data-panel="dial" role="group" aria-label="Интерактивная desktop-звонилка SashaTel">
               <header class="softphone-titlebar">
                 <div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div>
-                <span class="phone-window-title">Телефон</span>
               </header>
               <div class="softphone-status">
                 <span id="phone-availability">Свободен</span>
@@ -254,7 +254,7 @@
                   <input id="phone-number" type="tel" inputmode="tel" autocomplete="off" placeholder="+7 995 123-45-67" maxlength="32" aria-describedby="phone-number-hint">
                   <button id="phone-clear" type="button" aria-label="Очистить номер" title="Очистить номер">×</button>
                 </div>
-                <p id="phone-number-hint" class="phone-number-hint">+7, 8 или 10 цифр</p>
+                <p id="phone-number-hint" class="phone-number-hint">Россия · +7</p>
                 <div class="phone-keypad" id="phone-keypad" aria-label="Клавиатура набора номера">
                   <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2<small>ABC</small></button><button type="button" data-digit="3">3<small>DEF</small></button>
                   <button type="button" data-digit="4">4<small>GHI</small></button><button type="button" data-digit="5">5<small>JKL</small></button><button type="button" data-digit="6">6<small>MNO</small></button>
@@ -268,11 +268,11 @@
                 <p id="history-status" role="status"></p><ul id="history-list"></ul>
               </section>
               <section class="phone-panel phone-panel-settings" data-panel-content="settings" hidden aria-label="Настройки">
-                <h4>Настройки</h4>
+                <h4>Звук</h4>
                 <fieldset><legend>Микрофон</legend>
-                  <label for="phone-mic">Устройство ввода</label><select id="phone-mic"><option>Встроенный микрофон</option><option>USB-гарнитура</option></select>
+                  <label for="phone-mic">Устройство ввода</label><select id="phone-mic"><option value="">Системный микрофон</option></select>
                   <button id="audio-mic-test" type="button">Проверить микрофон</button>
-                  <meter id="audio-meter" min="0" max="1" value="0" aria-label="Демонстрационный уровень микрофона" hidden></meter>
+                  <meter id="audio-meter" min="0" max="1" value="0" aria-label="Уровень микрофона" hidden></meter>
                   <p id="audio-mic-status" role="status"></p>
                 </fieldset>
                 <fieldset><legend>Наушники и динамики</legend>
@@ -297,7 +297,7 @@
               <nav class="softphone-navigation" aria-label="Разделы звонилки">
                 <button class="selected" type="button" aria-current="page" data-phone-panel="dial"><i data-icon="grid-3x3"></i>Телефон</button>
                 <button type="button" data-phone-panel="history"><i data-icon="history"></i>История</button>
-                <button type="button" data-phone-panel="settings"><i data-icon="settings"></i>Настройки</button>
+                <button type="button" data-phone-panel="settings"><i data-icon="settings"></i>Звук</button>
               </nav>
             </div>
           </div>

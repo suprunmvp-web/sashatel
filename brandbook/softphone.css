@@ -242,3 +242,27 @@
     43% { border-color:#e8c547a6; box-shadow:0 0 21px #e8c54722; }
   }
 }
+
+.launch-window[data-launch-state="handoff"] .launch-body { background:#100e0c; }
+.launch-window[data-launch-state="phone"] > .macos-titlebar,
+.launch-window[data-launch-state="phone"] #launch-particles { display:none; }
+.launch-window[data-launch-state="phone"] .launch-body { justify-content:center; align-items:center; background:radial-gradient(ellipse,#292018,#12100e 74%); padding:22px 12px; }
+.launch-window[data-launch-state="phone"] .softphone-window { animation:launch-text .42s ease both; }
+.launch-password-row button { width:38px; display:grid; place-items:center; }
+.launch-password-row button [data-icon] { width:18px; height:18px; }
+.launch-password-row input { padding-right:48px; }
+.phone-panel-dial .phone-number-label,.phone-number-hint { text-align:center; }
+.phone-number-row { position:relative; justify-content:center; padding-inline:26px; border-bottom:1px solid color-mix(in srgb,var(--phone-line) 65%,transparent); }
+.phone-number-row input { flex:1 1 auto; text-align:center; font-size:clamp(21px,6vw,30px); font-variant-numeric:tabular-nums; }
+.phone-number-row button { position:absolute; right:0; }
+.phone-number-row:focus-within { border-color:var(--phone-accent); }
+.phone-number-hint { color:var(--phone-muted); }
+.phone-panel-history li { padding:14px 0; border-top:0; border-bottom:1px solid var(--phone-line); }
+.phone-panel-history li strong { font-size:16px; font-weight:400; letter-spacing:-.02em; }
+.phone-panel-history li button { border:0; color:var(--phone-accent); }
+.phone-panel-settings fieldset { border:0; border-bottom:1px solid var(--phone-line); padding-block:9px 16px; }
+.phone-panel-settings select { min-height:38px; background:var(--phone-hover); border-color:transparent; }
+.phone-panel-settings meter { height:14px; border-radius:3px; }
+.phone-panel-settings meter::-webkit-meter-bar { border-radius:3px; }
+.phone-panel-settings meter::-webkit-meter-optimum-value { border-radius:3px; background:linear-gradient(90deg,#a88a48,#e8c547); }
+@media(prefers-reduced-motion:reduce) { .launch-window[data-launch-state="phone"] .softphone-window { animation:none; } }

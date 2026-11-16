@@ -234,3 +234,7 @@ If any criterion fails, report it as unfinished. Never call a generated mockup '
 5. Review a working build with desktop and narrow screenshots, and exercise primary and recovery paths by mouse and keyboard. Check reduced motion. For native work run on macOS and verify authorization return, permissions and the title bar. Record viewport, browser or OS and what still needs checking. Static mockups and integrations with simulated behavior must carry that label.
 
 **Web Particle Field themes:** On dark, use warm glows and bright neutral particles. On light, redraw with graphite #25241F and Ochre #765A25, with a light surrounding surface and a graphite caption. Apply the color change to a static frame under reduced motion as well.
+
+**First-run handoff:** Replay opens the initial scene and rebuilds the particle volume. Each step changes the framing with a short blur and particle displacement. The ready state keeps rotating gently. The last action disperses the particles, darkens the scene, and reveals the working phone in the same window. Reduced motion opens the phone directly.
+
+**Phone entry and live audio:** Center the dialing field. A leading 8 selects +7. National digits typed from an empty field appear inside the +7 mask. Request microphone access only when the user starts a test. Derive the meter from the selected input, with quick attack and a short release. Stop the microphone on leaving the audio panel. The browser uses its current output for the test tone.
