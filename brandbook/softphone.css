@@ -157,9 +157,9 @@
 .launch-screen p { color:#cbc1b2; margin:15px 0 23px; }
 .launch-app-mark { display:grid; place-items:center; width:68px; height:68px; margin-bottom:23px; border-radius:18px; border:1px solid #ffffff2b; background:linear-gradient(145deg,#413a30,#211d19); box-shadow:0 7px 24px #0005,inset 0 1px #ffffff19; }
 .launch-screen button { min-height:42px; }
-.launch-primary { background:#efe5d4; border-color:#efe5d4; color:#231d17; }
+.launch-primary { background:#e8c5470c; border-color:#e8c54744; color:#f5ecdd; }
 .launch-secondary { margin-top:8px; color:#ded2c0; background:#211d19; border-color:#ffffff24; }
-.launch-primary:hover { background:#fff3dd; }
+.launch-primary:hover { background:#e8c5471e; border-color:#e8c54788; }
 .launch-secondary:hover { background:#332b21; }
 .launch-brush { animation:launch-brush .85s cubic-bezier(.2,.75,.28,1) both; }
 .launch-screen p,.launch-screen button { animation:launch-text .38s .17s ease both; }
@@ -199,7 +199,7 @@
 .launch-form input:focus-visible { outline:2px solid #c89349; outline-offset:1px; }
 .launch-form button { justify-self:start; margin:0; }
 .launch-form .launch-secondary { background:transparent; border-color:transparent; padding-left:0; }
-[data-launch-screen="open"] .launch-primary { margin-top:23px; }
+[data-launch-screen="open"] .launch-primary,[data-launch-screen="ready"] .launch-primary { margin-top:23px; }
 .phone-window-title { margin-inline:auto; padding-right:36px; font-size:11px; color:var(--phone-muted); }
 .softphone-window { background:radial-gradient(ellipse at 50% 35%,color-mix(in srgb,var(--phone-accent) 9%,transparent),transparent 63%),var(--phone-bg); }
 .softphone-titlebar { border-color:transparent; }
