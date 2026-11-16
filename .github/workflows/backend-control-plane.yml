@@ -36,6 +36,6 @@ jobs:
         run: |
           psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE control_runtime LOGIN PASSWORD 'disposable-ci-runtime' NOSUPERUSER NOBYPASSRLS"
           psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql
-      - run: npm install --ignore-scripts
+      - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
