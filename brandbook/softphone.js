@@ -74,8 +74,35 @@ $('#phone-clear').addEventListener('click',()=>{
 
 const numberFormat=value=>value.replace(/^(\+7)(\d{3})(\d{3})(\d{2})(\d{2})$/,'$1 $2 $3-$4-$5');
 const formatSeconds=seconds=>String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+let audioContext, ringtone;
+const playingTones=new Set();
+function prepareSound(){
+  try{
+    audioContext??=new AudioContext();
+    return audioContext.resume().then(()=>true).catch(()=>false);
+  }catch{return Promise.resolve(false);}
+}
+function tone(hz,duration,volume){
+  if(audioContext?.state!=='running'||volume<=0)return;
+  const now=audioContext.currentTime;
+  const oscillator=audioContext.createOscillator(), gain=audioContext.createGain();
+  oscillator.frequency.value=hz;
+  gain.gain.setValueAtTime(.0001,now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(.0001,volume),now+.05);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+  oscillator.connect(gain);gain.connect(audioContext.destination);
+  oscillator.onended=()=>{playingTones.delete(oscillator);oscillator.disconnect();gain.disconnect();};
+  playingTones.add(oscillator);
+  oscillator.start();oscillator.stop(now+duration+.015);
+}
+function stopTones(){
+  clearInterval(ringtone);
+  playingTones.forEach(oscillator=>oscillator.stop());
+}
+const demoVolume=()=>Number($('#phone-volume').value)/100;
 function clearTimers(){clearTimeout(transition);clearInterval(clock);}
 function changeState(next){
+  if(state==='ringing'&&next!=='ringing')stopTones();
   state=next;
   phone.dataset.callState=state;
   nav.hidden=state!=='dial';
@@ -151,6 +178,7 @@ function finish(status,reason=''){
 startButton.addEventListener('click',()=>{
   const value=normalizedNumber(number.value);
   if(state!=='dial'||connection.value!=='online'||!value)return;
+  prepareSound();
   call={number:value,date:Date.now(),scenario:callScenario.value,answeredAt:null,stoppedAt:null};
   $('#phone-call-number').textContent=numberFormat(value);
   callTimer.textContent='00:00';
@@ -160,6 +188,8 @@ startButton.addEventListener('click',()=>{
   transition=setTimeout(()=>{
     if(call.scenario==='error'){finish('Ошибка','Соединение потеряно. Проверьте телефонию и повторите вызов.');return;}
     changeState('ringing');
+    const ring=()=>tone(425,.52,.042*demoVolume());
+    ring();ringtone=setInterval(ring,1200);
     transition=setTimeout(()=>{
       if(call.scenario==='no-answer'){finish('Без ответа','Абонент не ответил.');return;}
       call.answeredAt=Date.now();
@@ -201,7 +231,7 @@ function stopMic(){
   meter.hidden=true;meter.value=0;
   micButton.textContent='Проверить микрофон';
 }
-function stopOutput(){outputTesting=false;outputButton.textContent='Проверить звук';}
+function stopOutput(){if(outputTesting)stopTones();outputTesting=false;outputButton.textContent='Проверить звук';}
 function stopAudioTests(){stopMic();stopOutput();}
 function updateAudio(){
   stopAudioTests();
@@ -223,11 +253,21 @@ micButton.addEventListener('click',()=>{
   meter.value=noSignal?0:.55;
   micInterval=setInterval(()=>{meter.value=noSignal?0:.45+Math.sin(performance.now()/280)*.22;},180);
 });
-outputButton.addEventListener('click',()=>{
+outputButton.addEventListener('click',async()=>{
   if(outputTesting){stopOutput();outputStatus.textContent='Проверка остановлена.';return;}
   outputTesting=true;
   outputButton.textContent='Остановить проверку';
-  outputStatus.textContent='Вы услышали звук? В макете воспроизведение симулируется.';
+  const available=await prepareSound();
+  if(!outputTesting)return;
+  if(!available){
+    stopOutput();
+    outputStatus.textContent='Не удалось воспроизвести звук.';
+    return;
+  }
+  const volume=demoVolume();
+  tone(523.25,.65,.055*volume);
+  tone(659.25,.9,.038*volume);
+  outputStatus.textContent=volume?'Вы услышали звук?':'Громкость установлена на ноль.';
 });
 audio.addEventListener('change',updateAudio);
 const themeSelect=$('#phone-theme'), systemTheme=matchMedia('(prefers-color-scheme: dark)');
@@ -270,7 +310,7 @@ function paintNeural(t){
   const cx=w/2,cy=h/2,R=Math.min(w*.27,h*.42);
   let amp=0;
   for(let k=0;k<7;k++){const a=t*(.7+k*.13)+k*1.29;amp+=Math.max(0,Math.sin(a*3.6))*Math.max(0,Math.sin(a*1.3+k))*0.18;}
-  const energy=state==='active'?Math.min(1,amp):.08;
+  const energy=state==='active'?Math.min(1,amp):state==='ringing'?.27+.16*Math.sin(t*3):.08;
   const halo=ctx.createRadialGradient(cx,cy,0,cx,cy,R*1.25);
   halo.addColorStop(0,'rgba(232,197,71,.015)');halo.addColorStop(.72,'rgba(232,197,71,'+(energy*.047).toFixed(3)+')');halo.addColorStop(1,'rgba(232,197,71,0)');
   ctx.fillStyle=halo;ctx.fillRect(cx-R*1.25,cy-R*1.25,R*2.5,R*2.5);

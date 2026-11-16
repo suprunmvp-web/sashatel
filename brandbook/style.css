@@ -430,3 +430,12 @@
 .sidebar-collapsed .dashboard-sidebar .org { display:flex; }
 .donut-segment[data-seg="4"] { fill:var(--signal-mustard); }
 :root[data-theme="light"] .donut-segment[data-seg="4"] { fill:var(--signal-ochre); }
+
+.type-first-run { padding:25px 0; border-top:1px solid var(--line); display:grid; gap:9px; }
+.type-first-run > span { color:var(--sub); font:12px var(--mono); }
+.type-first-run strong { font:400 clamp(34px,6vw,72px)/1.1 Georgia,serif; }
+.type-first-run em { color:var(--accent); }
+.type-first-run p { color:var(--sub); margin:0; }
+:root[data-theme="light"] .particle-stage { background:radial-gradient(ellipse at center,#e4ddd1,var(--surface) 82%); color:var(--fg); }
+:root[data-theme="light"] .particle-stage-center { color:#25241f; text-shadow:0 2px 10px var(--surface); }
+:root[data-theme="light"] .particle-stage .stage-caption { color:var(--sub); }

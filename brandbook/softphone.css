@@ -189,3 +189,29 @@
   .phone-keypad button { transition:none; }
   .phone-keypad button:active { transform:none; }
 }
+
+.launch-window { position:relative; }
+.launch-window .macos-titlebar { position:absolute; inset:0 0 auto; z-index:2; background:transparent; border:0; }
+.launch-body { min-height:500px; }
+.launch-form { width:min(100%,270px); display:grid; gap:12px; margin-top:20px; }
+.launch-form label { display:grid; gap:5px; color:#e1d5c3; font-size:12px; }
+.launch-form input { width:100%; min-height:42px; background:#211d19c9; border:1px solid #53483b; border-radius:8px; padding:8px 12px; color:#f6eee1; font:inherit; }
+.launch-form input:focus-visible { outline:2px solid #c89349; outline-offset:1px; }
+.launch-form button { justify-self:start; margin:0; }
+.launch-form .launch-secondary { background:transparent; border-color:transparent; padding-left:0; }
+[data-launch-screen="open"] .launch-primary { margin-top:23px; }
+.phone-window-title { margin-inline:auto; padding-right:36px; font-size:11px; color:var(--phone-muted); }
+.softphone-window { background:radial-gradient(ellipse at 50% 35%,color-mix(in srgb,var(--phone-accent) 9%,transparent),transparent 63%),var(--phone-bg); }
+.softphone-titlebar { border-color:transparent; }
+.softphone-status { padding-inline:22px; }
+.phone-line-light { width:7px; height:7px; border-radius:50%; background:var(--phone-danger); }
+[data-connection="online"] .phone-line-light { background:var(--phone-success); box-shadow:0 0 11px var(--phone-success); }
+[data-connection="connecting"] .phone-line-light { background:var(--phone-accent); animation:phone-signal 1.35s ease-in-out infinite alternate; }
+@keyframes phone-signal { from{opacity:.45} to{opacity:1} }
+.phone-panel-call h4 { font:400 clamp(25px,4vw,36px)/1.1 Georgia,serif; }
+.phone-panel-call { animation:launch-text .32s ease both; }
+.phone-panel-settings meter { appearance:none; height:10px; border-radius:10px; filter:drop-shadow(0 0 6px color-mix(in srgb,var(--phone-accent) 50%,transparent)); }
+.phone-panel-settings meter::-webkit-meter-bar { background:var(--phone-hover); border:0; }
+.phone-panel-settings meter::-webkit-meter-optimum-value { background:var(--phone-accent); }
+@media(max-width:620px) { .launch-body { min-height:520px; } .launch-screen { padding-bottom:24px; } }
+@media(prefers-reduced-motion:reduce) { .phone-panel-call,[data-connection="connecting"] .phone-line-light { animation:none; } }

@@ -24,7 +24,7 @@
     const x0 = width * (compact ? .5 : .73);
     const y0 = height * (compact ? .28 : .5);
     const radius = Math.min(width * (compact ? .24 : .21), height * .34);
-    const converge = state === 'boot' ? ease(elapsed / 1.65) : 1;
+    const converge = state === 'auth' ? ease(elapsed / 1.65) : 1;
     const pulse = state === 'link' ? Math.sin(Math.min(1, elapsed / 1.5) * Math.PI) : 0;
     const energy = state === 'open' ? .47 : state === 'ready' ? .83 : .66 + pulse * .27;
     context.clearRect(0, 0, width, height);
@@ -87,17 +87,19 @@
       if (target.tagName !== 'BUTTON') target.tabIndex = -1;
       target.focus({ preventScroll: true });
     }
-    if (next === 'boot') timer = setTimeout(() => go('auth'), reduced.matches ? 180 : 2000);
     if (next === 'link') timer = setTimeout(() => go('ready'), reduced.matches ? 180 : 1550);
     render();
   }
-  const actions = {
-    'launch-replay': 'boot', 'launch-open': 'boot', 'launch-skip': 'auth',
-    'launch-login': 'waiting', 'launch-confirm': 'link', 'launch-cancel': 'auth'
-  };
-  Object.entries(actions).forEach(([id, next]) => {
-    document.getElementById(id).addEventListener('click', () => go(next));
+  const form = document.getElementById('launch-form');
+  const openSignIn = () => { form.reset(); go('auth'); document.getElementById('launch-user').focus({ preventScroll: true }); };
+  document.getElementById('launch-open').addEventListener('click', openSignIn);
+  document.getElementById('launch-replay').addEventListener('click', openSignIn);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    form.reset();
+    go('link');
   });
+  document.getElementById('launch-example').addEventListener('click', () => { form.reset(); go('link'); });
   document.getElementById('launch-open-phone').addEventListener('click', () => {
     document.getElementById('softphone-window').scrollIntoView({ behavior: reduced.matches ? 'instant' : 'smooth', block: 'center' });
     window.setSashaPhonePanel('dial');

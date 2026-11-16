@@ -131,6 +131,7 @@
       }
 
       function paint(seconds, level, articulation = 0, morph = 0) {
+        const light = document.documentElement.dataset.theme === 'light';
         ctx.clearRect(0, 0, width, height);
         // Integer temporal harmonics are precisely periodic at 48 seconds.
         // This avoids the conspicuous reset of a travelling / modulo pulse.
@@ -150,8 +151,8 @@
         // Sparse luminous nodes over neutral darkness; opacity is local and
         // asymmetrical, never a permanent blanket neon glow.
         ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const glowCount = stage ? 7 : 4;
+        ctx.globalCompositeOperation = light ? 'multiply' : 'screen';
+        const glowCount = stage ? 7 : 8;
         for (let g = 0; g < glowCount; g++) {
           const theta = g * TAU / glowCount + phase * (g % 2 ? 2 : -1);
           const linearX = width * (.16 + .68 * (g + .5) / glowCount) + Math.sin(theta) * width * .025;
@@ -163,10 +164,10 @@
           const gy = linearY * (1 - morph) + ringY * morph;
           const rad = (stage ? 70 : 94) + (g % 3) * 16;
           const gold = (g % 3 === 0);
-          const gain = (gold ? .085 : .052) + (stage ? level * .07 + articulation * .14 : 0);
+          const gain = (light ? .11 : gold ? .22 : .12) + (stage ? level * .07 + articulation * .14 : 0);
           const gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, rad);
-          gr.addColorStop(0, gold ? 'rgba(232,197,71,' + gain.toFixed(3) + ')' : 'rgba(228,228,244,' + (gain*.55).toFixed(3) + ')');
-          gr.addColorStop(.35, gold ? 'rgba(201,162,39,' + (gain*.33).toFixed(3) + ')' : 'rgba(150,150,175,' + (gain*.25).toFixed(3) + ')');
+          gr.addColorStop(0, light ? `rgba(118,90,37,${gain})` : gold ? 'rgba(232,197,71,' + gain.toFixed(3) + ')' : 'rgba(228,228,244,' + (gain*.55).toFixed(3) + ')');
+          gr.addColorStop(.35, light ? 'rgba(118,90,37,.035)' : gold ? 'rgba(201,162,39,' + (gain*.33).toFixed(3) + ')' : 'rgba(150,150,175,' + (gain*.25).toFixed(3) + ')');
           gr.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = gr;
           ctx.fillRect(gx - rad, gy - rad, rad * 2, rad * 2);
@@ -214,12 +215,12 @@
           if (py < 0 || py > height || px < 0 || px > width) continue;
           const dx = Math.abs(x - pulsePosition);
           const signal = Math.exp(-Math.pow(dx / pulseRadius, 2));
-          let alpha = particle.opacity * fade * (stage ? .89 : .63);
+          let alpha = particle.opacity * fade * (stage ? .89 : .91);
           const localSpark = stage ? Math.max(0, neuralA * neuralB) * (volume * .6 + articulation * 1.4) : 0;
           if (particle.gold) alpha *= .76 + 1.10 * signal + localSpark * 1.9;
           else alpha *= .92 + .14 * signal + localSpark * .42;
           ctx.globalAlpha = clamp(alpha, .02, .78);
-          ctx.fillStyle = particle.color;
+          ctx.fillStyle = light ? (particle.gold ? '#765a25' : '#25241f') : particle.color;
           const radius = particle.radius * (.8 + particle.depth * .30 + localSpark * .12);
           ctx.fillRect(px, py, radius, radius);
         }
@@ -261,6 +262,7 @@
       if (resize) resize.observe(canvas);
       else window.addEventListener('resize', () => { build(); start(); }, { passive: true });
       document.addEventListener('visibilitychange', start);
+      new MutationObserver(start).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
       motionQuery.addEventListener?.('change', start);
       build(); start();
       stages.push({ stage, paint, build });

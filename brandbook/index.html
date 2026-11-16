@@ -77,8 +77,9 @@
           <button type="button" class="swatch" data-hex="#BD3647" style="--swatch-bg:#BD3647;--swatch-fg:#fff"><span>Ошибка · светлая тема</span><strong>#BD3647</strong></button>
         </div>
         <div class="palette-caption"><p>В интерфейсе нейтральные цвета занимают основную площадь, жёлтые оттенки выделяют активные элементы, зелёный и красный обозначают статусы. Ориентир для композиции — 95% нейтральных тонов и 5% акцента.</p><span>Нажмите на цвет, чтобы скопировать HEX</span></div>
-        <div class="subheading typography-heading"><span>02.2 / Typography</span><span>Geist / Geist Mono</span></div>
+        <div class="subheading typography-heading"><span>02.2 / Typography</span><span>Geist / Geist Mono / Georgia</span></div>
         <div class="type-specimen"><div class="specimen-main"><div class="specimen-letter">Ag<span class="specimen-dot">.</span></div><div class="type-note">Гармония пропорций.<br>Точность каждого символа.</div></div><div class="specimen-aside"><div class="type-meta"><span>Headlines / Geist</span><span>500 — Medium</span></div><p class="type-example">Система, которая<br>работает без шума.</p><div class="type-meta lower"><span>Data / Geist Mono</span><span>400 — Regular</span></div><div class="mono-examples">02:34:18<br>+14 320<br>42,8 %</div></div></div>
+        <div class="type-first-run"><span>Georgia · Regular / Italic</span><strong>На <em>связи.</em></strong><p>Приветствие и переходы первого запуска. Geist ведёт интерфейс и форму, Geist Mono держит таймер и числовые показания.</p></div>
         <div class="subheading spacing-heading"><span>02.3 / Rhythm</span><span>4 px base unit</span></div>
         <div class="rhythm"><div class="rhythm-visual"><span style="--w:4">04</span><span style="--w:8">08</span><span style="--w:12">12</span><span style="--w:16">16</span><span style="--w:24">24</span><span style="--w:32">32</span><span style="--w:48">48</span></div><p>Базовый шаг 4 px. Элементы связаны ритмом, а не контейнерами. Границы — 1 px с низким контрастом. Радиусы — 4–8 px.</p></div>
       </div>
@@ -190,30 +191,24 @@
             <button id="launch-replay" class="install-play" type="button"><i data-icon="history"></i>Повторить первый запуск</button>
           </div>
           <div class="launch-window" id="launch-window" data-launch-state="open">
-            <div class="macos-titlebar"><div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div><span>SashaTel</span></div>
+            <div class="macos-titlebar" aria-hidden="true"><div class="macos-lights"><i></i><i></i><i></i></div></div>
             <div class="launch-body">
               <canvas id="launch-particles" aria-hidden="true"></canvas>
               <div class="launch-screen" data-launch-screen="open">
-                <div class="launch-app-mark"><img src="./assets/logo-reference-trace.svg" alt="" width="43" height="23"></div>
                 <h4 class="launch-brush">SashaTel</h4>
-                <p>Первый запуск приложения</p>
                 <button class="launch-primary" id="launch-open" type="button">Открыть <i data-icon="arrow-right"></i></button>
               </div>
-              <div class="launch-screen" data-launch-screen="boot" hidden>
-                <h4 class="launch-brush">Открываем линию.</h4><p role="status">Запускаем SashaTel…</p>
-                <button class="launch-secondary" id="launch-skip" type="button">Перейти ко входу</button>
-              </div>
               <div class="launch-screen" data-launch-screen="auth" hidden>
-                <h4 class="launch-brush">На<span> связи.</span></h4><p>Войдите в рабочий аккаунт.</p>
-                <button class="launch-primary" id="launch-login" type="button">Войти через браузер <i data-icon="arrow-right"></i></button>
-              </div>
-              <div class="launch-screen" data-launch-screen="waiting" hidden>
-                <h4 class="launch-brush">Продолжите в браузере.</h4><p role="status">Ожидаем подтверждения входа.</p>
-                <button class="launch-primary" id="launch-confirm" type="button">Подтвердить вход в демо</button>
-                <button class="launch-secondary" id="launch-cancel" type="button">Вернуться ко входу</button>
+                <h4 class="launch-brush">На<span> связи.</span></h4>
+                <form id="launch-form" class="launch-form" autocomplete="off">
+                  <label>Логин<input id="launch-user" required autocomplete="off" spellcheck="false"></label>
+                  <label>Пароль<input id="launch-password" type="password" required autocomplete="off"></label>
+                  <button class="launch-primary" type="submit">Войти <i data-icon="arrow-right"></i></button>
+                  <button class="launch-secondary" id="launch-example" type="button">Использовать демо-вход</button>
+                </form>
               </div>
               <div class="launch-screen" data-launch-screen="link" hidden>
-                <h4 class="launch-brush">Подключаем телефонию.</h4><p role="status">Готовим рабочую линию…</p>
+                <h4 class="launch-brush" role="status">Настраиваем линию.</h4>
               </div>
               <div class="launch-screen" data-launch-screen="ready" hidden>
                 <h4 class="launch-brush">Линия готова.</h4><p>Можно сделать первый звонок.</p>
@@ -222,7 +217,7 @@
             </div>
           </div>
         </div>
-        <p class="demo-disclaimer">Интерактивный прототип первого запуска. Вход и подключение к телефонии симулируются.</p>
+        <p class="demo-disclaimer">Интерактивный прототип первого запуска. Для знакомства выберите демо-вход. Поля обрабатываются локально, телефония симулируется.</p>
 
         <div class="desktop-divider desktop-second-divider"><span>02 / SOFTPHONE STATES</span><span>Compact window · one task per state</span></div>
         <div class="desktop-experience-layout" id="desktop-phone-demo">
@@ -237,17 +232,17 @@
               <button id="demo-number" type="button">Вставить пример номера</button>
               <button id="demo-end-confirm" type="button" hidden>Подтвердить завершение</button>
             </div>
-            <p class="demo-disclaimer">Сценарии симулируются в браузере. Аудиотесты показывают интерфейс проверки с демонстрационным сигналом.</p>
+            <p class="demo-disclaimer">Сценарии симулируются в браузере. Вызов и микрофон симулируются. Проверка звука воспроизводит короткий тон через текущий выход.</p>
           </div>
           <div class="softphone-display">
             <div class="softphone-window" id="softphone-window" data-call-state="dial" data-panel="dial" role="group" aria-label="Интерактивная desktop-звонилка SashaTel">
               <header class="softphone-titlebar">
                 <div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div>
-                <img class="softphone-mark" src="./assets/logo-reference-trace.svg" alt="SashaTel" width="25" height="14">
+                <span class="phone-window-title">Телефон</span>
               </header>
               <div class="softphone-status">
                 <span id="phone-availability">Свободен</span>
-                <span class="softphone-connection"><i data-icon="signal"></i><span id="phone-connection-text" role="status">Подключено</span></span>
+                <span class="softphone-connection"><i class="phone-line-light" aria-hidden="true"></i><span id="phone-connection-text" role="status">Подключено</span></span>
               </div>
               <section class="phone-panel phone-panel-dial" data-panel-content="dial" aria-label="Телефон">
                 <label class="phone-number-label" for="phone-number">Номер телефона</label>
