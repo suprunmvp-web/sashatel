@@ -10,20 +10,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./softphone.css">
   <script defer src="./icons.js"></script>
   <script defer src="./app.js"></script>
+  <script defer src="./softphone.js"></script>
 </head>
 <body>
   <a class="skip" href="#content">Перейти к содержимому</a>
   <header class="site-header" id="top">
     <a href="#top" class="wordmark" aria-label="SashaTel — наверх">SashaTel<span class="wordmark-small">/ Design System</span></a>
     <nav class="top-nav" aria-label="Разделы брендбука">
-      <a href="#philosophy">Концепция</a><a href="#foundation">Основы</a><a href="#particle">Материя</a><a href="#analytics">Интерфейс</a>
+      <a href="#philosophy">Концепция</a><a href="#foundation">Основы</a><a href="#particle">Материя</a><a href="#analytics">Интерфейс</a><a href="#desktop">macOS</a>
     </nav>
     <div class="header-end"><button class="theme-switch" id="theme-switch" type="button" aria-pressed="false" aria-label="Переключить на светлую тему" title="Светлая / тёмная тема"><i class="theme-switch-icon" data-icon="moon" aria-hidden="true"></i><span class="theme-switch-label">Тема</span></button><span class="version" id="brandbook-version" title="Дата обновления брендбука">V 1.1.0</span><a class="header-action" href="#ai-standard">Стандарт GPT <span aria-hidden="true">↗</span></a></div>
     <button class="mobile-menu" type="button" aria-controls="mobile-nav" aria-expanded="false" aria-label="Открыть навигацию"><span></span><span></span></button>
   </header>
-  <nav id="mobile-nav" class="mobile-nav" aria-label="Мобильная навигация" hidden><a href="#philosophy">Концепция</a><a href="#foundation">Основы</a><a href="#particle">Материя</a><a href="#analytics">Интерфейс</a><a href="#specification">Спецификация</a><a href="#ai-standard">Стандарт GPT</a></nav>
+  <nav id="mobile-nav" class="mobile-nav" aria-label="Мобильная навигация" hidden><a href="#philosophy">Концепция</a><a href="#foundation">Основы</a><a href="#particle">Материя</a><a href="#analytics">Интерфейс</a><a href="#desktop">macOS</a><a href="#specification">Спецификация</a><a href="#ai-standard">Стандарт GPT</a></nav>
   <main id="content">
     <section class="hero" aria-labelledby="hero-title">
       <canvas id="hero-particles" class="hero-canvas" aria-hidden="true"></canvas>
@@ -153,9 +155,106 @@
         <p class="registry-note"><a href="./icon-registry.json" target="_blank" rel="noopener">Полный утверждённый реестр иконок в JSON ↗</a></p>
       </div>
     </section>
+    
+    <section class="chapter desktop-experience" id="desktop" aria-labelledby="desktop-title">
+      <div class="container section-frame">
+        <div class="section-meta"><span>07 / Product experience</span><span>macOS desktop · UX concept · interactive</span></div>
+        <h2 class="section-title" id="desktop-title">Made for<br><span>the conversation.</span></h2>
+        <p class="standard-lead">Не ещё один SaaS в отдельном окне. Небольшое нативное приложение, в котором менеджер набирает номер и сосредотачивается на разговоре. Ниже — интерактивные концепты установки и вызова, а не готовый macOS-дистрибутив.</p>
+
+        <div class="desktop-divider"><span>01 / INSTALLATION EXPERIENCE</span><span>Animated walkthrough · illustrative, no software download</span></div>
+        <div class="install-workspace">
+          <div class="install-editorial">
+            <h3>From download.<br>To first call.</h3>
+            <p>Первые действия без инструкции на пять страниц. Статусы понятны, но не перегружены. Движение показывает перемещение приложения, а не украшает пустой экран.</p>
+            <div class="install-steps" role="group" aria-label="Шаги установки приложения">
+              <button type="button" class="install-step is-current" data-install-step="0"><span>01</span><strong>Скачать .dmg</strong><small>Получение приложения</small></button>
+              <button type="button" class="install-step" data-install-step="1"><span>02</span><strong>Перенести в Программы</strong><small>Установка через Finder</small></button>
+              <button type="button" class="install-step" data-install-step="2"><span>03</span><strong>Разрешить микрофон</strong><small>Системный запрос macOS</small></button>
+              <button type="button" class="install-step" data-install-step="3"><span>04</span><strong>Начать работать</strong><small>Открыть звонилку</small></button>
+            </div>
+            <button id="install-play" class="install-play" type="button"><i data-icon="arrow-right"></i><span>Воспроизвести сценарий</span></button>
+          </div>
+          <div class="install-preview" data-install-state="0" aria-live="polite">
+            <div class="macos-titlebar">
+              <div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+              <span id="install-window-title">SashaTel — установка</span>
+              <span>macOS</span>
+            </div>
+            <div class="install-scene">
+              <p class="install-stage-label" id="install-stage-label">01 / Download complete</p>
+              <div class="install-items">
+                <div class="app-file" id="install-app-file"><div class="app-icon"><img src="./assets/logo-reference-trace.svg" width="39" height="20" alt="" /></div><span>Приложение</span></div>
+                <div class="install-arrow" aria-hidden="true"><i data-icon="arrow-right"></i></div>
+                <div class="applications-folder"><i data-icon="folder"></i><span>Программы</span></div>
+              </div>
+              <div class="install-permission" id="install-permission" aria-hidden="true">
+                <div class="permission-badge"><i data-icon="mic"></i></div>
+                <strong>Доступ к микрофону</strong>
+                <p>Для разговоров приложению нужен доступ к микрофону.</p>
+                <div><span>Позже</span><span class="permission-allow">Разрешить</span></div>
+              </div>
+              <div class="install-ready" id="install-ready" aria-hidden="true"><i data-icon="circle-check"></i><strong>Готово к работе</strong><p>Откройте звонилку и начните первый вызов.</p><button id="install-open-app" type="button">Открыть интерфейс <i data-icon="arrow-right"></i></button></div>
+              <span class="install-scene-note" id="install-stage-note">Файл загружен. Перейдите к установке.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="desktop-divider desktop-second-divider"><span>02 / SOFTPHONE STATES</span><span>Compact window · one task per state</span></div>
+        <div class="desktop-experience-layout" id="desktop-phone-demo">
+          <div class="softphone-editorial">
+            <h3>Call without<br>the clutter.</h3>
+            <p>Набор, история и настройки доступны в меню. Во время разговора интерфейс сводится к имени собеседника, длительности, качеству связи и трём главным действиям.</p>
+            <div class="softphone-specs">
+              <div><span>Window</span><strong>376 × 528 px</strong></div>
+              <div><span>Typeface</span><strong>Geist</strong></div>
+              <div><span>Navigation</span><strong>Icons only</strong></div>
+              <div><span>Connection</span><strong>Cellular signal indicator</strong></div>
+            </div>
+            <p class="demo-disclaimer">Интерактивный UX-прототип. Номер примерный, настоящие звонки не осуществляются. Геометрия и сценарии ещё требуют проверки на macOS перед утверждением.</p>
+          </div>
+          <div class="softphone-display">
+            <div class="softphone-window" id="softphone-window" data-call-state="dial" data-panel="dial" role="group" aria-label="Интерактивная desktop-звонилка SashaTel">
+              <div class="softphone-titlebar">
+                <div class="macos-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+                <span class="softphone-title">SashaTel</span>
+                <span class="softphone-connection" title="Демонстрация состояния телефонного соединения"><i data-icon="signal"></i><span>Сеть</span></span>
+              </div>
+              <div class="softphone-navigation" role="tablist" aria-label="Режимы звонилки">
+                <button class="selected" type="button" role="tab" aria-selected="true" data-phone-panel="dial" aria-label="Набор номера" title="Набор номера"><i data-icon="grid-3x3"></i></button>
+                <button type="button" role="tab" aria-selected="false" data-phone-panel="history" aria-label="История" title="История"><i data-icon="history"></i></button>
+                <button type="button" role="tab" aria-selected="false" data-phone-panel="settings" aria-label="Настройки" title="Настройки"><i data-icon="settings"></i></button>
+              </div>
+              <div class="phone-panel phone-panel-dial" data-panel-content="dial">
+                <label class="phone-number-label" for="phone-number">Номер телефона</label>
+                <div class="phone-number-row"><input id="phone-number" type="tel" inputmode="tel" autocomplete="off" value="+7 995 123-45-67" aria-label="Номер телефона"/><button id="phone-backspace" type="button" title="Удалить последний символ" aria-label="Удалить последний символ">⌫</button></div>
+                <div class="phone-keypad" id="phone-keypad" aria-label="Клавиатура набора номера">
+                  <button type="button" data-digit="1"><strong>1</strong></button><button type="button" data-digit="2"><strong>2</strong><small>ABC</small></button><button type="button" data-digit="3"><strong>3</strong><small>DEF</small></button>
+                  <button type="button" data-digit="4"><strong>4</strong><small>GHI</small></button><button type="button" data-digit="5"><strong>5</strong><small>JKL</small></button><button type="button" data-digit="6"><strong>6</strong><small>MNO</small></button>
+                  <button type="button" data-digit="7"><strong>7</strong><small>PQRS</small></button><button type="button" data-digit="8"><strong>8</strong><small>TUV</small></button><button type="button" data-digit="9"><strong>9</strong><small>WXYZ</small></button>
+                  <button type="button" data-digit="*"><strong>*</strong></button><button type="button" data-digit="0"><strong>0</strong><small>+</small></button><button type="button" data-digit="#"><strong>#</strong></button>
+                </div>
+                <button class="phone-action-start" id="phone-start" type="button"><i data-icon="phone"></i><span>Позвонить</span></button>
+              </div>
+              <div class="phone-panel phone-panel-history" data-panel-content="history" hidden><h4>История звонков</h4><div><i data-icon="phone-outgoing"></i><span>Алексей Климов<small>Сегодня · 02:34</small></span><i data-icon="chevron-down"></i></div><div><i data-icon="phone-incoming"></i><span>Мария Соколова<small>Вчера · 05:12</small></span><i data-icon="chevron-down"></i></div></div>
+              <div class="phone-panel phone-panel-settings" data-panel-content="settings" hidden><h4>Звук и соединение</h4><div><i data-icon="mic"></i><span>Микрофон<small>Системное устройство</small></span></div><div><i data-icon="volume-2"></i><span>Динамики<small>Системное устройство</small></span></div><div><i data-icon="signal"></i><span>Соединение<small>Демо · стабильное</small></span></div></div>
+              <div class="phone-panel phone-panel-call" data-panel-content="call" hidden>
+                <div class="phone-call-progress"><span id="phone-call-state-label">Соединение…</span><strong id="phone-call-timer">00:00</strong></div>
+                <h4>Алексей Климов</h4><p class="phone-call-number" id="phone-call-number">+7 995 123-45-67</p>
+                <div class="phone-neural"><canvas id="phone-neural-canvas" aria-hidden="true"></canvas></div>
+                <div class="phone-in-call-actions"><button type="button" id="phone-mute" aria-pressed="false" aria-label="Выключить микрофон" title="Микрофон"><i data-icon="mic"></i></button><button type="button" id="phone-hold" aria-pressed="false" aria-label="Удержать вызов" title="Удержание"><i data-icon="pause"></i></button><button type="button" id="phone-in-call-dtmf" aria-label="Клавиатура набора DTMF" title="Клавиатура"><i data-icon="grid-3x3"></i></button></div>
+                <button type="button" id="phone-hangup" class="phone-action-end"><i data-icon="phone-off"></i><span>Завершить</span></button>
+              </div>
+              <div class="phone-panel phone-panel-ended" data-panel-content="ended" hidden><i data-icon="circle-check"></i><h4>Звонок завершён</h4><p id="phone-ended-time">Продолжительность 00:00</p><button id="phone-another" type="button">Новый вызов</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="chapter" id="ai-standard" aria-labelledby="ai-title">
       <div class="container section-frame">
-        <div class="section-meta"><span>07 / Agent instructions</span><span>GPT · UX/UI skill · developer handoff</span></div>
+        <div class="section-meta"><span>08 / Agent instructions</span><span>GPT · UX/UI skill · developer handoff</span></div>
         <h2 id="ai-title" class="section-title">Understand first.<br><span>Then design.</span></h2>
         <p class="standard-lead">SashaTel Design Standard — обязательный контракт для AI-агента, а не подборка референсов. Использовать ux-ui skill как метод UX-анализа и проверки, а не как генератор случайных модных стилей. Сначала задача человека и существующая функция, потом структура, токены и эстетика.</p>
         <div class="standard-rule-list">
@@ -170,7 +269,7 @@
       </div>
     </section>
 
-    <section class="chapter specification" id="specification" aria-labelledby="spec-title"><div class="container section-frame"><div class="section-meta"><span>08 / Engineering</span><span>Single source of truth</span></div><h2 class="section-title" id="spec-title">The details<br><span>are the design.</span></h2><div class="spec-list">
+    <section class="chapter specification" id="specification" aria-labelledby="spec-title"><div class="container section-frame"><div class="section-meta"><span>09 / Engineering</span><span>Single source of truth</span></div><h2 class="section-title" id="spec-title">The details<br><span>are the design.</span></h2><div class="spec-list">
       <div class="spec-row"><span>01 / Type</span><strong>Geist / Geist Mono</strong><p>Строгая шкала, без случайных начертаний. Tabular numerals для метрик и таблиц.</p></div>
       <div class="spec-row"><span>02 / Grid</span><strong>4 px base</strong><p>Микроотступы 4–8; связанные элементы 8–16; секции 40–64 px.</p></div>
       <div class="spec-row"><span>03 / Surface</span><strong>One plane</strong><p>Граница 1 px, радиус 4–8 px. Карточки — только когда группировка функциональна.</p></div>
