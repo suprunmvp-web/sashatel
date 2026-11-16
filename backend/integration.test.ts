@@ -12,7 +12,7 @@ const adminUrl = process.env.TEST_ADMIN_URL;
 assert(runtimeUrl && adminUrl, 'Disposable migrated PostgreSQL with runtime and owner URLs required');
 const pool = new pg.Pool({ connectionString: runtimeUrl });
 const admin = new pg.Pool({ connectionString: adminUrl });
-const control = new ControlPlane(pool);
+const control = new ControlPlane(pool, undefined, () => true);
 
 async function fixture({ limit = 10, balance = 100, role = 'manager', number = '+74950001001' } = {}) {
   const [tenant, user, member, trunk, device] = Array.from({ length: 5 }, () => randomUUID());
@@ -85,6 +85,15 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     await assert.rejects(control.authorize(next.token,'suspended',destination),code('ORGANIZATION_SUSPENDED'));
   });
 
+  await t.test('unavailable worker cannot reserve or enqueue', async () => {
+    const a = await fixture({number:'+74950001004'});
+    const unavailable = new ControlPlane(pool);
+    await assert.rejects(unavailable.authorize(a.token,'offline',destination),code('CALL_WORKER_UNAVAILABLE'));
+    const {rows:[row]} = await admin.query(
+      'SELECT available,(SELECT count(*) FROM control.outbox WHERE organization_id=$1) AS pending FROM control.wallets WHERE organization_id=$1',[a.tenant]);
+    assert.deepEqual(row,{available:'100',pending:'0'});
+  });
+
   await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {
     for (const [index, limits] of [{limit:1,balance:100},{limit:10,balance:10}].entries()) {
       const a = await fixture({...limits,number:'+7495000101' + index});
@@ -137,8 +146,9 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const a = await fixture({number:'+74950001032'});
     const call = await control.authorize(a.token,'active-revoke',destination);
     const gateway = new FakeAri();
+    gateway.timeoutAfterAccept = true;
     await control.processOne(a.tenant,gateway);
-    assert.equal((await control.calls(a.token,call.call_id)).state,'ringing');
+    assert.equal((await control.calls(a.token,call.call_id)).state,'reconciling');
     await admin.query('UPDATE control.organizations SET active=false WHERE id=$1',[a.tenant]);
     await control.processOne(a.tenant,gateway);
     assert.deepEqual([...gateway.attempts.values()],['ended']);
@@ -159,6 +169,8 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     await control.processOne(a.tenant,gateway);
     assert.equal((await control.calls(a.token,call.call_id)).state,'ringing');
     assert.equal(gateway.attempts.size,1);
+    await control.event(a.tenant,call.call_id,{id:'cel-1',state:'ended'});
+    assert.equal((await control.calls(a.token,call.call_id)).state,'ended');
     await Promise.all([
       control.event(a.tenant,call.call_id,{id:'cel-1', state:'ended',charge:3n}),
       control.event(a.tenant,call.call_id,{id:'cel-1', state:'ended',charge:3n}),
