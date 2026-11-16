@@ -137,3 +137,6 @@
   .install-preview[data-install-state="1"] .app-file{opacity:.3;transform:translateX(110px) scale(.7)}
   .phone-keypad button,.phone-action-end{transition:none}
 }
+
+.phone-number-row #phone-backspace{display:inline-grid;place-items:center;width:30px;height:32px;padding:0;flex:0 0 30px}
+.phone-number-row #phone-backspace [data-icon]{width:18px;height:18px}
