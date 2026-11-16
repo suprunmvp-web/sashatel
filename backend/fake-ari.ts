@@ -12,7 +12,6 @@ export class FakeAri implements TelephonyGateway {
   }
 
   async hangup(attemptId: string): Promise<'unknown' | { state: 'ended'; charge: bigint }> {
-    if (!this.attempts.has(attemptId)) return 'unknown';
     this.attempts.set(attemptId, 'ended');
     return { state: 'ended', charge: 0n };
   }
