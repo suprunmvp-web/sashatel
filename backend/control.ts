@@ -35,6 +35,7 @@ export type GatewayState = 'ringing' | 'connected' | 'ended' | 'unknown';
 export type GatewayResult = Exclude<GatewayState, 'ended'> | { state: 'ended'; charge: bigint };
 export interface TelephonyGateway {
   originate(command: Originate): Promise<'ringing'>;
+  // Cancel by durable ID even when originate is ambiguous. A definitive result fences late originate.
   hangup(attemptId: string): Promise<'unknown' | { state: 'ended'; charge: bigint }>;
   inspect(attemptId: string): Promise<GatewayResult>;
 }
@@ -48,9 +49,11 @@ export interface TelephonyEvent {
 export class ControlPlane {
   private readonly pool: Pool;
   private readonly timezone: string;
+  private readonly workerAvailable: (tenant: string) => boolean;
 
-  constructor(pool: Pool, timezone = 'Europe/Moscow') {
+  constructor(pool: Pool, timezone = 'Europe/Moscow', workerAvailable = (_tenant: string) => false) {
     this.pool = pool;
+    this.workerAvailable = workerAvailable;
     this.timezone = timezone;
     new Intl.DateTimeFormat('en', { timeZone: timezone });
   }
@@ -151,6 +154,7 @@ export class ControlPlane {
         if (existing.destination !== destination) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT');
         return existing;
       }
+      if (!this.workerAvailable(tenant)) throw new ApiError(503, 'CALL_WORKER_UNAVAILABLE');
       const { rows: [subscription] } = await db.query('SELECT active,telephony FROM subscriptions WHERE organization_id=$1', [tenant]);
       if (!subscription?.active || !subscription.telephony) throw new ApiError(403, 'TELEPHONY_DISABLED');
       const { rows: [capacity] } = await db.query(
@@ -222,8 +226,10 @@ export class ControlPlane {
     const reserved = BigInt(call.reserved);
     if (charge < 0n || charge > reserved) throw new Error('Usage outside reserved bounds');
     await db.query('UPDATE calls SET state=$2 WHERE id=$1', [call.id,state]);
-    await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'charge',$3),($1,$2,'release',$4)",
-      [tenant,call.id,charge.toString(),(reserved-charge).toString()]);
+    const chargeRow = await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'charge',$3) ON CONFLICT DO NOTHING", [tenant,call.id,charge.toString()]);
+    if (!chargeRow.rowCount) return;
+    await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'release',$3)",
+      [tenant,call.id,(reserved-charge).toString()]);
     await db.query('UPDATE wallets SET available=available+$2 WHERE organization_id=$1', [tenant,(reserved-charge).toString()]);
     await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL', [call.id]);
   }
@@ -232,14 +238,22 @@ export class ControlPlane {
     return this.transaction(tenant, async db => {
       await this.#organization(db, tenant);
       const { rows: [call] } = await db.query('SELECT * FROM calls WHERE id=$1', [id]);
-      if (!call || terminal.has(call.state) || call.state === 'authorized') return;
+      if (!call || ['authorized','expired','failed'].includes(call.state)) return;
+      if (call.state === 'ended' && (event.state !== 'ended' || event.charge === undefined)) return;
+      if (call.state === 'ended' && (await db.query("SELECT 1 FROM usage_ledger WHERE call_id=$1 AND kind='charge'", [id])).rowCount) return;
       const inserted = await db.query(
         'INSERT INTO call_events (organization_id,call_id,event_id,state) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
         [tenant,id,event.id,event.state]);
-      if (!inserted.rowCount) return;
-      if (event.state === 'ended' && event.charge !== undefined) {
-        await this.#settle(db, tenant, call, 'ended', event.charge);
-      } else if (['dispatching','reconciling','ringing'].includes(call.state) && event.state !== 'ended') {
+      if (event.state === 'ended') {
+        if (event.charge !== undefined) {
+          await this.#settle(db, tenant, call, 'ended', event.charge);
+        } else if (inserted.rowCount) {
+          await db.query("UPDATE calls SET state='ended' WHERE id=$1", [id]);
+          await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL', [id]);
+        }
+      } else if (!inserted.rowCount) {
+        return;
+      } else if (['dispatching','reconciling','ringing'].includes(call.state)) {
         await db.query('UPDATE calls SET state=$2 WHERE id=$1', [id,event.state]);
       }
     });
@@ -264,9 +278,7 @@ export class ControlPlane {
         `SELECT c.*, o.command, o.claimed_at, c.expires_at <= clock_timestamp() AS expired
            FROM calls c JOIN outbox o ON (c.organization_id,c.id)=(o.organization_id,o.call_id)
           WHERE o.completed_at IS NULL AND (o.claimed_at IS NULL OR o.claimed_at < clock_timestamp()-interval '10 seconds')
-            AND (o.command='originate' OR NOT EXISTS (
-              SELECT 1 FROM outbox p WHERE p.call_id=c.id AND p.command='originate' AND p.completed_at IS NULL))
-          ORDER BY o.claimed_at NULLS FIRST,c.created_at LIMIT 1`);
+          ORDER BY (o.command='hangup') DESC,o.claimed_at NULLS FIRST,c.created_at LIMIT 1`);
       if (!call) return;
       if (call.command === 'originate' && !call.claimed_at) {
         try {
