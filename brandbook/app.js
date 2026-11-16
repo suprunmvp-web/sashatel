@@ -16,6 +16,25 @@
     const LOOP_SECONDS = 48;
     const TAU = Math.PI * 2;
     const stages = [];
+    // Fixed, non-uniform pseudo-syllables. Circular distances make the
+    // demonstration genuinely seamless at 48 seconds, without a periodic beat.
+    let demoSeed = 93613;
+    const demoRandom = () => ((demoSeed = (Math.imul(demoSeed, 1664525) + 1013904223) >>> 0) / 4294967296);
+    const demoEvents = Array.from({ length: 138 }, (_, i) => ({
+      at: (i * LOOP_SECONDS / 138 + (demoRandom() - .5) * .24 + LOOP_SECONDS) % LOOP_SECONDS,
+      strength: demoRandom() < .18 ? .07 : .23 + demoRandom() * .72,
+      width: .045 + demoRandom() * .17
+    }));
+    function demoSpeech(seconds) {
+      const t = (seconds % LOOP_SECONDS + LOOP_SECONDS) % LOOP_SECONDS;
+      let energy = 0;
+      for (const event of demoEvents) {
+        let dt = Math.abs(t - event.at);
+        dt = Math.min(dt, LOOP_SECONDS - dt);
+        if (dt < event.width * 3) energy += event.strength * Math.exp(-.5 * (dt / event.width) ** 2);
+      }
+      return clamp(energy * .82, .02, 1);
+    }
     let externalLevel = 0;
     let demonstration = false;
     let analyser = null;
@@ -50,7 +69,7 @@
       const random = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
       let width = 1, height = 1, dpr = 1, particles = [];
       let raf = 0, inView = true, lastTime = null;
-      let elapsed = 0, smoothAudio = 0;
+      let elapsed = 0, smoothAudio = 0, lastAudioSample = 0, transient = 0;
       let lastSize = '';
 
       function build() {
@@ -86,7 +105,7 @@
         paint(elapsed, smoothAudio);
       }
 
-      function paint(seconds, level) {
+      function paint(seconds, level, articulation = 0) {
         ctx.clearRect(0, 0, width, height);
         // Integer temporal harmonics are precisely periodic at 48 seconds.
         // This avoids the conspicuous reset of a travelling / modulo pulse.
@@ -99,9 +118,8 @@
         const spread = height * (stage ? .33 : .28);
         const center = height * (stage ? .51 : .55);
         const volume = stage ? level : 0;
-        // A slow, pseudo-organic field; no particle random teleportation.
-        // Audio expands the field without creating a second waveform.
-        const bloom = 1 + volume * .23;
+        // Slow, continuous flow. Audio excites local neurons, not the width
+        // or silhouette of the entire field. No secondary SoundCloud waveform.
         const pulsePosition = .5 + .36 * s1 + .065 * s3;
         const pulseRadius = stage ? .135 : .16;
 
@@ -116,22 +134,31 @@
           const chaos = Math.sin(particle.phase + phase) * 2.3
             + Math.sin(particle.phase2 + 2 * phase) * 1.4
             + Math.sin(particle.phase * .4 + 3 * phase) * .45;
-          const localAudio = volume * (.5 + .5 * Math.sin(x * 15 + particle.phase));
-          const y = center + ridge + particle.offset * localSpread * bloom
-            + chaos * (stage ? 1.6 : 1) + localAudio * particle.offset * height * .10;
+          // Irregular, spatially localised excitation tracks syllables and
+          // their attack transients. The average envelope stays the same size.
+          const neuralA = Math.sin(x * 47 + particle.phase * .8 + phase * 3);
+          const neuralB = Math.sin(x * 83 - particle.phase2 + phase * 5);
+          const neural = neuralA * .64 + neuralB * .36;
+          const excitation = volume * (3.5 + particle.depth * 7)
+            + articulation * (5 + particle.depth * 12);
+          const y = center + ridge + particle.offset * localSpread
+            + chaos * (stage ? 1.6 : 1)
+            + (stage ? neural * excitation : 0);
           const drift = (Math.sin(particle.phase + phase) * 2.2
             + Math.sin(particle.phase2 + 2 * phase) * 1.0
-            + s5 * .36) * (stage ? 1.2 : .8);
+            + s5 * .36) * (stage ? 1.2 : .8)
+            + (stage ? neuralB * (volume * 2.8 + articulation * 6.5) : 0);
           const px = x * width + drift;
           if (y < 0 || y > height || px < 0 || px > width) continue;
           const dx = Math.abs(x - pulsePosition);
           const signal = Math.exp(-Math.pow(dx / pulseRadius, 2));
           let alpha = particle.opacity * fade * (stage ? .89 : .63);
-          if (particle.gold) alpha *= .76 + 1.10 * signal + volume * .9;
-          else alpha *= .92 + .14 * signal + localAudio * .22;
-          ctx.globalAlpha = clamp(alpha, .02, .75);
+          const localSpark = stage ? Math.max(0, neuralA * neuralB) * (volume * .6 + articulation * 1.4) : 0;
+          if (particle.gold) alpha *= .76 + 1.10 * signal + localSpark * 1.9;
+          else alpha *= .92 + .14 * signal + localSpark * .42;
+          ctx.globalAlpha = clamp(alpha, .02, .78);
           ctx.fillStyle = particle.color;
-          const radius = particle.radius * (.8 + particle.depth * .30 + localAudio * .10);
+          const radius = particle.radius * (.8 + particle.depth * .30 + localSpark * .12);
           ctx.fillRect(px, y, radius, radius);
         }
         ctx.globalAlpha = 1;
@@ -142,12 +169,14 @@
         if (!inView || document.hidden || motionQuery.matches) return;
         if (lastTime !== null) elapsed = (elapsed + Math.min((now - lastTime) / 1000, .05)) % LOOP_SECONDS;
         lastTime = now;
-        const sound = demonstration && stage
-          ? clamp(.17 + .31 * Math.abs(Math.sin(elapsed * TAU * 6 / LOOP_SECONDS))
-            + .30 * Math.pow(Math.max(0, Math.sin(elapsed * TAU * 17 / LOOP_SECONDS)), 8), 0, 1)
-          : liveAudioLevel();
-        smoothAudio += (sound - smoothAudio) * (sound > smoothAudio ? .20 : .075);
-        paint(elapsed, smoothAudio);
+        const sound = demonstration && stage ? demoSpeech(elapsed) : liveAudioLevel();
+        // Fast attack, slower release for individual syllables; sample-to-sample
+        // onset also adds brief fine-grained neural movement.
+        const attack = sound > smoothAudio ? .48 : .13;
+        smoothAudio += (sound - smoothAudio) * attack;
+        transient += (Math.max(0, sound - lastAudioSample) * 2.1 - transient) * .32;
+        lastAudioSample = sound;
+        paint(elapsed, smoothAudio, clamp(transient, 0, 1));
         raf = requestAnimationFrame(tick);
       }
       function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; lastTime = null; }
