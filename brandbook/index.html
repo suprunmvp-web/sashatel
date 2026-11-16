@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0b0d">
+  <meta name="description" content="SashaTel — Quiet Technology. Интерактивная визуальная идентичность и UI design system.">
+  <title>SashaTel — Quiet Technology / Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#content">Перейти к содержимому</a>
+  <header class="site-header" id="top">
+    <a href="#top" class="wordmark" aria-label="SashaTel — наверх">SashaTel<span class="wordmark-small">/ Design System</span></a>
+    <nav class="top-nav" aria-label="Разделы брендбука">
+      <a href="#philosophy">Концепция</a><a href="#foundation">Основы</a><a href="#particle">Материя</a><a href="#analytics">Интерфейс</a>
+    </nav>
+    <div class="header-end"><span class="version">V 1.0</span><a class="header-action" href="#specification">Спецификация <span aria-hidden="true">↗</span></a></div>
+    <button class="mobile-menu" type="button" aria-controls="mobile-nav" aria-expanded="false" aria-label="Открыть навигацию"><span></span><span></span></button>
+  </header>
+  <nav id="mobile-nav" class="mobile-nav" aria-label="Мобильная навигация" hidden><a href="#philosophy">Концепция</a><a href="#foundation">Основы</a><a href="#particle">Материя</a><a href="#analytics">Интерфейс</a><a href="#specification">Спецификация</a></nav>
+  <main id="content">
+    <section class="hero" aria-labelledby="hero-title">
+      <canvas id="hero-particles" class="hero-canvas" aria-hidden="true"></canvas>
+      <div class="hero-vignette" aria-hidden="true"></div>
+      <div class="container hero-content">
+        <p class="eyebrow"><span class="signal" aria-hidden="true"></span> SashaTel / Brand Identity 2026</p>
+        <h1 id="hero-title">Technology<br>without <em>noise.</em></h1>
+        <p class="hero-lead">Профессиональная телефония.<br>Интерфейс, который не требует объяснений.</p>
+        <div class="hero-bottom"><a class="white-button" href="#philosophy">Исследовать систему <span aria-hidden="true">↗</span></a><span class="hero-note">Сдержанность —<br>это инженерное решение.</span></div>
+      </div>
+      <span class="hero-index" aria-hidden="true">01 / 06</span>
+      <div class="scroll-line" aria-hidden="true"><span></span> Scroll to explore</div>
+    </section>
+
+    <section class="chapter philosophy" id="philosophy" aria-labelledby="philosophy-title">
+      <div class="container section-frame">
+        <div class="section-meta"><span>01 / Philosophy</span><span>Quiet technology</span></div>
+        <div class="editorial-grid">
+          <h2 id="philosophy-title" class="big-statement">Less interface.<br><span>More control.</span></h2>
+          <div class="editorial-side"><p>Мы не создаём «ещё один SaaS-дешборд». Мы проектируем инфраструктуру, которую хочется использовать каждый день.</p><p>Каждое решение должно делать продукт проще, быстрее и спокойнее. Если элемент не помогает пользователю — он не нужен.</p></div>
+        </div>
+        <div class="principles" role="list">
+          <div class="principle" role="listitem"><span class="mini-number">01</span><div><h3>Порядок вместо декора</h3><p>Связи обозначаются расстоянием, а не очередной карточкой.</p></div></div>
+          <div class="principle" role="listitem"><span class="mini-number">02</span><div><h3>Точность вместо эффекта</h3><p>Типографика, сетка и детализация формируют качество.</p></div></div>
+          <div class="principle" role="listitem"><span class="mini-number">03</span><div><h3>Сигнал вместо цвета</h3><p>Жёлтый появляется лишь там, где действительно нужен.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter foundation" id="foundation" aria-labelledby="foundation-title">
+      <div class="container section-frame">
+        <div class="section-meta"><span>02 / Foundations</span><span>Visual grammar</span></div>
+        <h2 id="foundation-title" class="section-title">The quiet<br><span>foundation.</span></h2>
+        <div class="foundation-top"><div class="foundation-explain"><p>Одна система для лендинга, кабинета организации и будущих интерфейсов. Без самостоятельных стилистических трактовок со стороны команды.</p></div><span class="mono-annotation">DARK FIRST / GEIST / 4PX GRID</span></div>
+        <div class="subheading"><span>02.1 / Color</span><span>Тон важнее яркости</span></div>
+        <div class="palette" aria-label="Палитра SashaTel">
+          <div class="swatch swatch-black" data-hex="#0B0B0D"><span>01 / Background</span><strong>#0B0B0D</strong></div>
+          <div class="swatch swatch-surface" data-hex="#151518"><span>02 / Surface</span><strong>#151518</strong></div>
+          <div class="swatch swatch-muted" data-hex="#92929B"><span>03 / Secondary</span><strong>#92929B</strong></div>
+          <div class="swatch swatch-light" data-hex="#F5F5F7"><span>04 / Foreground</span><strong>#F5F5F7</strong></div>
+          <div class="swatch swatch-yellow" data-hex="#E8C547"><span>05 / Signal</span><strong>#E8C547</strong></div>
+        </div>
+        <div class="palette-caption"><p>Пропорция внимания: 95% нейтральных цветов / 5% акцента. Это композиционный принцип, не требование к буквальной площади каждого пикселя.</p><span>Нажмите на цвет, чтобы скопировать HEX</span></div>
+        <div class="subheading typography-heading"><span>02.2 / Typography</span><span>Geist / Geist Mono</span></div>
+        <div class="type-specimen"><div class="specimen-main"><div class="specimen-letter">Ag<span class="specimen-dot">.</span></div><div class="type-note">Гармония пропорций.<br>Точность каждого символа.</div></div><div class="specimen-aside"><div class="type-meta"><span>Headlines / Geist</span><span>500 — Medium</span></div><p class="type-example">Система, которая<br>работает без шума.</p><div class="type-meta lower"><span>Data / Geist Mono</span><span>400 — Regular</span></div><div class="mono-examples">02:34:18<br>+14 320<br>42,8 %</div></div></div>
+        <div class="subheading spacing-heading"><span>02.3 / Rhythm</span><span>4 px base unit</span></div>
+        <div class="rhythm"><div class="rhythm-visual"><span style="--w:4">04</span><span style="--w:8">08</span><span style="--w:12">12</span><span style="--w:16">16</span><span style="--w:24">24</span><span style="--w:32">32</span><span style="--w:48">48</span></div><p>Базовый шаг 4 px. Элементы связаны ритмом, а не контейнерами. Границы — 1 px с низким контрастом. Радиусы — 4–8 px.</p></div>
+      </div>
+    </section>
+
+    <section class="chapter particle-section" id="particle" aria-labelledby="particle-title">
+      <div class="container section-frame particle-frame">
+        <div class="section-meta"><span>03 / Signature</span><span>Digital matter</span></div>
+        <h2 id="particle-title" class="section-title">A signal<br><span>you can feel.</span></h2>
+        <p class="particle-intro">Particle Field — самостоятельный фирменный мотив SashaTel. Плотная цифровая материя, вдохновлённая визуальным языком сопряжения Apple Watch. Не копия устройства и не декоративная «аудиосфера».</p>
+        <div class="particle-stage"><canvas id="showcase-particles" aria-hidden="true"></canvas><div class="stage-caption"><span>Particle Field / Live specimen</span><span>70% light / 25% graphite / 5% yellow</span></div><span class="particle-stage-center">Signal is alive.</span></div>
+        <div class="particle-controls"><span>48-секундный бесшовный цикл · адаптивная частота кадров</span><button id="particle-demo" type="button" aria-pressed="false">Демо реакции на голос</button></div>
+        <div class="application-rows"><div class="application-row"><span class="mini-number">A</span><h3>Landing / Distant signal</h3><p>Удалённая полупрозрачная материя за свободным пространством. Не препятствует чтению.</p><span class="application-state">LOW CONTRAST</span></div><div class="application-row"><span class="mini-number">B</span><h3>Call / Live response</h3><p>Одна локальная аудиореактивная форма. Без второй звуковой волны.</p><span class="application-state">FOCUSED</span></div><div class="application-row"><span class="mini-number">C</span><h3>Analytics / Not allowed</h3><p>Никаких частиц за графиками, таблицами или показателями.</p><span class="application-state">DISABLED</span></div></div>
+      </div>
+    </section>
+
+    <section class="chapter analytics-section" id="analytics" aria-labelledby="analytics-title">
+      <div class="container section-frame">
+        <div class="section-meta"><span>04 / Product in context</span><span>Organization workspace</span></div>
+        <h2 id="analytics-title" class="section-title">Complex data.<br><span>Clear decisions.</span></h2>
+        <p class="analytics-intro">Не четыре красивые карточки. Один рабочий экран, построенный вокруг вопросов руководителя. Статистика ниже — демонстрационные данные.</p>
+      </div>
+      <div class="dashboard-wrap">
+        <div class="dashboard" aria-label="Демонстрационный интерфейс аналитики SashaTel">
+          <aside class="dashboard-sidebar"><div class="org"><span class="org-avatar">ПЗ</span><div><strong>ООО «Полезный звонок»</strong><small>Основной аккаунт</small></div><span class="chevron">⌄</span></div>
+            <nav aria-label="Навигация личного кабинета" class="dashboard-nav"><span>⌂ <em>Обзор</em></span><span class="selected">▥ <em>Статистика</em></span><span>♧ <em>Звонки</em></span><span>♙ <em>Контакты</em></span><span>♧ <em>Команда</em></span><span>◇ <em>Сценарии</em></span><span>⌘ <em>Интеграции</em></span><span>⚙ <em>Настройки</em></span></nav><span class="sidebar-support">ⓘ <em>Поддержка</em></span>
+          </aside>
+          <div class="dashboard-content"><div class="dash-utility"><div class="utility-search">⌕ <span>Поиск по звонкам и контактам…</span><kbd>⌘ K</kbd></div><span class="notify" aria-label="Уведомления">♧<i></i></span><span class="user-chip">ИС</span></div><div class="dash-title"><h3>Статистика</h3><p>Аналитика звонков и эффективности команды</p></div>
+            <div class="kpis"><div><span>Наборов</span><strong>+14 320</strong></div><div><span>Дозвон</span><strong>42,8 %</strong></div><div><span>Средний разговор</span><strong>02:34</strong></div><div><span>Минут</span><strong>+36 982</strong></div></div>
+            <div class="chart-section"><div class="chart-top"><h4>Дозвон по дням</h4><div class="period-toggle" role="group" aria-label="Период данных"><button data-period="7">7 дней</button><button data-period="30" class="active" aria-pressed="true">30 дней</button><button data-period="90">90 дней</button></div></div><div class="chart-area" id="chart-area"><svg id="rate-chart" role="img" aria-label="Динамика процента дозвона за выбранный период" viewBox="0 0 1000 245" preserveAspectRatio="none"><defs><linearGradient id="chart-grad" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#e9e9ec" stop-opacity=".10"/><stop offset="1" stop-color="#e9e9ec" stop-opacity="0"/></linearGradient></defs><g class="grid-lines"></g><path id="chart-fill" fill="url(#chart-grad)"></path><path id="chart-line" fill="none" stroke="#ededf0" stroke-width="1.7" vector-effect="non-scaling-stroke"></path><line id="chart-cross" class="chart-cross" x1="0" x2="0" y1="16" y2="216" opacity="0"></line><circle id="chart-dot" cx="0" cy="0" r="4.5" fill="#e8c547" stroke="#0b0b0d" stroke-width="2" opacity="0"></circle><rect id="chart-hit" x="45" y="16" width="940" height="202" fill="transparent"></rect></svg><div id="chart-tooltip" class="chart-tooltip" role="status" aria-live="off"><span id="tooltip-date">18 ноя</span><strong id="tooltip-value">42,8 %</strong></div></div><div class="chart-axis"><span>1 ноя</span><span>8 ноя</span><span>15 ноя</span><span>22 ноя</span><span>30 ноя</span></div><div class="chart-legend"><i></i> Дозвон, %</div></div>
+            <div class="dash-bottom"><section class="donut-section"><h4>Итог набора</h4><div class="donut-layout"><div class="donut" aria-label="Распределение результатов звонков"><div><strong>14 320</strong><span>всего</span></div></div><div class="donut-legend"><div><i class="yellow"></i><span>Ответил человек</span><strong>42,8 %</strong></div><div><i></i><span>Автоответчик</span><strong>18,6 %</strong></div><div><i></i><span>Не взяли трубку</span><strong>16,9 %</strong></div><div><i></i><span>Занято или сброс</span><strong>12,1 %</strong></div><div><i></i><span>Абонент недоступен</span><strong>9,6 %</strong></div></div></div></section>
+              <section class="operator-section"><h4>Операторы</h4><table><thead><tr><th>Оператор</th><th>Наборов</th><th>Дозвон</th><th>Средний разговор</th></tr></thead><tbody><tr><td>МТС</td><td>5 281</td><td>43,9 %</td><td>02:40</td></tr><tr><td>Билайн</td><td>3 478</td><td>41,7 %</td><td>02:31</td></tr><tr><td>МегаФон</td><td>3 102</td><td>42,1 %</td><td>02:36</td></tr><tr><td>Т2</td><td>2 459</td><td>42,5 %</td><td>02:29</td></tr></tbody></table></section></div>
+          </div>
+        </div>
+        <div class="dashboard-foot"><span>REAL PRODUCT STRUCTURE / DEMO DATA</span><span>1440 × 900 canvas / responsive specimen</span></div>
+      </div>
+    </section>
+
+    <section class="chapter specification" id="specification" aria-labelledby="spec-title"><div class="container section-frame"><div class="section-meta"><span>05 / Engineering</span><span>Single source of truth</span></div><h2 class="section-title" id="spec-title">The details<br><span>are the design.</span></h2><div class="spec-list">
+      <div class="spec-row"><span>01 / Type</span><strong>Geist / Geist Mono</strong><p>Строгая шкала, без случайных начертаний. Tabular numerals для метрик и таблиц.</p></div>
+      <div class="spec-row"><span>02 / Grid</span><strong>4 px base</strong><p>Микроотступы 4–8; связанные элементы 8–16; секции 40–64 px.</p></div>
+      <div class="spec-row"><span>03 / Surface</span><strong>One plane</strong><p>Граница 1 px, радиус 4–8 px. Карточки — только когда группировка функциональна.</p></div>
+      <div class="spec-row"><span>04 / Motion</span><strong>120–220 ms</strong><p>Состояния меняются плавно и предсказуемо; Particle Field учитывает reduced motion.</p></div>
+      <div class="spec-row"><span>05 / Charts</span><strong>Signal on interaction</strong><p>Светлая тонкая линия и нейтральные сектора. Жёлтый — фокус и выбранный элемент.</p></div>
+    </div><p class="spec-disclaimer">Это интерактивная концепция брендбука SashaTel. Численные токены — исходный стандарт для обсуждения и фиксации в engineering spec; не заменяют UX-исследование или проверку реального продукта.</p></div></section>
+  </main>
+  <footer class="footer"><div class="container footer-inner"><div><div class="footer-brand">SashaTel<span>.</span></div><p>Quiet Technology.</p></div><div class="footer-right"><span>ООО «Полезный звонок»</span><a href="#top">Наверх ↑</a></div></div></footer>
+  <div class="copy-toast" id="copy-toast" role="status" aria-live="polite">Скопировано</div>
+</body>
+</html>
