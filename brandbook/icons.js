@@ -23,7 +23,7 @@ paths["ellipsis"]="<circle cx=\"5\" cy=\"12\" r=\"1\"/><circle cx=\"12\" cy=\"12
 paths["circle-check"]="<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m8 12 2.5 2.5 5-5\"/>";
 paths["arrow-right"]="<path d=\"M5 12h14m-6-6 6 6-6 6\"/>";
 paths["download"]="<path d=\"M12 3v12m-5-5 5 5 5-5M5 20h14\"/>";
-paths['delete']='<path d="M10 7 8 9m0 0 2 2m-2-2 2-2"/><path d="M7.6 4h12.1A2.3 2.3 0 0 1 22 6.3v11.4a2.3 2.3 0 0 1-2.3 2.3H7.6a2.2 2.2 0 0 1-1.5-.6L2 15.2a4.6 4.6 0 0 1 0-6.4l4.1-4.2A2.2 2.2 0 0 1 7.6 4z"/><path d="m13 9 6 6m0-6-6 6"/>';
+paths['delete']='<path d="M10 5 2 12l8 7h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m18 9-6 6m0-6 6 6"/>';
 function render(){
  document.querySelectorAll('[data-icon]').forEach(node=>{
    const name=node.dataset.icon; const path=paths[name];
