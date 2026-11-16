@@ -152,6 +152,10 @@
           <div><i data-icon="phone-incoming"></i><strong>phone-incoming</strong><small>Входящий</small></div>
           <div><i data-icon="phone-outgoing"></i><strong>phone-outgoing</strong><small>Исходящий</small></div>
         </div>
+        <div class="icon-actions-specimen" aria-label="Демонстрация выбора и действий над строкой">
+          <div class="icon-action-row"><label><input id="icon-example-select" type="checkbox"><span>Выбрать строку в журнале</span></label><span class="icon-action-meta">Действия с записями</span></div>
+          <div class="icon-action-row"><button id="icon-example-add" type="button"><i data-icon="plus"></i><span>Добавить</span></button><button id="icon-example-delete" type="button" disabled><i data-icon="trash-2"></i><span>Удалить выбранное</span></button><span id="icon-example-status" role="status" aria-live="polite">Нет выбранных строк</span></div>
+        </div>
         <p class="registry-note"><a href="./icon-registry.json" target="_blank" rel="noopener">Полный утверждённый реестр иконок в JSON ↗</a></p>
       </div>
     </section>
@@ -227,7 +231,7 @@
               </div>
               <div class="phone-panel phone-panel-dial" data-panel-content="dial">
                 <label class="phone-number-label" for="phone-number">Номер телефона</label>
-                <div class="phone-number-row"><input id="phone-number" type="tel" inputmode="tel" autocomplete="off" value="+7 995 123-45-67" aria-label="Номер телефона"/><button id="phone-backspace" type="button" title="Удалить последний символ" aria-label="Удалить последний символ">⌫</button></div>
+                <div class="phone-number-row"><input id="phone-number" type="tel" inputmode="tel" autocomplete="off" value="+7 995 123-45-67" aria-label="Номер телефона"/><button id="phone-backspace" type="button" title="Удалить последний символ" aria-label="Удалить последний символ"><i data-icon="delete"></i></button></div>
                 <div class="phone-keypad" id="phone-keypad" aria-label="Клавиатура набора номера">
                   <button type="button" data-digit="1"><strong>1</strong></button><button type="button" data-digit="2"><strong>2</strong><small>ABC</small></button><button type="button" data-digit="3"><strong>3</strong><small>DEF</small></button>
                   <button type="button" data-digit="4"><strong>4</strong><small>GHI</small></button><button type="button" data-digit="5"><strong>5</strong><small>JKL</small></button><button type="button" data-digit="6"><strong>6</strong><small>MNO</small></button>
