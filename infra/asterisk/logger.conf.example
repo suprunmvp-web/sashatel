@@ -1,0 +1,8 @@
+[general]
+dateformat=%F %T %z
+rotatestrategy=rotate
+
+[logfiles]
+console => notice,warning,error
+messages => notice,warning,error
+security => security
