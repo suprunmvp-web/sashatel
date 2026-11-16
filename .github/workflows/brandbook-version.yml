@@ -1,0 +1,56 @@
+name: Version SashaTel Brandbook
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "brandbook/**"
+      - "!brandbook/version.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sashatel-brandbook-version-main
+  cancel-in-progress: false
+
+jobs:
+  bump-brandbook-patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Bump patch version and record UTC update time
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          from datetime import datetime, timezone
+          file = pathlib.Path("brandbook/version.json")
+          metadata = json.loads(file.read_text(encoding="utf-8"))
+          parts = metadata["version"].split(".")
+          if len(parts) != 3 or not all(part.isdigit() for part in parts):
+              raise RuntimeError("version.json must contain X.Y.Z")
+          major, minor, patch = map(int, parts)
+          metadata["version"] = f"{major}.{minor}.{patch + 1}"
+          metadata["updatedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+          metadata["timezone"] = "UTC"
+          metadata["source"] = "github-actions"
+          metadata["commit"] = os.environ["COMMIT_SHA"]
+          metadata["scope"] = "brandbook"
+          file.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          print("Brandbook", metadata["version"], metadata["updatedAt"])
+          PY
+      - name: Commit version metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add brandbook/version.json
+          git commit -m "chore(brandbook): bump version and update time [skip ci]"
+          git push origin HEAD:main
