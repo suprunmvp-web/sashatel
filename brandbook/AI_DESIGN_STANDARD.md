@@ -37,6 +37,8 @@ The face of SashaTel should evoke Linear's editorial precision, not copy Linear'
 Public name: **SashaTel**. Legal entity: **ООО «Полезный звонок»**. Organization name in the demo workspace is also ООО «Полезный звонок». Use organization switcher top-left in cabinet; user profile top-right. Do not place a manager's personal avatar in the sidebar as organizational identity.
 
 ### Logo
+**Non-negotiable lockup rule:** NEVER display the SashaTel symbol directly beside, above as a unit, or appended to the word “SashaTel” in a single header/footer/CTA lockup. Use **either** the standalone symbol **or** the standalone SashaTel wordmark. The brandbook may show both only as distinct independent examples with clear whitespace. Do not overlay or merge them, even if a reference mockup happens to do so.
+
 The original master SVG is required for production. Until delivered, `assets/logo-reference-trace.svg` is a **provisional visual trace made from the user's raster**, not an approved master. It is included solely so agents see the approximate silhouette. No generative reinterpretation, rotation, gradient, interior pattern, stretching, added text or 'enhancement' is allowed. Use positive/negative monochrome only, preserve native aspect ratio and clear space ≥ 0.5× sign height. Do not blindly rasterize the source. Replace this file as soon as the real vector is supplied; do not silently promote the trace to production.
 
 ## 3. Color semantics
@@ -87,6 +89,9 @@ Use **Lucide**, pinned to `0.456.0`, with icon names drawn only from `icon-regis
 - Call status icon is not decorative. Connection quality must distinguish good, degrading, and disconnected from measured data.
 
 Approval vocabulary (selected): `phone`, `phone-call`, `phone-off`, `history`, `settings`, `wifi`, `wifi-off`, `mic`, `mic-off`, `pause`, `grid-3x3`, `ellipsis`, `search`, `bell`, `chevron-down`, `layout-dashboard`, `chart-no-axes-column`, `users`, `contact`, `layers`, `plug`, `circle-help`, `arrow-right`, `download`, `copy`.
+
+### Yellow status glow
+Small yellow activity indicators may have a deliberately subtle, **asynchronous** halo/breathing pulse: diffuse radius 6–18px, low opacity, irregular phase offsets for neighboring dots. Never animate all yellow indicators in sync; do not create large neon blobs. The dot remains informative without motion. Under `prefers-reduced-motion`, remove all pulsing, retaining the state color and accessible label. Do not use decorative yellow glow to imply healthy network or activity without a real corresponding state.
 
 ## 6. Particle Field — SashaTel digital matter
 
