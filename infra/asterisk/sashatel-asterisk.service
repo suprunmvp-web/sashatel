@@ -3,7 +3,8 @@ Description=SashaTel internal Asterisk lab
 Wants=network-online.target
 After=network-online.target
 Requires=ufw.service
-After=ufw.service
+After=ufw.service wg-quick@wg0.service sys-subsystem-net-devices-wg0.device
+BindsTo=wg-quick@wg0.service sys-subsystem-net-devices-wg0.device
 
 [Service]
 Type=simple
@@ -14,6 +15,7 @@ RuntimeDirectory=sashatel-asterisk
 StateDirectory=sashatel-asterisk
 LogsDirectory=sashatel-asterisk
 ExecStartPre=+/bin/sh -ec 'LC_ALL=C /usr/sbin/ufw status | /usr/bin/grep -qx "Status: active"'
+ExecStartPre=/usr/bin/python3 /etc/sashatel-asterisk/check-vpn.py /etc/sashatel-asterisk/pjsip.conf
 ExecStart=/opt/sashatel-asterisk/22.12.0/sbin/asterisk -f -C /etc/sashatel-asterisk/asterisk.conf
 Restart=on-failure
 RestartSec=5
