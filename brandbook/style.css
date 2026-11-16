@@ -81,3 +81,116 @@
     animation:none!important;
   }
 }
+
+
+/* SashaTel v1.2 — data, status, accessible interaction and product themes */
+:root{--success:#39c985;--danger:#e86a71;--warning:#e8c547;--state-success-bg:rgba(57,201,133,.09);--state-danger-bg:rgba(232,106,113,.09)}
+.theme-switch{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--sub);font:12px var(--font);transition:color .15s,border-color .15s}
+.theme-switch:hover{color:var(--fg);border-color:var(--sub)}.theme-switch>span:first-child{font-size:19px;line-height:1}
+.semantic-colors{margin:36px 0 30px;padding-top:22px;border-top:1px solid var(--line)}
+.semantic-colors>span{font:11px var(--mono);color:var(--sub)}
+.semantic-colors>p{max-width:780px;margin:16px 0 20px;font-size:14px;line-height:1.65;color:var(--sub)}
+.semantic-samples{display:flex;gap:12px 30px;flex-wrap:wrap;font-size:13px}
+.semantic-samples>span{display:inline-flex;align-items:center;gap:9px}
+.semantic-samples i{display:block;width:7px;height:7px;border-radius:50%;background:currentColor}
+.semantic-good{color:var(--success)}.semantic-bad{color:var(--danger)}.semantic-warning{color:var(--warning)}
+/* Keep the notification icon centred in a fixed clickable area. */
+.dash-utility{gap:18px;min-height:36px;height:auto;align-items:center}
+.dash-utility .utility-search{margin-left:auto;min-width:0;max-width:339px;flex:1 1 200px}
+.dash-utility .notify{display:inline-flex;position:relative;flex:0 0 32px;align-items:center;justify-content:center;width:32px;height:32px;margin:0;padding:0;border:0;border-radius:7px;background:transparent;color:var(--fg);line-height:1;appearance:none;cursor:pointer}
+.dash-utility .notify:hover{background:var(--hover)}
+.dash-utility .notify [data-icon]{position:static;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+.dash-utility .notify b{right:3px;top:4px;width:5px;height:5px}
+.dash-utility .user-chip{flex:0 0 32px}
+.dash-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;position:relative}
+.dash-title>div:first-child{min-width:0}
+.date-range-wrap{position:relative;flex:none;z-index:5}
+.date-range-button{display:flex;align-items:center;gap:9px;height:34px;padding:0 12px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--fg);font:12px var(--font);white-space:nowrap}
+.date-range-button:hover,.date-range-button[aria-expanded="true"]{border-color:var(--sub)}
+.date-range-button [data-icon]{width:16px;height:16px}
+.date-range-panel{position:absolute;right:0;top:42px;z-index:20;min-width:254px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:9px;box-shadow:0 12px 32px rgba(0,0,0,.22);display:grid;gap:10px}
+.date-range-panel[hidden]{display:none}
+.date-range-panel label{display:grid;gap:5px;color:var(--sub);font-size:12px}
+.date-range-panel input{min-width:0;width:100%;padding:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:5px;color-scheme:dark}
+.date-range-panel button{background:var(--fg);color:var(--bg);padding:8px;border-radius:5px;border:0;font-size:12px}
+.date-range-panel small{color:var(--sub);line-height:1.4}
+/* Folded desktop navigation, not a second widget laid over the page. */
+.dashboard{transition:grid-template-columns .25s cubic-bezier(.2,.8,.2,1)}
+.sidebar-toggle{display:inline-grid;place-items:center;flex:0 0 27px;width:27px;height:29px;margin-left:auto;padding:0;background:transparent;border:0;border-radius:5px;color:var(--sub);cursor:pointer}
+.sidebar-toggle:hover{color:var(--fg);background:var(--hover)}
+.sidebar-toggle [data-icon]{width:17px;height:17px}
+.dashboard-sidebar .org{gap:7px}
+.dashboard-sidebar .org>div{flex:1;min-width:0}
+.dashboard-sidebar .org strong{max-width:114px}
+.dashboard-sidebar .org-avatar{width:32px;height:32px;font-size:12px}
+.dashboard-sidebar .dashboard-nav>span{gap:14px}
+.dashboard.sidebar-collapsed{grid-template-columns:67px minmax(0,1fr)}
+.sidebar-collapsed .dashboard-sidebar{padding:15px 8px 18px}
+.sidebar-collapsed .org{display:flex;flex-direction:column-reverse;gap:14px;align-items:center;margin-bottom:30px}
+.sidebar-collapsed .org>div{display:none}
+.sidebar-collapsed .sidebar-toggle{margin:0;flex:0 0 28px}
+.sidebar-collapsed .dashboard-nav>span{justify-content:center;padding:0;gap:0}
+.sidebar-collapsed .dashboard-nav em,.sidebar-collapsed .sidebar-support em{display:none}
+.sidebar-collapsed .sidebar-support{justify-content:center;padding:0}
+.sidebar-collapsed .dashboard-nav>span.selected:before{left:0}
+.sidebar-collapsed .dashboard-nav [data-icon]{width:18px;height:18px}
+.sidebar-collapsed .dashboard-content{padding-left:30px;padding-right:30px}
+/* Product donut: actual proportions and hover/focus from the original dashboard.
+   The old decorative yellow arc is intentionally removed. */
+.donut.donut-interactive{height:163px;width:163px;aspect-ratio:1;background:none;display:block;position:relative;border-radius:0;overflow:visible}
+.donut.donut-interactive:after{content:none!important;border:0!important}
+.donut-interactive svg{display:block;width:100%;height:100%;overflow:visible}
+.donut-segment{transform-origin:100px 100px;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .2s;cursor:pointer;outline:none;stroke:var(--bg);stroke-width:1.6}
+.donut-focused .donut-segment{opacity:.27}
+.donut-focused .donut-segment.is-active{opacity:1;transform:scale(1.07)}
+.donut-interactive .donut-middle{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;background:none;width:auto;height:auto;text-align:center;padding:0 42px}
+.donut-middle strong{font-size:18px;font-weight:500;white-space:nowrap}
+.donut-middle span{font-size:10px;color:var(--sub);line-height:1.35;max-width:90px}
+.donut-legend>div[data-seg]{cursor:default;transition:opacity .2s,background .2s;border-radius:4px;padding-left:3px;padding-right:3px}
+.donut-focused .donut-legend>div{opacity:.3}
+.donut-focused .donut-legend>div.is-active{opacity:1;background:var(--hover)}
+.donut-legend>div[data-seg="0"] i{background:#e4e4e7}
+.donut-legend>div[data-seg="1"] i{background:#b0b0b7}
+.donut-legend>div[data-seg="2"] i{background:#85858d}
+.donut-legend>div[data-seg="3"] i{background:#5a5a63}
+.donut-legend>div[data-seg="4"] i{background:#383840}
+/* Light theme: structural tokens, individual transparent surfaces and data views. */
+:root[data-theme="light"]{color-scheme:light;--bg:#fafafa;--surface:#fff;--hover:#f0f0f2;--line:#e5e5e8;--fg:#17171a;--sub:#65656e;--dim:#82828b;--accent:#ae8420;--success:#168353;--danger:#bd3647;--warning:#a27a17}
+:root[data-theme="light"] body{background:var(--bg);color:var(--fg)}
+:root[data-theme="light"] .site-header{background:rgba(250,250,250,.93);border-bottom:1px solid #00000012}
+:root[data-theme="light"] .wordmark-small,:root[data-theme="light"] .top-nav a,:root[data-theme="light"] .version{color:#74747e}
+:root[data-theme="light"] .hero{background:radial-gradient(ellipse at 68% 47%,#dedee4 0%,#fafafa 63%)}
+:root[data-theme="light"] .hero-vignette{background:linear-gradient(90deg,#fafafaf2,#fafafa90 42%,#fafafa18 80%),linear-gradient(0deg,#fafafa,transparent 25%)}
+:root[data-theme="light"] .hero h1 em,:root[data-theme="light"] .section-title span,:root[data-theme="light"] .big-statement span{color:#888890}
+:root[data-theme="light"] .hero-lead,:root[data-theme="light"] .editorial-side p,:root[data-theme="light"] .foundation-explain p{color:#62626b}
+:root[data-theme="light"] .eyebrow,:root[data-theme="light"] .section-meta,:root[data-theme="light"] .subheading{color:#777780}
+:root[data-theme="light"] .white-button{background:#17171a;color:white}
+:root[data-theme="light"] .white-button:hover{background:#353539}
+:root[data-theme="light"] .hero-note,:root[data-theme="light"] .hero-index,:root[data-theme="light"] .scroll-line{color:#777780}
+:root[data-theme="light"] .section-frame{border-top-color:var(--line)}
+:root[data-theme="light"] .brand-logo-specimen{background:radial-gradient(circle,#f4f4f6,#eaeaec 80%)}
+:root[data-theme="light"] .brand-logo-specimen img{filter:invert(1)}
+:root[data-theme="light"] .dashboard{background:#fff;border-color:#dedee3;box-shadow:0 18px 55px #11111110}
+:root[data-theme="light"] .dashboard-sidebar{border-right-color:#e5e5e8}
+:root[data-theme="light"] .dashboard-sidebar .org-avatar,:root[data-theme="light"] .user-chip{background:#ebebed;color:#232327}
+:root[data-theme="light"] .dashboard-nav>span{color:#74747c}
+:root[data-theme="light"] .dashboard-nav>span.selected{color:#18181c;background:#f0f0f2}
+:root[data-theme="light"] .dash-utility .utility-search{border-color:#dedee3;color:#62626c}
+:root[data-theme="light"] .utility-search kbd{background:#efeff2;color:#52525c}
+:root[data-theme="light"] .dash-title h3,:root[data-theme="light"] .kpis strong,:root[data-theme="light"] .chart-top h4,:root[data-theme="light"] .dash-bottom h4{color:var(--fg)}
+:root[data-theme="light"] .kpis,:root[data-theme="light"] .chart-section,:root[data-theme="light"] .operator-section td,:root[data-theme="light"] .operator-section th{border-color:#e3e3e8}
+:root[data-theme="light"] .kpis>div{border-color:#e3e3e8}
+:root[data-theme="light"] .kpis span,:root[data-theme="light"] .chart-axis,:root[data-theme="light"] .chart-legend{color:var(--sub)}
+:root[data-theme="light"] .period-toggle{border-color:#dfdfe3;background:#f3f3f5}
+:root[data-theme="light"] .period-toggle button{color:#666670}
+:root[data-theme="light"] .period-toggle button.active{background:#dedee2;color:#242429}
+:root[data-theme="light"] .donut-legend>div{border-color:#e3e3e8}
+:root[data-theme="light"] .donut-segment{stroke:#fff}
+:root[data-theme="light"] .operator-section table{color:var(--fg)}
+:root[data-theme="light"] .particle-stage{background:radial-gradient(ellipse at 50% 50%,#1b1b20,#0d0d10 88%);color:#fff}
+:root[data-theme="light"] .particle-stage-center{color:#fff}
+:root[data-theme="light"] .header-action{border-color:#dedee3}
+:root[data-theme="light"] .date-range-panel input{color-scheme:light}
+@media(max-width:1180px){.theme-switch-label{display:none}.dash-title{flex-wrap:wrap}.date-range-wrap{margin-left:auto}}
+@media(max-width:700px){.theme-switch{height:30px;padding:0 8px}.date-range-button{font-size:11px}.dashboard.sidebar-collapsed{grid-template-columns:55px minmax(0,1fr)}.sidebar-collapsed .dashboard-content{padding-left:18px;padding-right:18px}}
+@media(prefers-reduced-motion:reduce){.donut-segment,.dashboard{transition:none!important}}
