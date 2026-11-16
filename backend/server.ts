@@ -8,7 +8,9 @@ if (!DATABASE_URL || !FAKE_ARI_TENANTS) throw new Error('DATABASE_URL and explic
 const tenants = [...new Set(FAKE_ARI_TENANTS.split(','))];
 if (!tenants.every(tenant => uuid.test(tenant))) throw new Error('Invalid FAKE_ARI_TENANTS');
 const pool = new pg.Pool({ connectionString: DATABASE_URL, connectionTimeoutMillis: 5000 });
-const control = new ControlPlane(pool, CALL_DAY_TIMEZONE);
+const heartbeat = new Map<string, number>();
+const control = new ControlPlane(pool, CALL_DAY_TIMEZONE, tenant =>
+  performance.now() - (heartbeat.get(tenant) ?? -Infinity) < 5000);
 const gateway = new FakeAri();
 const api = createApi(control, () => pool.query('SELECT 1 FROM control.organizations LIMIT 1'));
 let running = false;
@@ -16,9 +18,15 @@ const timer = setInterval(async () => {
   if (running) return;
   running = true;
   try {
-    for (const tenant of tenants) await control.processOne(tenant, gateway);
-  } catch {
-    console.error('Control Plane worker failed to process an outbox command');
+    await Promise.all(tenants.map(async tenant => {
+      try {
+        await control.processOne(tenant, gateway);
+        heartbeat.set(tenant, performance.now());
+      } catch {
+        heartbeat.delete(tenant);
+        console.error('Control Plane worker failed to process an outbox command');
+      }
+    }));
   } finally {
     running = false;
   }
