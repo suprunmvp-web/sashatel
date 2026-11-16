@@ -37,6 +37,7 @@
     }
     let externalLevel = 0;
     let demonstration = false;
+    let audioAttached = false;
     let analyser = null;
     let context = null;
     let source = null;
@@ -70,6 +71,7 @@
       let width = 1, height = 1, dpr = 1, particles = [];
       let raf = 0, inView = true, lastTime = null;
       let elapsed = 0, smoothAudio = 0, lastAudioSample = 0, transient = 0;
+      let shapeMix = 0; // 0: flowing band, 1: living circular neural field
       let lastSize = '';
 
       function build() {
@@ -102,10 +104,10 @@
             color
           };
         });
-        paint(elapsed, smoothAudio);
+        paint(elapsed, smoothAudio, transient, shapeMix);
       }
 
-      function paint(seconds, level, articulation = 0) {
+      function paint(seconds, level, articulation = 0, morph = 0) {
         ctx.clearRect(0, 0, width, height);
         // Integer temporal harmonics are precisely periodic at 48 seconds.
         // This avoids the conspicuous reset of a travelling / modulo pulse.
@@ -122,6 +124,31 @@
         // or silhouette of the entire field. No secondary SoundCloud waveform.
         const pulsePosition = .5 + .36 * s1 + .065 * s3;
         const pulseRadius = stage ? .135 : .16;
+        // Sparse luminous nodes over neutral darkness; opacity is local and
+        // asymmetrical, never a permanent blanket neon glow.
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const glowCount = stage ? 7 : 4;
+        for (let g = 0; g < glowCount; g++) {
+          const theta = g * TAU / glowCount + phase * (g % 2 ? 2 : -1);
+          const linearX = width * (.16 + .68 * (g + .5) / glowCount) + Math.sin(theta) * width * .025;
+          const linearY = center + Math.sin(linearX / width * 9 + s1) * baseAmp;
+          const ringRadius = Math.min(height * .315, width * .27);
+          const ringX = width * .5 + Math.cos(theta) * ringRadius;
+          const ringY = height * .51 + Math.sin(theta) * ringRadius * .89;
+          const gx = linearX * (1 - morph) + ringX * morph;
+          const gy = linearY * (1 - morph) + ringY * morph;
+          const rad = (stage ? 70 : 94) + (g % 3) * 16;
+          const gold = (g % 3 === 0);
+          const gain = (gold ? .085 : .052) + (stage ? level * .07 + articulation * .14 : 0);
+          const gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, rad);
+          gr.addColorStop(0, gold ? 'rgba(232,197,71,' + gain.toFixed(3) + ')' : 'rgba(228,228,244,' + (gain*.55).toFixed(3) + ')');
+          gr.addColorStop(.35, gold ? 'rgba(201,162,39,' + (gain*.33).toFixed(3) + ')' : 'rgba(150,150,175,' + (gain*.25).toFixed(3) + ')');
+          gr.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gr;
+          ctx.fillRect(gx - rad, gy - rad, rad * 2, rad * 2);
+        }
+        ctx.restore();
 
         for (const particle of particles) {
           const x = particle.x;
@@ -148,8 +175,20 @@
             + Math.sin(particle.phase2 + 2 * phase) * 1.0
             + s5 * .36) * (stage ? 1.2 : .8)
             + (stage ? neuralB * (volume * 2.8 + articulation * 6.5) : 0);
-          const px = x * width + drift;
-          if (y < 0 || y > height || px < 0 || px > width) continue;
+          const bandX = x * width + drift;
+          const ringAngle = x * TAU + .09 * Math.sin(phase * 2 + particle.phase);
+          const baseRing = Math.min(height * .315, width * .27);
+          const breathing = 1 + .045 * Math.sin(ringAngle * 5 + phase * 2)
+            + .027 * Math.sin(ringAngle * 9 - phase * 3);
+          const ringR = baseRing * breathing + particle.offset * height * .086
+            + neural * excitation * .82;
+          const ringX = width * .5 + Math.cos(ringAngle) * ringR
+            + Math.sin(particle.phase + phase * 5) * 2.2;
+          const ringY = height * .51 + Math.sin(ringAngle) * ringR * .88
+            + Math.cos(particle.phase2 + phase * 3) * 2.2;
+          const px = bandX * (1 - morph) + ringX * morph;
+          const py = y * (1 - morph) + ringY * morph;
+          if (py < 0 || py > height || px < 0 || px > width) continue;
           const dx = Math.abs(x - pulsePosition);
           const signal = Math.exp(-Math.pow(dx / pulseRadius, 2));
           let alpha = particle.opacity * fade * (stage ? .89 : .63);
@@ -159,7 +198,7 @@
           ctx.globalAlpha = clamp(alpha, .02, .78);
           ctx.fillStyle = particle.color;
           const radius = particle.radius * (.8 + particle.depth * .30 + localSpark * .12);
-          ctx.fillRect(px, y, radius, radius);
+          ctx.fillRect(px, py, radius, radius);
         }
         ctx.globalAlpha = 1;
       }
@@ -167,8 +206,12 @@
       function tick(now) {
         raf = 0;
         if (!inView || document.hidden || motionQuery.matches) return;
-        if (lastTime !== null) elapsed = (elapsed + Math.min((now - lastTime) / 1000, .05)) % LOOP_SECONDS;
+        const dt = lastTime === null ? 0 : Math.min((now - lastTime) / 1000, .05);
+        if (lastTime !== null) elapsed = (elapsed + dt) % LOOP_SECONDS;
         lastTime = now;
+        const targetMorph = stage && (demonstration || audioAttached) ? 1 : 0;
+        shapeMix += (targetMorph - shapeMix) * Math.min(1, dt * 1.45);
+        if (Math.abs(shapeMix - targetMorph) < .0002) shapeMix = targetMorph;
         const sound = demonstration && stage ? demoSpeech(elapsed) : liveAudioLevel();
         // Fast attack, slower release for individual syllables; sample-to-sample
         // onset also adds brief fine-grained neural movement.
@@ -176,13 +219,13 @@
         smoothAudio += (sound - smoothAudio) * attack;
         transient += (Math.max(0, sound - lastAudioSample) * 2.1 - transient) * .32;
         lastAudioSample = sound;
-        paint(elapsed, smoothAudio, clamp(transient, 0, 1));
+        paint(elapsed, smoothAudio, clamp(transient, 0, 1), shapeMix);
         raf = requestAnimationFrame(tick);
       }
       function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; lastTime = null; }
       function start() {
         stop();
-        if (motionQuery.matches) { paint(0, 0); return; }
+        if (motionQuery.matches) { shapeMix = stage && (demonstration || audioAttached) ? 1 : 0; paint(0, 0, 0, shapeMix); return; }
         if (inView && !document.hidden) raf = requestAnimationFrame(tick);
       }
       const observer = 'IntersectionObserver' in window
@@ -216,12 +259,14 @@
         analyser.fftSize = 512;
         sampleData = new Uint8Array(analyser.fftSize);
         source.connect(analyser);
+        audioAttached = true;
         await context.resume();
       },
       async detachAudioStream() {
         if (source) source.disconnect();
         if (context) await context.close();
         source = null; context = null; analyser = null; sampleData = null;
+        audioAttached = false;
         externalLevel = 0;
       }
     };
@@ -235,7 +280,7 @@
     const enabled = !SashaTelParticle.demo;
     SashaTelParticle.setDemo(enabled);
     particleDemoButton.setAttribute('aria-pressed', String(enabled));
-    particleDemoButton.textContent = enabled ? 'Остановить демо' : 'Демо реакции на голос';
+    particleDemoButton.textContent = enabled ? 'Завершить демо звонка' : 'Демо звонка · живое кольцо';
   });
   const values30=[31,37,39,35,30,32,37,35,31,29,36,38,37,41,39,42,40,44,42.8,39,44,45,43,48,50,47,44,46,49,52];
   const values7=values30.slice(-7);const values90=Array.from({length:90},(_,i)=>Math.max(19,Math.min(58,28+i*.19+Math.sin(i*.27)*4+Math.sin(i*.73)*2)));
