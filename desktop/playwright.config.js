@@ -10,7 +10,7 @@ export default defineConfig({
     launchOptions: { chromiumSandbox: true, executablePath: process.env.CHROMIUM_PATH || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined) } },
   webServer: { command: 'python3 -m http.server 4173 --bind 127.0.0.1 --directory .', url: 'http://127.0.0.1:4173', reuseExistingServer: false },
   projects: [
-    { name: 'chromium', testMatch: '**/components.spec.js' },
+    { name: 'chromium', testMatch: ['**/components.spec.js', '**/trunks.spec.js'] },
     { name: 'electron', testMatch: '**/electron.spec.js' },
   ],
 });
