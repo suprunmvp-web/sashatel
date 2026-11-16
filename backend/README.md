@@ -4,7 +4,7 @@ Node.js 24 and PostgreSQL 17. The local HTTP server binds to loopback and requir
 
 1. Create an empty PostgreSQL database and a separate login named `control_runtime` with NOSUPERUSER and NOBYPASSRLS. Supply passwords externally.
 2. With a migration owner, run `psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql`. Integration fixtures require a local PostgreSQL administrator for seed rows behind FORCE RLS.
-3. `npm install --ignore-scripts`, `npm run typecheck`, `npm test`. Set `TEST_ADMIN_URL` and `DATABASE_URL` to the migration admin and runtime URLs. CI supplies a disposable service and credentials.
+3. `npm ci --ignore-scripts`, `npm run typecheck`, `npm test`. Set `TEST_ADMIN_URL` and `DATABASE_URL` to the migration admin and runtime URLs. CI supplies a disposable service and credentials.
 4. For manual use, seed organizations, users (passwords via `hashPassword`), memberships, subscriptions, wallets, trunks and approved phone numbers using an administrative connection. Set configuration from `.env.example` and run `npm start`.
 
 ## HTTP
