@@ -313,5 +313,115 @@
   const days=['1','2','3','4','5','6','7'];function focus(i){i=Math.max(0,Math.min(activeValues.length-1,i));const [x,y]=pts[i];cross.setAttribute('x1',x);cross.setAttribute('x2',x);cross.style.opacity='1';dot.setAttribute('cx',x);dot.setAttribute('cy',y);dot.style.opacity='1';let p=activeValues.length===7?`${days[i]} день`:activeValues.length===90?`${i+1} день`:`${i+1} ноя`;$('#tooltip-date').textContent=p;$('#tooltip-value').textContent=activeValues[i].toLocaleString('ru-RU',{maximumFractionDigits:1})+' %';tooltip.style.left=`${x/1000*100}%`;tooltip.style.top=`${y/245*100}%`;tooltip.classList.add('show');}
   function clearHover(){cross.style.opacity='0';dot.style.opacity='0';tooltip.classList.remove('show');}
   hit.addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect();const raw=(e.clientX-r.left)/r.width*1000;focus(Math.round((raw-45)/(940)*(activeValues.length-1)));});hit.addEventListener('pointerleave',clearHover);hit.addEventListener('click',e=>{const r=svg.getBoundingClientRect();const raw=(e.clientX-r.left)/r.width*1000;focus(Math.round((raw-45)/(940)*(activeValues.length-1)));});
-  $$('.period-toggle button').forEach(btn=>btn.addEventListener('click',()=>{$$('.period-toggle button').forEach(el=>{const yes=el===btn;el.classList.toggle('active',yes);el.setAttribute('aria-pressed',String(yes));});render(Number(btn.dataset.period));}));render(30);
+  $('.period-toggle button').forEach(btn=>btn.addEventListener('click',()=>{$('.period-toggle button').forEach(el=>{const yes=el===btn;el.classList.toggle('active',yes);el.setAttribute('aria-pressed',String(yes));});render(Number(btn.dataset.period));}));render(30);
+
+  // Editable demo states; no mutation of real customer statistics.
+  const dashboard=$('.dashboard'),sideToggle=$('#sidebar-toggle');
+  function setSidebar(collapsed){
+    dashboard?.classList.toggle('sidebar-collapsed',collapsed);
+    if(sideToggle){
+      sideToggle.setAttribute('aria-expanded',String(!collapsed));
+      sideToggle.setAttribute('aria-label',collapsed?'Развернуть сайдбар':'Свернуть сайдбар');
+      sideToggle.title=collapsed?'Развернуть меню':'Свернуть меню';
+      sideToggle.querySelector('[data-icon]')?.setAttribute('data-icon',collapsed?'panel-left-open':'panel-left-close');
+      window.renderSashaIcons?.();
+    }
+    try { localStorage.setItem('sashatel-sidebar-collapsed',String(collapsed)); }catch{}
+  }
+  let sidebarPref=false;
+  try{sidebarPref=localStorage.getItem('sashatel-sidebar-collapsed')==='true';}catch{}
+  setSidebar(sidebarPref);
+  sideToggle?.addEventListener('click',()=>setSidebar(!dashboard?.classList.contains('sidebar-collapsed')));
+
+  const themeButton=$('#theme-switch');
+  function setTheme(mode){
+    document.documentElement.dataset.theme=mode;
+    themeButton?.setAttribute('aria-pressed',String(mode==='light'));
+    themeButton?.setAttribute('aria-label',mode==='light'?'Переключить на тёмную тему':'Переключить на светлую тему');
+    themeButton?.setAttribute('title',mode==='light'?'Тёмная тема':'Светлая тема');
+    const glyph=themeButton?.querySelector('.theme-switch-icon');
+    if(glyph) glyph.textContent=mode==='light'?'☾':'◐';
+    try{localStorage.setItem('sashatel-brandbook-theme',mode)}catch{}
+  }
+  let chosenTheme='dark';
+  try{chosenTheme=localStorage.getItem('sashatel-brandbook-theme')==='light'?'light':'dark';}catch{}
+  setTheme(chosenTheme);
+  themeButton?.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+
+  const dateButton=$('#date-range-button'),datePanel=$('#date-range-panel');
+  dateButton?.addEventListener('click',()=>{
+    const open=dateButton.getAttribute('aria-expanded')!=='true';
+    dateButton.setAttribute('aria-expanded',String(open));
+    if(datePanel) datePanel.hidden=!open;
+  });
+  const fmtDate=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short'});
+  const fmtYear=new Intl.DateTimeFormat('ru-RU',{year:'numeric'});
+  $('#date-apply')?.addEventListener('click',()=>{
+    const start=$('#date-from')?.value,end=$('#date-to')?.value;
+    if(!start||!end||start>end){$('#date-from')?.focus();return;}
+    // Date-only strings are interpreted in UTC to avoid timezone drift.
+    const a=new Date(start+'T12:00:00Z'),b=new Date(end+'T12:00:00Z');
+    const year=fmtYear.format(b);
+    $('#date-range-label').textContent=fmtDate.format(a)+' — '+fmtDate.format(b)+' '+year;
+    datePanel.hidden=true;dateButton?.setAttribute('aria-expanded','false');
+  });
+  document.addEventListener('pointerdown',e=>{
+    if(datePanel&&!datePanel.hidden&&!datePanel.contains(e.target)&&!dateButton?.contains(e.target)){
+      datePanel.hidden=true;dateButton?.setAttribute('aria-expanded','false');
+    }
+  });
+
+  // Original SashaTel donut interaction model: value-proportional SVG arcs,
+  // subtle separation, focus/hover magnification and matching legend emphasis.
+  const donutSvg=$('#donut-svg'),donutBox=$('.donut-layout'),donutRows=$('.donut-legend [data-seg]');
+  if(donutSvg&&donutBox){
+    const data=[
+      {name:'Ответил человек',value:42.8,count:6129},
+      {name:'Автоответчик',value:18.6,count:2664},
+      {name:'Не взяли трубку',value:16.9,count:2420},
+      {name:'Занято или сброс',value:12.1,count:1733},
+      {name:'Абонент недоступен',value:9.6,count:1374}
+    ];
+    const NS='http://www.w3.org/2000/svg',cx=100,cy=100,outer=80,inner=52,gap=.013;
+    const xy=(radius,angle)=>[(cx+radius*Math.cos(angle)).toFixed(2),(cy+radius*Math.sin(angle)).toFixed(2)];
+    const colors=['#E4E4E7','#B0B0B7','#85858D','#5A5A63','#383840'];
+    const el=[];
+    let start=-Math.PI/2;
+    for(let i=0;i<data.length;i++){
+      const arc=data[i].value/100*Math.PI*2;
+      const a0=start+gap/2,a1=start+arc-gap/2;
+      const [x0,y0]=xy(outer,a0),[x1,y1]=xy(outer,a1);
+      const [x2,y2]=xy(inner,a1),[x3,y3]=xy(inner,a0);
+      const large=a1-a0>Math.PI?1:0;
+      const path=document.createElementNS(NS,'path');
+      path.setAttribute('d','M'+x0+' '+y0+' A'+outer+' '+outer+' 0 '+large+' 1 '+x1+' '+y1+' L'+x2+' '+y2+' A'+inner+' '+inner+' 0 '+large+' 0 '+x3+' '+y3+' Z');
+      path.setAttribute('fill',colors[i]);path.setAttribute('class','donut-segment');path.setAttribute('data-seg',String(i));
+      path.setAttribute('tabindex','0');path.setAttribute('role','button');
+      path.setAttribute('aria-label',data[i].name+': '+data[i].value.toLocaleString('ru-RU')+'%');
+      donutSvg.appendChild(path);el.push(path);start+=arc;
+    }
+    const value=$('#donut-value'),caption=$('#donut-caption');
+    function setFocus(index){
+      donutBox.classList.toggle('donut-focused',index>=0);
+      el.forEach((path,i)=>path.classList.toggle('is-active',i===index));
+      donutRows.forEach((row,i)=>row.classList.toggle('is-active',i===index));
+      if(value) value.textContent=index<0?'14 320':data[index].value.toLocaleString('ru-RU')+'%';
+      if(caption) caption.textContent=index<0?'всего':data[index].name;
+    }
+    el.forEach((path,i)=>{
+      path.addEventListener('pointerenter',()=>setFocus(i));
+      path.addEventListener('focus',()=>setFocus(i));
+      path.addEventListener('pointerleave',()=>setFocus(-1));
+      path.addEventListener('blur',()=>setFocus(-1));
+    });
+    donutRows.forEach((row,i)=>{
+      row.addEventListener('pointerenter',()=>setFocus(i));
+      row.addEventListener('focus',()=>setFocus(i));
+      row.addEventListener('pointerleave',()=>setFocus(-1));
+      row.addEventListener('blur',()=>setFocus(-1));
+      row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setFocus(i)}});
+    });
+    setFocus(-1);
+  }
+
 })();
