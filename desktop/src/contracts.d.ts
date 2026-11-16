@@ -87,7 +87,6 @@ declare global {
       demo?: { send(value: { callId: string; event: DemoEvent }): Promise<boolean> };
       audio?: { reportIssue(value: { callId: string; code: string }): Promise<boolean> };
     };
-    sashatelTrunks?: import('./trunks').TrunkBridge;
     sashatelAudio?: PublishedAudioService;
   }
 }

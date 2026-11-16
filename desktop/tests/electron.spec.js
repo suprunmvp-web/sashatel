@@ -19,6 +19,8 @@ test('actual Electron window: security, navigation, call states, screenshots, si
     expect(security.min[0]).toBeGreaterThanOrEqual(400);
     expect(security.min[1]).toBeGreaterThanOrEqual(640);
     expect(await page.evaluate(()=>({require:typeof window.require,mode:window.sashatel.mode,keys:Object.keys(window.sashatel).sort()}))).toEqual({require:'undefined',mode:'DEMO',keys:['audio','calls','demo','mode','platform','version']});
+    await expect(page.getByRole('button', { name: 'Транки', exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => typeof window.sashatelTrunks)).toBe('undefined');
     await mkdir('artifacts',{recursive:true});
     for (const theme of ['light','dark']) {
       await page.evaluate(theme=>localStorage.setItem('sashatel.theme',theme),theme); await page.reload();
@@ -168,25 +170,4 @@ test('settings UI drives actual Audio service: measured microphone, device selec
     expect(await page.evaluate(() => window.sashatelAudio.getState().lastTest.playbackStarted)).toBe(true);
     expect(await page.evaluate(() => window.sashatelAudio.getState().lastTest.audibilityConfirmed)).toBe(false);
   } finally { await app.close(); await rm(temp, { recursive: true, force: true }); }
-});
-
-test('trunk IPC fails closed when Backend is unconfigured', async () => {
-  const packaged = process.env.SASHATEL_EXECUTABLE;
-  const app = await electron.launch({
-    ...(packaged ? { executablePath: packaged } : {}),
-    chromiumSandbox: true,
-    args: packaged ? [] : [path.resolve('.')],
-    env: { ...process.env, SASHATEL_DEMO: '0', SASHATEL_BACKEND_ORIGIN: '', SASHATEL_BACKEND_TOKEN: '' },
-  });
-  try {
-    const page = await app.firstWindow();
-    await page.getByRole('button', { name: 'Транки', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'SIP-транки' });
-    await expect(dialog.getByRole('alert')).toHaveText('Сервер управления транками не настроен.');
-    await expect(dialog.getByLabel('SIP-пароль')).toBeDisabled();
-    await expect(dialog.getByRole('button', { name: 'Добавить транк' })).toBeDisabled();
-    expect(await page.evaluate(() => Object.keys(window.sashatelTrunks).sort())).toEqual(['create', 'list', 'remove']);
-  } finally {
-    await app.close();
-  }
 });

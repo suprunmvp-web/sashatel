@@ -4,8 +4,6 @@ import { CoreCallFacade } from './src/core-call-facade.js';
 import { DemoHistory } from './src/demo-history.js';
 import { UnavailableAudio } from './src/unavailable-audio.js';
 import { AudioServiceFacade } from './src/audio-facade.js';
-import { createBridgeTrunkApi } from './src/bridge-trunk-api.js';
-import { mountTrunkDialog } from './src/trunk-dialog.js';
 import { mountDesktop } from './src/view.js';
 
 // Single composition root. No backend credentials or arbitrary IPC exposed to UI.
@@ -24,5 +22,4 @@ const controller = new DesktopController(services);
 const root = document.getElementById('app');
 if (!root) throw new Error('Missing app root');
 const unmount = mountDesktop(root, controller);
-const unmountTrunks = mountTrunkDialog(root, createBridgeTrunkApi(window.sashatelTrunks));
-window.addEventListener('pagehide', () => { window.clearInterval(poll); unmountTrunks(); unmount(); controller.dispose(); calls.dispose(); }, { once: true });
+window.addEventListener('pagehide', () => { window.clearInterval(poll); unmount(); controller.dispose(); calls.dispose(); }, { once: true });

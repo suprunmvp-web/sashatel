@@ -141,30 +141,3 @@ input[type="range"] { accent-color: var(--fg); width: 100%; height: 16px; margin
   .button.danger { margin-top: 12px; }
   #call-screen .page-heading { margin-bottom: 6px; }
 }
-
-.trunk-open { margin-left: auto; }
-.trunk-open, .trunk-dialog button, .trunk-dialog input {
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-}
-.trunk-dialog {
-  width: min(420px, calc(100% - 32px));
-  max-height: calc(100% - 32px);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
-  color: var(--fg);
-  background: var(--surface);
-}
-.trunk-dialog::backdrop { background: rgb(0 0 0 / 52%); }
-.trunk-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.trunk-note { color: var(--muted); margin: 8px 0; }
-.trunk-dialog [role="alert"] { color: var(--bad); }
-.trunk-dialog ul { list-style: none; margin: 0; padding: 0; }
-.trunk-dialog li { padding: 8px 0; overflow-wrap: anywhere; }
-.trunk-dialog li button { margin: 5px 5px 0 0; }
-.trunk-dialog form { display: grid; gap: 8px; margin-top: 12px; }
-.trunk-dialog label { display: grid; gap: 3px; }
-.trunk-dialog input { width: 100%; }
