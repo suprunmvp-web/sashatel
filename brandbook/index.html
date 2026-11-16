@@ -202,7 +202,11 @@
                 <h4 class="launch-brush">На<span> связи.</span></h4>
                 <form id="launch-form" class="launch-form" autocomplete="off">
                   <label>Логин<input id="launch-user" required autocomplete="off" spellcheck="false"></label>
-                  <label>Пароль<input id="launch-password" type="password" required autocomplete="off"></label>
+                  <label for="launch-password">Пароль</label>
+                  <div class="launch-password-row">
+                    <input id="launch-password" type="password" required autocomplete="off">
+                    <button id="launch-password-toggle" type="button" aria-controls="launch-password" aria-label="Показать пароль">Показать</button>
+                  </div>
                   <button class="launch-primary" type="submit">Войти <i data-icon="arrow-right"></i></button>
                   <button class="launch-secondary" id="launch-example" type="button">Использовать демо-вход</button>
                 </form>
@@ -211,7 +215,7 @@
                 <h4 class="launch-brush" role="status">Настраиваем линию.</h4>
               </div>
               <div class="launch-screen" data-launch-screen="ready" hidden>
-                <h4 class="launch-brush">Линия готова.</h4><p>Можно сделать первый звонок.</p>
+                <h4 class="launch-brush">Линия готова.</h4>
                 <button class="launch-primary" id="launch-open-phone" type="button">К первому звонку <i data-icon="arrow-right"></i></button>
               </div>
             </div>

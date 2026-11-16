@@ -215,3 +215,30 @@
 .phone-panel-settings meter::-webkit-meter-optimum-value { background:var(--phone-accent); }
 @media(max-width:620px) { .launch-body { min-height:520px; } .launch-screen { padding-bottom:24px; } }
 @media(prefers-reduced-motion:reduce) { .phone-panel-call,[data-connection="connecting"] .phone-line-light { animation:none; } }
+
+.launch-screen h4 { letter-spacing:-.035em; }
+.launch-form { gap:9px; margin-top:23px; }
+.launch-form label { gap:6px; }
+.launch-password-row { position:relative; margin-top:-3px; }
+.launch-password-row input { padding-right:82px; }
+.launch-password-row button {
+  position:absolute; inset:3px 4px 3px auto; min-height:0;
+  padding:0 8px; border:0; background:transparent; color:#d4bf9e; font-size:11px;
+}
+.launch-form > .launch-primary { margin-top:8px; }
+.launch-form > .launch-secondary { min-height:32px; }
+[data-launch-screen="ready"] .launch-primary { margin-top:18px; }
+@media(max-width:620px) {
+  .launch-body { min-height:450px; align-items:center; }
+  .launch-screen { padding:245px 24px 30px; }
+  [data-launch-state="auth"] .launch-body { min-height:520px; }
+  [data-launch-screen="auth"] { padding-top:215px; }
+}
+@media(prefers-reduced-motion:no-preference) {
+  [data-launch-screen="ready"] .launch-brush { animation-delay:.18s; }
+  [data-launch-screen="ready"] .launch-primary { animation:launch-text .38s .52s both, launch-glint .72s .56s both; }
+  @keyframes launch-glint {
+    0%,100% { border-color:#e8c54744; box-shadow:0 0 0 transparent; }
+    43% { border-color:#e8c547a6; box-shadow:0 0 21px #e8c54722; }
+  }
+}

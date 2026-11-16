@@ -14,24 +14,32 @@
   }));
   let frame = 0, timer = 0, visible = false, width = 0, height = 0, changed = performance.now();
   let state = 'open';
+  const linkDuration = 1150;
+  const readyDuration = 1450;
   const ease = value => 1 - (1 - Math.min(1, Math.max(0, value))) ** 3;
 
   function draw(now) {
     if (!context || !width || !height) return;
     const elapsed = reduced.matches ? 3 : (now - changed) / 1000;
-    const time = reduced.matches ? 0 : now / 1000;
+    const seconds = reduced.matches ? 0 : now / 1000;
+    const time = state === 'ready'
+      ? (changed / 1000 + .36 * ease(elapsed / 1.15))
+      : seconds;
     const compact = width < 540;
-    const x0 = width * (compact ? .5 : .73);
-    const y0 = height * (compact ? .28 : .5);
-    const radius = Math.min(width * (compact ? .24 : .21), height * .34);
-    const converge = state === 'auth' ? ease(elapsed / 1.65) : 1;
-    const pulse = state === 'link' ? Math.sin(Math.min(1, elapsed / 1.5) * Math.PI) : 0;
-    const energy = state === 'open' ? .47 : state === 'ready' ? .83 : .66 + pulse * .27;
+    const x0 = width * (compact ? .51 : .73);
+    const y0 = height * (compact ? .29 : .49);
+    const radius = Math.min(width * (compact ? .26 : .21), height * (compact ? .23 : .34));
+    const gather = state === 'auth' ? .42 * (1 - ease(elapsed / .95)) : 0;
+    const drawIn = state === 'link' ? .2 * ease(elapsed / (linkDuration / 1000))
+      : state === 'ready' ? .2 * (1 - ease(elapsed / .95)) : 0;
+    const crest = state === 'ready' && !reduced.matches
+      ? Math.sin(Math.PI * Math.min(1, elapsed / 1.1)) ** 2 : 0;
+    const energy = state === 'open' ? .48 : state === 'ready' ? .58 + crest * .46 : .65 + drawIn * .75;
     context.clearRect(0, 0, width, height);
     const glow = context.createRadialGradient(x0, y0, radius * .27, x0, y0, radius * 1.75);
     glow.addColorStop(0, 'transparent');
-    glow.addColorStop(.28, `rgba(222,164,67,${.12 * energy})`);
-    glow.addColorStop(.48, `rgba(149,94,40,${.18 * energy})`);
+    glow.addColorStop(.28, `rgba(222,164,67,${.17 * energy})`);
+    glow.addColorStop(.48, `rgba(149,94,40,${.23 * energy})`);
     glow.addColorStop(1, 'transparent');
     context.fillStyle = glow;
     context.fillRect(x0-radius*2, y0-radius*2, radius*4, radius*4);
@@ -44,8 +52,8 @@
       const rx = x * .91 - y * .42;
       const ry = x * .42 + y * .91;
       const wave = .92 + .065 * Math.sin(dot.azimuth * 8 + dot.height * 13 - time * 1.85);
-      const spread = 1 + (1 - converge) * dot.drift;
-      const r = radius * dot.depth * wave * spread * (1 + pulse * .08);
+      const spread = 1 + gather * dot.drift - drawIn + .11 * crest;
+      const r = radius * dot.depth * wave * spread;
       const projection = 1 + z * .18;
       const flutter = .8 + .2 * Math.sin(time * 2.1 + dot.pulse);
       context.globalAlpha = energy * flutter * (.27 + .65 * (z + 1) / 2);
@@ -57,7 +65,7 @@
 
   function tick(now) {
     draw(now);
-    frame = requestAnimationFrame(tick);
+    if (state !== 'ready' || now - changed < readyDuration) frame = requestAnimationFrame(tick);
   }
   function render() {
     cancelAnimationFrame(frame);
@@ -83,23 +91,35 @@
     const screen = screens.find(item => item.dataset.launchScreen === next);
     screens.forEach(item => { item.hidden = item !== screen; });
     if (focus) {
-      const target = screen.querySelector('button') || screen.querySelector('h4');
-      if (target.tagName !== 'BUTTON') target.tabIndex = -1;
+      const target = screen.querySelector('input') || screen.querySelector('button') || screen.querySelector('h4');
+      if (target.tagName === 'H4') target.tabIndex = -1;
       target.focus({ preventScroll: true });
     }
-    if (next === 'link') timer = setTimeout(() => go('ready'), reduced.matches ? 180 : 1550);
+    if (next === 'link') timer = setTimeout(() => go('ready'), reduced.matches ? 180 : linkDuration);
     render();
   }
   const form = document.getElementById('launch-form');
-  const openSignIn = () => { form.reset(); go('auth'); document.getElementById('launch-user').focus({ preventScroll: true }); };
+  const password = document.getElementById('launch-password');
+  const passwordToggle = document.getElementById('launch-password-toggle');
+  function showPassword(show) {
+    password.type = show ? 'text' : 'password';
+    passwordToggle.textContent = show ? 'Скрыть' : 'Показать';
+    passwordToggle.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+  }
+  function resetForm() {
+    form.reset();
+    showPassword(false);
+  }
+  passwordToggle.addEventListener('click', () => showPassword(password.type === 'password'));
+  const openSignIn = () => { resetForm(); go('auth'); };
   document.getElementById('launch-open').addEventListener('click', openSignIn);
   document.getElementById('launch-replay').addEventListener('click', openSignIn);
   form.addEventListener('submit', event => {
     event.preventDefault();
-    form.reset();
+    resetForm();
     go('link');
   });
-  document.getElementById('launch-example').addEventListener('click', () => { form.reset(); go('link'); });
+  document.getElementById('launch-example').addEventListener('click', () => { resetForm(); go('link'); });
   document.getElementById('launch-open-phone').addEventListener('click', () => {
     document.getElementById('softphone-window').scrollIntoView({ behavior: reduced.matches ? 'instant' : 'smooth', block: 'center' });
     window.setSashaPhonePanel('dial');
