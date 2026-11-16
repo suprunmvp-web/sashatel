@@ -2,6 +2,8 @@
 const { app, BrowserWindow, session, ipcMain, systemPreferences, powerMonitor } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const backend = { origin: process.env.SASHATEL_BACKEND_ORIGIN, token: process.env.SASHATEL_BACKEND_TOKEN };
+delete process.env.SASHATEL_BACKEND_TOKEN;
 const demo = process.env.SASHATEL_DEMO === '1';
 let owner, callIPC;
 const { createPolicy } = require('./security.cjs');
@@ -92,6 +94,10 @@ app.whenReady().then(async () => {
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     callback({ cancel: !policy.allowedResource(details.url) });
   });
+  const { createTrunkHttp } = await import('./integration/trunk-http.mjs');
+  const { installTrunkIPC } = await import('./integration/trunk-ipc.mjs');
+  installTrunkIPC(ipcMain, policy, createTrunkHttp(backend));
+  backend.token = undefined;
   installAudioIPC();
   createWindow();
   app.on('activate', () => {

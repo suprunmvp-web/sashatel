@@ -34,3 +34,9 @@ contextBridge.exposeInMainWorld('sashatel', Object.freeze({
     }
   })
 }));
+
+contextBridge.exposeInMainWorld('sashatelTrunks', Object.freeze({
+  list: () => ipcRenderer.invoke('trunk:list'),
+  create: value => ipcRenderer.invoke('trunk:create', value),
+  remove: id => ipcRenderer.invoke('trunk:remove', id)
+}));

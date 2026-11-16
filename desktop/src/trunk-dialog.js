@@ -23,7 +23,6 @@ export function mountTrunkDialog(root, api) {
   dialog.setAttribute('aria-labelledby', 'trunk-heading');
   dialog.innerHTML = `
     <header><h2 id="trunk-heading">SIP-транки</h2><button type="button" data-close>Закрыть</button></header>
-    <p class="trunk-note">Тестовый режим. Используйте тестовые данные. Регистрация UIS недоступна.</p>
     <p data-status role="status"></p>
     <p data-error role="alert" hidden></p>
     <ul aria-label="Список транков"></ul>
@@ -31,8 +30,8 @@ export function mountTrunkDialog(root, api) {
     <form autocomplete="off">
       <h2>Добавить UIS</h2>
       <label>Сервер<input name="registrar" value="pbx.uiscom.ru:5060" required maxlength="253"></label>
-      <label>SIP-логин<input name="login" required maxlength="256" spellcheck="false"></label>
-      <label>SIP-пароль<input name="password" type="password" autocomplete="off" required maxlength="512"></label>
+      <label>SIP-логин<input name="login" required maxlength="128" spellcheck="false"></label>
+      <label>SIP-пароль<input name="password" type="password" autocomplete="off" required maxlength="256"></label>
       <button type="submit">Добавить транк</button>
     </form>`;
   root.append(dialog);
@@ -46,6 +45,24 @@ export function mountTrunkDialog(root, api) {
   const refresh = /** @type {HTMLButtonElement} */ (dialog.querySelector('[data-refresh]'));
   const close = /** @type {HTMLButtonElement} */ (dialog.querySelector('[data-close]'));
   let busy = false;
+  const retryTrunk = api.retry;
+  const formControls = Array.from(form.querySelectorAll('button, input'));
+  let canManage = false;
+  function updateForm() {
+    for (const control of formControls) control.toggleAttribute('disabled', busy || !canManage);
+  }
+  updateForm();
+  const failures = new Map([
+    ['BACKEND_UNCONFIGURED', 'Сервер управления транками не настроен.'],
+    ['INVALID_SESSION', 'Сессия недействительна или истекла. Требуется новая сессия.'],
+    ['ACCESS_DENIED', 'У вашей учётной записи нет доступа к управлению транками.'],
+    ['TRUNK_OR_ROUTE_NOT_FOUND', 'Транк или API транков недоступен на сервере.'],
+    ['INVALID_TRUNK', 'Проверьте сервер, SIP-логин и пароль.'],
+    ['TRUNK_CONFLICT', 'Конфликт запроса. Обновите список перед повторной отправкой.'],
+    ['RATE_LIMITED', 'Слишком много запросов. Обновите список позже.'],
+    ['BACKEND_UNREACHABLE', 'Сервер не ответил. Обновите список перед повторной отправкой.'],
+    ['INVALID_RESPONSE', 'Сервер вернул неподдерживаемый ответ.'],
+  ]);
 
   /** @param {() => Promise<unknown>} action @param {string} failure */
   async function run(action, failure) {
@@ -67,11 +84,11 @@ export function mountTrunkDialog(root, api) {
         const state = document.createElement('p');
         state.textContent = statusLabels[trunk.status] ?? 'Статус неизвестен';
         row.append(name, state);
-        if (trunk.status === 'rejected' || trunk.status === 'degraded') {
+        if (retryTrunk && (trunk.status === 'rejected' || trunk.status === 'degraded')) {
           const retry = document.createElement('button');
           retry.type = 'button';
           retry.textContent = 'Повторить подключение';
-          retry.onclick = () => { void run(() => api.retry(trunk.id), 'Не удалось повторить подключение.'); };
+          retry.onclick = () => { void run(() => retryTrunk(trunk.id), 'Не удалось повторить подключение.'); };
           row.append(retry);
         }
         const remove = document.createElement('button');
@@ -81,15 +98,19 @@ export function mountTrunkDialog(root, api) {
         row.append(remove);
         list.append(row);
       }
+      canManage = true;
       status.textContent = trunks.length ? '' : 'Транков пока нет.';
-    } catch {
+    } catch (cause) {
+      canManage = false;
+      password.value = '';
       list.replaceChildren();
       status.textContent = 'Актуальные статусы недоступны.';
-      error.textContent = failure;
+      error.textContent = (cause instanceof Error && failures.get(cause.message)) || failure;
       error.hidden = false;
     } finally {
       busy = false;
       for (const control of dialog.querySelectorAll('button, input')) control.removeAttribute('disabled');
+      updateForm();
       if (dialog.open && document.activeElement === document.body) refresh.focus();
     }
   }
@@ -103,7 +124,7 @@ export function mountTrunkDialog(root, api) {
   refresh.onclick = () => { void run(async () => {}, 'Не удалось загрузить транки.'); };
   form.addEventListener('submit', event => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !canManage) return;
     const secret = password.value;
     password.value = '';
     void run(() => api.create({

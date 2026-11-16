@@ -17,6 +17,13 @@ export interface CreateTrunk {
 export interface TrunkApi {
   list(): Promise<Trunk[]>;
   create(input: CreateTrunk): Promise<Trunk>;
-  retry(id: string): Promise<Trunk>;
+  retry?(id: string): Promise<Trunk>;
   remove(id: string): Promise<void>;
+}
+
+export type TrunkResult<T> = { ok: true; value: T } | { ok: false; code: string };
+export interface TrunkBridge {
+  list(): Promise<TrunkResult<Trunk[]>>;
+  create(input: CreateTrunk): Promise<TrunkResult<Trunk>>;
+  remove(id: string): Promise<TrunkResult<void>>;
 }

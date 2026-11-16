@@ -4,7 +4,7 @@ import { CoreCallFacade } from './src/core-call-facade.js';
 import { DemoHistory } from './src/demo-history.js';
 import { UnavailableAudio } from './src/unavailable-audio.js';
 import { AudioServiceFacade } from './src/audio-facade.js';
-import { createMockTrunkApi } from './src/mock-trunk-api.js';
+import { createBridgeTrunkApi } from './src/bridge-trunk-api.js';
 import { mountTrunkDialog } from './src/trunk-dialog.js';
 import { mountDesktop } from './src/view.js';
 
@@ -24,5 +24,5 @@ const controller = new DesktopController(services);
 const root = document.getElementById('app');
 if (!root) throw new Error('Missing app root');
 const unmount = mountDesktop(root, controller);
-const unmountTrunks = mountTrunkDialog(root, createMockTrunkApi());
+const unmountTrunks = mountTrunkDialog(root, createBridgeTrunkApi(window.sashatelTrunks));
 window.addEventListener('pagehide', () => { window.clearInterval(poll); unmountTrunks(); unmount(); controller.dispose(); calls.dispose(); }, { once: true });
