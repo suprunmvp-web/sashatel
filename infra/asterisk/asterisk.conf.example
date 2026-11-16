@@ -1,0 +1,14 @@
+[directories]
+astetcdir => /etc/sashatel-asterisk
+astmoddir => /opt/sashatel-asterisk/22.12.0/lib/asterisk/modules
+astvarlibdir => /var/lib/sashatel-asterisk
+astdbdir => /var/lib/sashatel-asterisk
+astkeydir => /var/lib/sashatel-asterisk
+astdatadir => /var/lib/sashatel-asterisk
+astagidir => /var/lib/sashatel-asterisk/agi-bin
+astspooldir => /var/lib/sashatel-asterisk/spool
+astrundir => /run/sashatel-asterisk
+astlogdir => /var/log/sashatel-asterisk
+
+[files]
+astctlpermissions = 0600
