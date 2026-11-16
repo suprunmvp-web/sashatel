@@ -194,3 +194,19 @@
 @media(max-width:1180px){.theme-switch-label{display:none}.dash-title{flex-wrap:wrap}.date-range-wrap{margin-left:auto}}
 @media(max-width:700px){.theme-switch{height:30px;padding:0 8px}.date-range-button{font-size:11px}.dashboard.sidebar-collapsed{grid-template-columns:55px minmax(0,1fr)}.sidebar-collapsed .dashboard-content{padding-left:18px;padding-right:18px}}
 @media(prefers-reduced-motion:reduce){.donut-segment,.dashboard{transition:none!important}}
+
+
+/* Semantic status specimen: log rows, not a new card grid */
+.status-specimen{margin-top:52px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.status-specimen-heading{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding:18px 0 25px}
+.status-specimen-heading>span{font:11px var(--mono);color:var(--sub);white-space:nowrap}
+.status-specimen-heading p{margin:0;color:var(--sub);font-size:13px;line-height:1.55;max-width:580px}
+.log-example{display:grid;grid-template-columns:90px minmax(0,1fr) 125px 125px;align-items:center;gap:20px;min-height:52px;border-top:1px solid var(--line);font-size:13px}
+.log-example time,.log-example code{font:12px var(--mono);color:var(--sub)}
+.log-example code{text-align:right}
+.log-status{display:inline-flex;gap:8px;align-items:center;font-size:12px;white-space:nowrap}
+.log-status i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.log-ok{color:var(--success)}.log-error{color:var(--danger)}.log-warn{color:var(--warning)}
+:root[data-theme="light"] .status-specimen{border-color:var(--line)}
+:root[data-theme="light"] .log-example{border-color:var(--line)}
+@media(max-width:700px){.status-specimen-heading{display:block}.status-specimen-heading p{margin-top:10px}.log-example{grid-template-columns:72px minmax(0,1fr) auto;gap:9px;font-size:11px}.log-example code{display:none}.log-status{font-size:10px}.log-example time{font-size:10px}}
