@@ -1,0 +1,8 @@
+[modules]
+autoload=yes
+noload => pbx_ael.so
+noload => pbx_lua.so
+noload => pbx_realtime.so
+noload => cdr_csv.so
+noload => res_pjsip_endpoint_identifier_anonymous.so
+noload => res_ari.so
