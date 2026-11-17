@@ -90,7 +90,7 @@ test('Web onboarding with real PostgreSQL',async t=>{
     const payload={lookup_id:(lookup.body as any).lookup_id,confirm:true},key=randomUUID();
     const [one,two]=await Promise.all([auth.createOrganization(ctx,payload,key),auth.createOrganization(ctx,payload,key)]);
     assert.deepEqual(one.body,two.body);
-    assert.equal(one.status,201);assert.equal(two.status,200);
+    assert.deepEqual([one.status,two.status].sort(),[200,201]);
     const org=(one.body as any).organization;
     assert.equal(org.role,'owner');assert.equal(org.verification_status,'unverified');
     const {rows:[owner]}=await admin.query('SELECT owner_membership_id FROM control.organizations WHERE id=$1',[org.id]);
