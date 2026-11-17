@@ -1,0 +1,17 @@
+name: Staging release guards
+on:
+  pull_request:
+    paths: ['infra/staging/**', '.github/workflows/staging-release.yml']
+  push:
+    branches: [integration/staging-web-auth-20261118]
+    paths: ['infra/staging/**', '.github/workflows/staging-release.yml']
+permissions:
+  contents: read
+jobs:
+  release-guards:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: python3 -m unittest discover -s infra/staging -p 'test_*.py'
+      - name: Validate manifest JSON (does not mark deployment ready)
+        run: python3 -m json.tool infra/staging/release-manifest.json > /dev/null
