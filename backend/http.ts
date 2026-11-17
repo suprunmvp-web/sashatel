@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage } from 'node:http';
+import type { TrunkService } from './trunks.ts';
 import { ApiError, ControlPlane } from './control.ts';
 
 async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -28,7 +29,7 @@ function field(value: unknown, limit: number) {
   return value;
 }
 
-export function createApi(control: ControlPlane, ready: () => Promise<unknown>) {
+export function createApi(control: ControlPlane, ready: () => Promise<unknown>, trunks?: TrunkService) {
   const requests = new Map<string, number>();
   let window = 0;
   return createServer(async (req, res) => {
@@ -63,6 +64,17 @@ export function createApi(control: ControlPlane, ready: () => Promise<unknown>) 
       }
       const bearer = req.headers.authorization?.match(/^Bearer (\S+)$/)?.[1];
       if (!bearer) throw new ApiError(401, 'INVALID_SESSION');
+      const trunkRoute = path.match(/^\/v1\/trunks(?:\/([^/]+))?$/);
+      if (trunkRoute) {
+        if (!trunks) throw new ApiError(503,'TRUNK_SERVICE_UNAVAILABLE');
+        const id = trunkRoute[1];
+        if (req.method === 'GET') return send(200,await trunks.read(bearer,id));
+        if (req.method === 'POST' && !id) {
+          const data = await body(req);
+          return send(202,await trunks.create(bearer,field(req.headers['idempotency-key'],128),data));
+        }
+        if (req.method === 'DELETE' && id) return send(202,await trunks.remove(bearer,id));
+      }
       if (req.method === 'DELETE' && path === '/v1/session') {
         await control.logout(bearer);
         return send(200, { revoked: true });
