@@ -98,3 +98,22 @@ run "bastion_restricted_source" {
     error_message = "Only the dedicated bastion is public when enabled."
   }
 }
+run "staging_exact_certificate" {
+  command = plan
+  variables {
+    environment                 = "staging"
+    request_staging_certificate = true
+  }
+  assert {
+    condition     = length(yandex_cm_certificate.staging[0].domains) == 1 && one(yandex_cm_certificate.staging[0].domains) == "staging.platform.sashatel.ru"
+    error_message = "Only the exact staging hostname may be requested."
+  }
+}
+run "reject_production_certificate" {
+  command = plan
+  variables {
+    environment                 = "production"
+    request_staging_certificate = true
+  }
+  expect_failures = [var.request_staging_certificate]
+}

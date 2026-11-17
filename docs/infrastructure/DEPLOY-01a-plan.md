@@ -106,3 +106,13 @@ Backend #14 прочитан по реальному коду: npm start=node se
 Запрос release-v1/точного ACK: [#14 comment6963786484](https://github.com/suprunmvp-web/sashatel/pull/14#issuecomment-6963786484). Нужны digest/registry/start/bind, executable migration entrypoint/order/transactionality+compatibility range, readiness/liveness, file-secret injection adapter, runtime grants и SIGTERM/drain, sink/fake guard, restore epoch. Инфраструктура принимает Backend-owned SQL/API и не пишет конкурирующую модель. Ответ/двусторонний ACK пока отсутствует; запуск blocked, независимая IaC подготовка нет.
 
 Локально: bootstrap validate,7Terraform mock tests (включая1app/1subnet/1DB staging),4plan-scope negative tests прошли. Authenticated inventory в панели выполнен. CLI authenticated plan, resource capacity, настоящий lock probe, DB/RLS/TLS, restore и публичныйHTTPS пока НЕ выполнены. Наличие schema validate не подтверждает работающее облако.
+
+## Текущее исполнение: интеграционная ветка staging
+
+Владелец разрешил создание утверждённого bootstrap/staging после authenticated plan и самостоятельной проверки состава, без отдельных подтверждений каждого ресурса; разрешены только новые staging/ACME DNS records при подтверждённом владении. Production/Timeweb/live calls остаются запрещены. Рабочая ветка integration/staging-web-auth-20261118 от9740fa8; чужие ветки не меняются, Draft PR в main не объединяются.
+
+Cloud Shell после повторного подключения запущен: YC CLI1.41.0; authenticated folder list повторно подтвердил три IDs, admin bucket list вернул []. Загрузка кода/команд Terraform в Cloud Shell остановлена автоматической проверкой: требуется явно разрешить именно эту передачу кода в YC. Запрос владельцу отправлен. Локальный YC CLI1.46.0 установлен в workspace без изменения shell profile; секреты не переносились. Authenticated Terraform plan и apply пока не выполнены.
+
+DNS: Google DoH и Cloudflare DoH18.11 возвращают Status3/NXDOMAIN для sashatel.ru NS/SOA и staging.platform.sashatel.ru. Это блокирует public ACME; не доказывает отсутствие регистрации/владения. Нельзя обойти это staging A-record без родительской делегации. Владельцу задан только вопрос о регистрации/регистраторе, NS/MX/покупка не выполнялись.
+
+Release source candidates и ещё не предоставленные runtime SHA/digests фиксируются в infra/staging/release-manifest.json. check-release.py обязан отказать на текущем incomplete manifest; зелёные тесты guard не означают готовый onboarding. Запросы поставки: Backend#14 comment6964121680, Web#24 comment6964123029. Только настоящий API, telephony disabled, test sink с доступом только тестировщиков. Приложения/миграции пока не поставлены, инструкция получения кода и рабочий URL ещё не существуют.
