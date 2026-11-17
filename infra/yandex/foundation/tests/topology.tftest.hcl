@@ -14,10 +14,13 @@ variables {
 }
 run "staging_private" {
   command = plan
-  variables { environment = "staging" }
+  variables {
+    environment = "staging"
+    zones       = { ru-central1-d = "10.60.3.0/24" }
+  }
   assert {
-    condition     = length(yandex_compute_instance.node) == 2 && length(yandex_mdb_postgresql_cluster.main.host) == 1
-    error_message = "Staging must create exactly app/jobs and one DB host."
+    condition     = length(yandex_compute_instance.node) == 1 && length(yandex_vpc_subnet.private) == 1 && length(yandex_mdb_postgresql_cluster.main.host) == 1
+    error_message = "Staging must create exactly one app with embedded worker, one subnet and one DB host."
   }
   assert {
     condition     = alltrue([for n in yandex_compute_instance.node : !n.network_interface[0].nat])

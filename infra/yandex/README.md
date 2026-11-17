@@ -1,11 +1,13 @@
+> Актуальная область #25: только bootstrap + ранний YC staging. План и read-only inventory: [DEPLOY-01a-plan.md](../../docs/infrastructure/DEPLOY-01a-plan.md). Production ветвь модуля не является разрешённым target. Staging создаёт одну app VM с существующим embedded worker, отдельной jobs VM нет; достаточно одной проверенной AZ. State backend — S3 + YDB Document API по backend.hcl.example, не native .tflock. Таблица ещё не создана; lock probe не выполнялся. Исторические примеры ниже сверять с актуальным планом.
+
 # DEPLOY-01a — инфраструктурный bootstrap SashaTel
 
 Base **fff308d7156d52bc3fcecdb024863f0b471679bd (main)**, ветка feature/deploy-01a-foundation. Проектное основание — Draft [ARCH-01 #23](https://github.com/suprunmvp-web/sashatel/pull/23), обновление решений от 18.11.2026. Чужие Draft PR не объединялись.
 
 ## Что находится в коде
 
-- bootstrap — отдельный local-state root, state bucket с versioning/KMS и prevent_destroy.
-- foundation — VPC/3 подсети/SG/NAT, private app/jobs VM и опциональный restricted bastion, отдельные service accounts и resource-scoped IAM, PG17 (staging один host, production три), три закрытых versioned bucket, KMS, пустые Lockbox containers и HTTPS ALB с healthcheck.
+- bootstrap — отдельный local-state root, state bucket с versioning/KMS, YDB lock DB и prevent_destroy.
+- foundation — VPC/1 staging подсеть (production исторически3)/SG/NAT, private app VM (embedded worker) и опциональный restricted bastion, отдельные service accounts и resource-scoped IAM, PG17 (staging один host, production три), три закрытых versioned bucket, KMS, пустые Lockbox containers и HTTPS ALB с healthcheck.
 - edge по умолчанию выключен, DNS не создаётся. ALB требует существующего проверенного Certificate Manager certificate ID. При enable_edge резервируется адрес. Capacity/region binding адреса к ALB проверяются authenticated plan и созданием.
 - PBX/TURN, правила UIS/SIP/RTP/ARI, Postbox sender и off-provider backup пока входят в отдельные reviewed изменения. Foundation не создаёт ложный статус готовности телефонии.
 - Нет payload секретов, паролей DB/users, статических IAM keys или provisioners с remote shell в Terraform. Users/database/grants и приложение — следующий этап, ответственный Backend совместно с DB-01. Secret values загружаются доверенным оператором/сервисом напрямую в Lockbox после создания контейнеров.

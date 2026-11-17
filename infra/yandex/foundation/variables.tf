@@ -6,11 +6,11 @@ variable "environment" {
   }
 }
 variable "zones" {
-  description = "Exactly three support-confirmed AZs with distinct non-overlapping RFC1918 CIDRs."
+  description = "One confirmed AZ is sufficient for staging; production requires three independent AZs."
   type        = map(string)
   validation {
-    condition     = length(var.zones) == 3 && length(distinct(values(var.zones))) == 3 && alltrue([for c in values(var.zones) : can(cidrhost(c, 1)) && can(regex("^10[.][0-9]+[.][0-9]+[.]0/24$", c))])
-    error_message = "Supply three confirmed zones and valid private CIDRs."
+    condition     = contains(var.environment == "production" ? [3] : [1, 2, 3], length(var.zones)) && length(distinct(values(var.zones))) == length(var.zones) && alltrue([for c in values(var.zones) : can(cidrhost(c, 1)) && can(regex("^10[.][0-9]+[.][0-9]+[.]0/24$", c))])
+    error_message = "Supply confirmed zones and distinct private CIDRs; production requires three zones."
   }
 }
 variable "image_id" {

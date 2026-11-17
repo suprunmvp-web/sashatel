@@ -36,3 +36,6 @@ jobs:
           done
       - name: Mock topology and security assertions
         run: terraform -chdir=infra/yandex/foundation test -no-color
+
+      - name: Plan scope gate tests
+        run: python3 -m unittest discover -s infra/yandex/scripts -p "test_*.py"

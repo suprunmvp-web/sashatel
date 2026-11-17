@@ -1,87 +1,108 @@
-# DEPLOY-01a — план, стоимость и приёмка
+# DEPLOY-01a — bootstrap и ранний staging (актуальный план)
 
-Срез 18.11.2026, base fff308d7156d52bc3fcecdb024863f0b471679bd из main, связь с [ARCH-01 #23](https://github.com/suprunmvp-web/sashatel/pull/23). Текущая ответственность DevOps — bootstrap, инфраструктура DB-01/EMAIL-01/OPS-01. Прикладные API, финансовый gate и авторизация принадлежат Backend Engineer. Подтверждение направления не разрешает apply, покупку или DNS changes.
+18.11.2026. Решение владельца: YC выбран, Timeweb остаётся резервом; порт IaC остановлен. #25, base main fff308d7156d52bc3fcecdb024863f0b471679bd. Production HA, PBX/TURN, live calls и полный мониторинг вне этого этапа. Ничего ниже не является разрешением apply/DNS. Прежние production оценки не являются staging заказом.
 
-## План без циклов
+## 1. Authenticated inventory, выполнено read-only в панели
 
-| Шаг | Вход и ответственный | Выход / приёмка |
+Cloud cloud-chinook-677: **b1g4eft3gb4r2ag0s57v**.
+Ресурсные каталоги:
+- sashatel-admin: **b1gga2v07q1av7123dp0** (bootstrap).
+- sashatel-staging: **b1gi9a6fgkr55k6csn9s** (ранний deploy).
+- sashatel-production: **b1gou85cm06pvufkk3oe** (запрещён для данного plan).
+
+Production: сеть default **enph699olhqado0tvo9e**, описание Auto-created network, создана18.11.2026 02:14 (время как отображено панелью). Журнал VPC содержит Create default network (operation enps5l0jcdghph27l6g4), Create network (enpnepode9g4emid3d0h), затем пять Create subnet в ту же минуту, субъект — учётная запись владельца. Это подтверждает автоматическую default-сеть, а не deployment из #25; точный исходный UI checkbox журнал не устанавливает.
+
+| Подсеть | ID | CIDR |
 | --- | --- | --- |
-| B0 — account/inventory | Владелец приглашает назначенного инфраструктурного инженера; read-only роли и support request | Реальные cloud/folder IDs, подтверждённые zones/capacity, независимость отказных доменов, quote и reviewer |
-| B1 — bootstrap state | DevOps; утверждённый B0 plan и отдельное разрешение на создание state bucket/KMS | Encrypted local state → bucket/versioning/roles → реальная lock-probe → проверка restore state → remote migration. Ни один компонент не считается существующим до проверки |
-| B2 — private staging foundation | DevOps; B1, quote и создание по утверждённому плану | VPC, admin route, private VM, PG, buckets, пустые secrets. Облако/доступность ещё проверяются runtime |
-| S1 — ранний staging Backend/Web/fixtures | Backend и Web готовят совместимый ранний release, DevOps размещает; B2 и DB credentials/migrations | HTTP auth-скелет, схемы/fixtures, basic health, синтетические email и UIS. Можно начать без MEDIA-01/ответа Timeweb и без полного INTEGRATION-01 |
-| D/E/O — DB/Email/Operations | DB infrastructure DevOps + SQL Backend; DNS/email DevOps + auth Backend; OPS DevOps | Pool/RLS restore, sender/domain approval, реальные delivery tests, telemetry/audit. Идут параллельно после B2, не ждут SIP |
-| I1 — совместные интеграционные испытания | Tech Lead + Web/Backend/Desktop/Telephony; S1 и готовность конкретных контрактов | Совместимый manifest SHA, global account/verify/organization/trunk jobs и scoped identities; fixtures изолированы. Ошибки исправляются с повторением только затронутых тестов |
-| L1 — live SIP/PSTN gate | Владелец отдельно разрешает конкретный network/trunk/call plan после NET/MEDIA/PROVISION готовности | Approved caller/destination, live registration/media/teardown/CDR/recording, без автоматического повторения неизвестного originate |
-| R1 — rollout принятой сборки | DevOps; принятый I1, restore/security proof и требуемые L1 gates | Reviewed authenticated production plan, backup, canary, health, release ID, rollback. Early production API rollout возможен с telephony admission false, live функции включаются только после L1 |
+| default-ru-central1-a | e9b52mpdtv3pk5rk2lvm | 10.128.0.0/24 |
+| default-ru-central1-b | e2l8880pfgeuno3h8f3r | 10.129.0.0/24 |
+| default-ru-central1-d | fl8ui3pkfu011btmpt0g | 10.130.0.0/24 |
+| default-ru-central1-e | ajckqb3mn59cva3cpqba | 10.131.0.0/24 |
+| default-ru-central1-f | b1l7f13r50iu4a0atv1j | 10.132.0.0/24 |
 
-DEPLOY-01a заканчивается опубликованным IaC и offline CI. S1 — следующий разрешаемый deploy, ему достаточно согласованного минимального Backend/Web контракта и отдельного fake окружения. Общая сквозная приёмка не является условием начала S1. Полная продуктовая запись/история нужна перед объявлением E2E готовым, а не перед созданием VPC.
+Default SG **enptvhvs1m5djr45ce55**: ingress ANY0.0.0.0/0, egress ANY0.0.0.0/0; вкладка привязок сообщает «не назначена ни на один ресурс». Не исправляли/не удаляли. Не использовать её для staging.
 
-## Уточнённая продуктовая граница
+В staging тоже уже есть default VPC **enpthm9vaqno3a8ogprk**, SG **enpvu58hp9c0qk5ktjmn**, auto-created18.11 02:08; dashboard показывает5подсетей и3каталога данных MetaData Hub. Они не импортируются и не удаляются. Полный API inventory admin/staging и происхождение MetaData Hub ещё не проверены; не считать каталоги пустыми.
 
-Новая организация неверифицирована. Trunk выключен по умолчанию, activation и новые calls требуют verification и актуального Backend разрешения. Кредитный лимит опционален и по умолчанию отсутствует; Backend согласует точную модель отдельно. Финансовая блокировка не закрывает кабинет, документы и оплату и не обрывает текущий разговор. Внутренние роли SashaTel не выводятся из клиентского owner/admin. Серверный аудит — durable источник истины; Telegram получает асинхронную очищенную копию без credential/recording URL/полного номера и не участвует в успешности операции. Web/Desktop без частиц.
+Plan guard scripts/review-plan.py запрещает ссылки на перечисленные production IDs, существующие staging VPC/SG, неверный folder и любые update/delete/replacement. Проверяется весь PRIVATE JSON, включая prior_state. Это дополнительный барьер, не замена IAM: apply identity не получает production permissions, никакого cloud-wide editor. Новая сеть имеет собственное имя sashatel-staging и CIDR10.60.3.0/24, без peering/default resource lookups.
 
-Приняты адреса sashatel.ru (лендинг), platform.sashatel.ru (Web/API того же origin), platform.sashatel.ru/admin/ (внутренняя админка), platform.sashatel.ru/{organization_uuid}/ (организация). UUID проверяется как route parameter, каждую операцию авторизует серверная сессия и membership. Предлагаемые media адреса — media-01.sashatel.ru и media-02.sashatel.ru, TURN — turn-01.sashatel.ru и turn-02.sashatel.ru, staging — staging.platform.sashatel.ru. Эти DNS имена пока не создавались.
+## 2. Подтверждённые квоты и оставшиеся gates
 
-## Почему отдельные VM и что даёт каждая реплика
+Read-only cloud quota page:
+- Compute: instances0/12, CPU всего0/6; d0/2, a0/2, e0/2, b/f не выделены. RAM всего0/64GiB, d0/16GiB. SSD обычный d0/10GiB, всего0/40; **ssdIOM3 quota не выделена**. План app+bastion требует d4CPU/6GiB/50GiB network-ssd-io-m3: нужно увеличить CPU d до4 и ssdIOM3 d до50GiB (предлагаемый запас60GiB). Общий CPU6 достаточен; не просить production32CPU.
+- MDB: clusters0/16, CPU0/2, memory0/16GiB, SSD0/4096GiB. Один PG2/8/100 помещается; одновременный restore ещё2/8/100 требует MDB CPU **4**; memory16 и SSD4096 уже достаточны.
+- YDB: serverless databases0/10, RU/s0/1000, storage0/300GiB; bootstrap1DB/10RU/s/1GiB помещается. Это квоты, не проверка выдачи сервиса.
+- ALB units/static IP, KMS/Lockbox/S3 quotas, immutable image ID, PG17 preset/patch, допустимая зона и фактическая capacity не проверены. Не считать auto-created subnet доказательством capacity.
+- Billing подключён по сообщению владельца; dashboard показывает0руб расходов. Статус billing ACTIVE и связь с cloud ещё проверить в inventory, без раскрытия платёжных данных.
 
-| Пара / ресурс | Функция и физическая граница | Failover / fencing | Остаточный риск и доказательство |
-| --- | --- | --- | --- |
-| app 2×2/4 production | API/Web stateless, резерв к потере одного процесса/host/AZ, 8080 только от ALB | ALB health снимает отказавший target; session/replay в БД, клиент reconnect | Общая БД/ALB/region. Убить VM, проверить чужой tenant deny и отсутствие повторного POST. При пике один target должен выдерживать 100% admission load |
-| jobs 2×2/4 | Роль содержит email/Dadata/service access и фоновые CPU задачи, отделена от public API blast radius. Разные процессы на app VM возможны, но root app тогда раскрывает jobs secrets и общий host отказ выключает API и очередь сразу | Durable claims/leases и fencing поколений в Backend, один owner операции, дедупликация | Fencing Backend ещё зависит от adapter. Kill/restart worker после send-before-ack, verify no duplicate email/call, lag alarm. Нет основания выдавать наличие двух VM за exactly-once |
-| PBX 2×4/8, отдельный этап | Asterisk имеет SIP secrets, real-time RTP, privileged локальный provisioner; физически отделить от API/jobs | Ownership по trunk, запрет новых calls на draining node, внешний fence старого узла до передачи trunk/egress/registration | Активный вызов падает с узлом; UIS может запретить concurrent registration. Тест isolate old node, проверить новый owner epoch и отсутствие dual originate; аудио не «спасается» |
-| TURN 2×2/4, отдельный этап | Public relay с bandwidth/abuse risk и публичным IP, отделён от PBX CPU и socket exhaustion | Выдать оба ICE servers, новые allocations выбирают доступный; authenticated quota и short credentials | Уже созданная allocation на погибшем TURN теряется, ICE restart не гарантирует продолжения. Kill TURN и проверить честный сбой/новый call через второй, relay abuse deny |
-| DB третий host 2/8 | Третья независимая AZ уменьшает риск потери quorum/доступности при одном сбое и обслуживании, остаётся managed topology | Sync replica/auto-master service, app reconnect и идемпотентные transactions | Потеря региона, lag и обслуживание. Service-supported failover, потеря replica и PITR drill с marker, сверка фактического patch и replication state |
-| Managed NAT/ALB | Убирают ручной single gateway/server с публичного HTTP ingress | Управляемая platform реализация, минимум ALB 2 units/AZ | SLA/ёмкость/zone placement проверить support и runtime, нельзя выводить HA NAT из слова managed |
+Критерии раннего staging: Compute и PG в одной доступной зоне (кандидат d), restore capacity1host, HTTPS/сертификат, S3/KMS/YDB доступ. Три DB AZ, парные PBX/TURN и SIP UDP review здесь не требуются.
 
-В S1 используется 1 app +1 jobs +1 DB в отдельном staging folder. Его отказоустойчивость намеренно не заявлена. Это среда разработки, а не перенесённый в production single node. Production foundation задаёт 2 app/2 jobs/3 DB. Секции PBX/TURN не создаются данным IaC и требуют самостоятельного reviewed manifest. Разделение Linux пользователей защищает от ошибок приложения, но не от root host компрометации, поэтому физическое разделение jobs/API здесь имеет функцию безопасности.
+## 3. Минимальный план создания
 
-## Стоимость и квоты
+B1 — admin folder, локальный state на зашифрованном диске владельца:
+1 KMS AES256 key +1 private versioned SSE-KMS state bucket +1 YDB Serverless database (10RU/s,1GiB, provisioned capacity0). Terraform1.11.4/provider0.244.0. Ключи доступа и payloads не создавать Terraform.
+После отдельного review B1 create — документная таблица sashatel-state-lock с partition key LockID:String через Document API. Это отдельная явная bootstrap операция; таблица пока не существует и не выдаётся за Terraform-managed объект.
+Затем конкурентный lock probe на отдельном state key. State backend выбран: **S3 + YDB Document API**, endpoints/dynamodb_table в backend.hcl.example. use_lockfile=false. Terraform1.11.4 это поддерживает; механизм deprecated с1.11, upgrade запрещён без separately tested migration. Не заявлять YDB product database — только locks.
+Источник: [официальная инструкция YC, обновлена06.11.2026](https://yandex.cloud/ru/docs/storage/tutorials/terraform-state-lock).
 
-Базовая арифметика из проверенного 17–18.11 официального прайса, 720h, рубли с НДС, без скидок. CPU/RAM VM standard-v3 100% — 1,24/0,33 ₽ за час единицы; DB — 1,8792/0,5072, DB network SSD — 0,0218 ₽/GiB-hour; VM triple-replicated SSD — 0,0332; ALB unit — 2,63 ₽/h. Staging VM boot30GiB, DB100GiB.
+B2 — staging folder, отдельный remote state:
+- новая VPC,1subnet, NAT gateway/route, explicit SG;
+- app1×standard-v3 2CPU100%/4GiB/30GiB network-ssd-io-m3; Web/proxy+Backend embedded fake worker;
+- bastion1×2CPU/2GiB/20GiB, staticIPv4, SSH только owner-approved/32, нет forwarding agent и data secrets;
+- PG17 PROD service class (это режим ManagedPG, не product production),1host s3-c2-m8/100GiB network-ssd, TLS6432 private-only, transaction pooling,30daysbackup;
+-3private versioned SSE-KMS buckets recordings/audit/exports: только synthetic files (начальная гипотеза10GiB каждый);1dataKMS;4empty Lockbox containers, separate process identities;
+- отдельная jobs VM **не создаётся**: актуальный Backend server.ts уже запускает worker внутри процесса. Jobs SA сохраняется для будущего разделения и scoped permissions, workload на ней пока нет. Полный metrics stack/registry VM не создаются.
 
-| Состав | Известная база / месяц |
+B3 — отдельный HTTPS/DNS plan после readiness и certificate approval:
+ALB1zone минимум2units,1staticIPv4,443→private app8080; staging.platform.sashatel.ru. Публично доверенный сертификат Certificate Manager ACME DNS01; local CA/hosts не путь пользовательской приёмки.
+DNS diff: ADD _acme-challenge.staging.platform.sashatel.ru CNAME TTL300 → точное challenge value из созданного certificate request; после ISSUED ADD staging.platform.sashatel.ru A TTL300 → reserved ALB IPv4. Это шаблон будущего diff: значения ещё не существуют. До выполнения — read current A/AAAA/CNAME/CAA, показать old→new diff, конфликты/CAA согласовать, не менять parent zone/NS/production records. Не выпускать wildcard. TLS certificate/export payloads не помещать в Terraform state.
+B2 enable_edge=false, B3 отдельный reviewed saved plan enable_edge=true с существующим ISSUED certificate_id. Bootstrap и B2 не ждут DNS. User Auth acceptance ждёт B3.
+
+## 4. Стоимость, все категории и границы точности
+
+Оценка720h с НДС, без гранта/скидок; ставки из [Compute](https://yandex.cloud/ru/docs/compute/pricing), [MDB](https://yandex.cloud/ru/docs/managed-postgresql/pricing), [VPC](https://yandex.cloud/ru/docs/vpc/pricing), [ALB](https://yandex.cloud/ru/docs/application-load-balancer/pricing), [S3](https://yandex.cloud/ru/docs/storage/pricing), [KMS](https://yandex.cloud/ru/docs/kms/pricing), [Lockbox](https://yandex.cloud/ru/docs/lockbox/pricing), [YDB](https://yandex.cloud/ru/docs/ydb/pricing/serverless). Проверка18.11. Не authenticated SKU quote.
+
+| Статья | Расчёт ₽/30days |
 | --- | ---: |
-| Staging foundation app/jobs2×2/4 + DB1×2/8/100 + VM boot60GiB, edge off | 14 103,36 ₽ |
-| Staging с 1-AZ ALB (2 units), после сертификата | +3 787,20 ₽, итого 17 890,56 ₽ |
-| Production foundation app/jobs4×2/4 + DB3×2/8/100 + VM boot120GiB | 35 403,84 ₽ |
-| Production edge 2 AZ×2 ALB units | +7 574,40 ₽, итого 42 978,24 ₽ |
-| Позднее 2 PBX4/8 +2 TURN2/4 +boot120GiB+spool200GiB | +24 065,28 ₽, всего production 67 043,52 ₽ |
-| Production full + ранний staging с edge | **84 934,08 ₽** |
+| App CPU/RAM |720×(2×1.24+4×0.33)=2736 |
+| Bastion CPU/RAM |720×(2×1.24+2×0.33)=2260.80 |
+| Их boot SSD50GiB |50×720×0.0332=1195.20 |
+| PG2CPU/8GiB/100SSD |720×(2×1.8792+8×0.5072+100×0.0218)=7197.12 |
+| ALB2units (только B3) |720×2×2.63=3787.20 |
+|2activeIPv4 (B2 один, B3 второй) |2×720×0.26352=379.47 |
+| NAT gateway |720×0.39528=284.60 |
+|S3 state1GiB+fixtures30GiB, без free tier |31×2.376=73.66 |
+|2active KMS versions, без операций |2×720×0.00439=6.32 |
+|4Lockbox payload versions, когда заполнены |4×720×0.0274=78.91 |
+|Итого перечисленные позиции B1+B2+B3 |**17999.28** |
 
-При отсутствии existing private admin access один опциональный bastion2vCPU/2GiB/20GiB добавляет2738,88₽/месяц плюс IP. Отдельный staging и production bastion добавляют5477,76₽/месяц к сумме84934,08₽. Это operational access endpoint с /32 SSH и без app/data credentials. Его отказ блокирует только обслуживание, recovery доступен через cloud control plane/console; тест — отключить bastion и восстановить управление через console без остановки приложения.
+Это НЕ полный коммерческий quote. Полная формула дополнительно включает: YDB consumed RU/storage; S3 requests/versions; KMS crypto и Lockbox GET; network/NAT/S3 egress сверх free allowances; DB backup/WAL сверх included storage; одноразовый restore DB; image registry хранение/egress (GHCR delivery требует Backend ACK); минимальные retained logs/audit; independent encrypted backup вне cloud и ключевой escrow. Их нельзя объявить нулевыми без inventory/usage. Бюджет гипотезы: synthetic1GiB DB,30GiB fixtures,20kS3PUT/200kGET,<=100GiB каждого egress allowance,4secretversions,2keyversions. YDB и независимое хранилище ещё требуют цены/лимитов; финальный полный quote пока **не готов**, apply gate закрыт.
+Restore PG2/8/100 на4h — ориентир7197.12/720×4=39.98₽ плюс backup/egress, фактический RTO не гарантирован. Не резервировать production hosts. Остановка VM не прекращает disk/staticIP/DB charges.
 
-Это сумма измеримых фиксированных ресурсов, не полная цена услуги. Расчёт staging один DB: 2×720×(2×1,24+4×0,33)+720×(2×1,8792+8×0,5072+100×0,0218)+60×720×0,0332. Не включён запуск PBX в staging — isolated fixtures в CI уже есть; runtime staging media отдельное изменение/quote.
+## 5. Исполнение и один список действий владельца
 
-Переменные/дополнительные расходы — state bucket и backup versions, KMS/Lockbox payload versions/GET, 300GiB записей pilot и API playback egress, NAT/active и reserved IP, provider RTP/TURN bandwidth, Postbox принятые письма, audit/metrics/registry, snapshot/WAL сверх включённого, независимые копии и support. На стадии ARCH-01 для полного pilot было зарезервировано 108–128 тыс. ₽/месяц со staging. Уточнение до точного quote зависит от account SKUs, активных IP, backup retention/объёмов и service quota. Эту вилку не выдавать за коммерческую оферту. Нет экономии надёжности через прерываемые VM.
+Панель доступна; IDs больше не спрашиваем. Для authenticated Terraform plan пока нет CLI/cloud identity в рабочем окружении; браузерная cookie не является Terraform credential.
 
-Для запроса capacity production full + early staging + одно DB restore и replacement PBX нужен минимум — Compute **32 vCPU /60GiB** (20/40 prod +4/8 stage +4/8 spare; два bastion добавляют4vCPU/4GiB до32/60), MDB **14 vCPU /56GiB**, **7 DB hosts** (3+1+3 restore), VM disk **670GiB** (440prod+60stage+130spare+40 для двух опциональных bastion), DB disk **700GiB**, до 10 public static IP как верхняя начальная квота, ALB минимум6/максимум12 units суммарно prod/stage. Объём backup storage/restore disk добавляется отдельно. Разнести capacity по подтверждённым AZ так, чтобы потеря одной оставляла резерв для запуска, не только глобальную quota. Удобный safe request — 32 Compute vCPU/64GiB и 16 MDB vCPU/64GiB с указанным распределением; это quota, не покупка или заявленная физическая бронь.
+1. Владелец на своём компьютере устанавливает официальный YC CLI и Terraform1.11.4, входит через yc init, выбирает cloud b1g4eft3gb4r2ag0s57v. Никакие tokens/keys в чат не отправляет. Первый plan выполняет сам; это не новая личная учётка агента.
+2. До plan: yc resource-manager cloud get b1g4eft3gb4r2ag0s57v; yc resource-manager folder list --cloud-id b1g4eft3gb4r2ag0s57v; yc compute zone list; yc compute image get-latest-from-family ubuntu-2404-lts --folder-id standard-images; yc managed-postgresql resource-preset list. Сохранить только IDs/version/zone/preset и квоты в очищенный report, без connection strings/userdata. Quota changes пока не отправляем без owner решения; точные изменения в§2.
+3. Скачать текущий #25; зашифрованный local каталог mode0700 вне Git для tfvars/plan/state. Bootstrap tfvars: cloud_id выше, folder_id=b1gga2v07q1av7123dp0, globally-unique state_bucket. В локальной shell экспортировать YC_TOKEN из yc iam create-token без echo/set-x, выполнить bootstrap init/plan, сохранить binary plan локально. show-json только в private file; scripts/review-plan.py bootstrap PRIVATE_JSON; не загружать полный plan в GitHub.
+4. Передать сюда очищенную сводку resource addresses/actions/counts и provider errors, image/preset/quotas. Для работы именно агента вместо owner-run допустим plan SA со scoped read permissions на admin/staging и key file в защищённом окружении либо workload federation protected repo/ref; никакого общего owner-token. Нельзя принять Terraform plan с offline fixture IDs за authenticated.
+5. Review B1 exact plan+quote → отдельное разрешение создания. Затем B1/Document table/locking proof; только после этого B2 authenticated plan с настоящим remote state и B3 plan. До B1 staged foundation plan не может быть полноценным remote-state plan; не имитировать наличие bucket. DNS только отдельным review B3.
 
-Источники ставок — [Compute таблица](https://raw.githubusercontent.com/yandex-cloud/docs/master/md-docs/compute/pricing.md), [MDB](https://github.com/yandex-cloud/docs/blob/master/md-docs/managed-postgresql/pricing.md), [ALB](https://yandex.cloud/ru/docs/application-load-balancer/pricing). Финальный quote фиксирует ID sku/platform/disk type, часы, НДС, units, region/AZ и стоимость idle reserved IP, без вывода секретов.
+Plan permissions SA: folder-scoped resource-manager.auditor, compute.viewer, vpc.viewer, managed-postgresql.viewer, alb.viewer, iam.serviceAccounts.viewer, kms.viewer, lockbox.viewer, storage.configViewer, ydb.viewer, certificate-manager.viewer на нужных admin/staging. Не читать payloads/objects и не давать production roles. После B1 для state отдельный bucket-scoped storage.viewer (plan читает state), key-scoped KMS decrypt и YDB lock-table Get/Put/Delete/Describe (проверить поддержанную IAM granularность; если только ydb.editor — только выделенная lockDB). S3 backend может требовать scoped static key даже при WIF provider auth; не считать federation автоматической авторизацией S3. Key создаёт владелец вне Terraform, безопасное окружение, rotation/revoke.
+Будущий apply SA отдельно, временно admin-folder storage.admin/kms.admin/ydb.admin; staging compute.editor/vpc.admin/managed-postgresql.editor/alb.editor/storage.admin/kms.admin/lockbox.admin/iam.serviceAccounts.admin+user. Это перечисление по операциям root, требует проверки ошибок actual plan/API; не cloud admin. Владелец назначает права, агент сам не расширяет.
 
-## Матрица проверки
+## 6. После отдельно разрешённого apply: проверки/rollback
 
-| Уровень | Выполнено / требуется | Что это доказывает |
-| --- | --- | --- |
-| Локально / offline CI | Terraform fmt, init -backend=false, schema validate на 0.244.0, mock plans/assertions, checksums Linux/macOS | Корректность HCL и заявленных инвариантов. Нет настоящего cloud plan |
-| Authenticated inventory/plan | Реальные zone/image/preset/capacity/IAM, encryption service permissions, static IP/ALB, backend state/lock, price export | Сопоставление конфигурации аккаунту и планируемые изменения. Не доказывает успешное создание |
-| После создания | Cloud routing/ACL, DB TLS/RLS через pool, live LB health, failover/recovery, secret IAM, запись/egress/restore | Runtime готовность конкретного environment и SHA |
-| Отдельный live gate | UIS/provider reachability, authorised call/media/teardown/CDR | Доступность SIP/PSTN в согласованной конфигурации |
+B1: bucket private/versioning/KMS, locked access deny; Document table LockID:String. Dedicated lock-probe key: два изолированных TF_DATA_DIR, два параллельных plan; первый держит lock30s, второй -lock-timeout=5s обязан отказать. Затем после штатного выхода второй проходит. Kill первого → stale lock остаётся, force-unlock только после подтверждения отсутствия live operator, затем plan проходит. Проверить state serial/lineage и restore версии; не применять probe.
+B2: private routes, SSH/32 и hostkey, внешний5432/ARI закрыты, DB TLS verify-full. Backend мигрирует одной migration identity, runtime без superuser/BYPASSRLS/owner escalation, pool A/B tenant tests и forced RLS.
+B3: trustedHTTPS, readiness200/schema; cookie/CSRF/Auth email sink flow, WS reconnect если используется; sink != доставка почты пользователю.
+Restore: markerA → backup/time checkpoint → markerB; новый изолированный PG, restore к checkpoint, проверкаAесть/Bнет, schema/grants/RLS, secret recovery без ключей из восстановленногоdisk. Отдельная restore quota CPU4 обязательна. Отключить внешние dispatch consumers, старый outbox quarantine/recovery epoch по Backend; не replay call intents. Измерить RPO/RTO, сравнить rows/checksums и удалить rehearsal только отдельным разрешением.
+Rollback app — предыдущий compatible digest; DB expand/contract, не destructive down. При corruption новый DB с reviewed cutover и оценкой потери новых записей. Bootstrap/state/KMS/DB/buckets защищены от destroy, не удалять ради отката. Cleanup только новых manifest IDs после backup review, не default сети/MetaDataHub/production/Timeweb.
 
-## Restore / security acceptance
+## 7. Release contract и фактическая валидация
 
-| Тест | Условие PASS / владелец |
-| --- | --- |
-| RLS через настоящий managed pool | Backend создаёт fixtures A/B, чередует concurrent transactions одним runtime pool, проверяет SELECT/INSERT/UPDATE и FK. После exception/rollback/cancel следующий checkout не наследует tenant. Runtime не owner/superuser/BYPASSRLS, migrator отдельный. DevOps предоставляет TLS/private6432 и pool mode, Backend SQL/grants |
-| Потеря app | Остановить один approved staging target, ALB исключил, сессия/revoke не потеряны, reconnect не redial. DevOps + Backend |
-| Потеря DB primary / replica | Поддерживаемый service failover, marker до отказа доступен, pool reconnect, расходы/ledger без дубля, write admission закрыт при uncertainty. DevOps + Backend |
-| PITR | Восстановить в **новый** cluster/folder с запретом egress SIP/email. До старта jobs поставить recovery epoch и tombstone/dispatch quarantine для всех старых originate. Сверить provider/CEL/ledger; никакой job replay до подтверждения. Сделать marker tests RPO/RTO и скрин/лог evidence, затем test два tenant |
-| PBX loss | Изолированный fixture, активный разговор может оборваться; old owner внешне fenced, неизвестный originate не повторяется, orphan legs проверены и завершаются. Telephony + Backend |
-| S3 unavailable / full spool | Retry/checksum/idempotent upload, private staging и partial recording status, admission согласно Backend политике, не потерять acknowledged object. Telephony + DevOps |
-| Keys recovery | Отдельный recovery admin + независимое хранилище ключей/manifest. Проверить расшифровку restore ciphertext при доступном KEK и контролируемый отказ при отозванном ключе. Scheduled KMS deletion запрещён до проверки retained backups |
-| Secret removal | Подтверждённый purge всех worker bundles + runtime unregister/disable, Backend ciphertext удаляется по утверждённому REMOVE receipt, секретов нет в stdout/artifacts/audit/Telegram |
-| Public isolation | Из внешней сети DB6432/5432, ARI8088/8089 и AMI5038 недоступны, только HTTPS edge и утверждённые media порты будущего этапа. Из private API нет прямой команды PSTN |
-| Tenant/admin/audit | UUID и /admin/ не дают прав, foreign tenant route/recording denied, внутренние роли separate, durable audit survives Telegram outage |
-| State restore/lock | Реальная concurrent lock contention, interrupted lock recovery, восстановление bucket version/lineage, no runtime SA access to state |
+Backend #14 прочитан по реальному коду: npm start=node server.ts; bind127.0.0.1:8080; worker embedded; DATABASE_URL+explicit FAKE_ARI_TENANTS; migrations001/002/003/runtime.sql; в package scripts нет migrate и в PR diff нет OCI manifest. Не объявлять onboarding release готовым из архитектурного описания.
+Запрос release-v1/точного ACK: [#14 comment6963786484](https://github.com/suprunmvp-web/sashatel/pull/14#issuecomment-6963786484). Нужны digest/registry/start/bind, executable migration entrypoint/order/transactionality+compatibility range, readiness/liveness, file-secret injection adapter, runtime grants и SIGTERM/drain, sink/fake guard, restore epoch. Инфраструктура принимает Backend-owned SQL/API и не пишет конкурирующую модель. Ответ/двусторонний ACK пока отсутствует; запуск blocked, независимая IaC подготовка нет.
 
-Рекомендованные RTO/RPO из #23 остаются проектными целями до измерения. KMS HA не является независимым ключевым backup. План локальной off-provider logical copy и записей должен включать export key management и проверку restore за пределами YC. Ни одна автоматизация фонового выполнения не создаётся этим PR.
+Локально: bootstrap validate,7Terraform mock tests (включая1app/1subnet/1DB staging),4plan-scope negative tests прошли. Authenticated inventory в панели выполнен. CLI authenticated plan, resource capacity, настоящий lock probe, DB/RLS/TLS, restore и публичныйHTTPS пока НЕ выполнены. Наличие schema validate не подтверждает работающее облако.

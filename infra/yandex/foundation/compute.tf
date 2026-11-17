@@ -1,6 +1,6 @@
 locals {
   # Initial bootstrap creates app/jobs only. Telephony has its own later network gate.
-  pools = { app = var.environment == "production" ? 2 : 1, jobs = var.environment == "production" ? 2 : 1 }
+  pools = { app = var.environment == "production" ? 2 : 1, jobs = var.environment == "production" ? 2 : 0 }
   nodes = merge([for pool, count in local.pools : {
     for index in range(count) : "${pool}-${index}" => {
       pool = pool
