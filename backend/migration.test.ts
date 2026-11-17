@@ -1,6 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import {randomUUID} from 'node:crypto';
 import pg from 'pg';
 
@@ -28,9 +32,18 @@ test('004 preserves legacy identity, call and ledger IDs and uses NULL contact f
     await db.query("INSERT INTO control.phone_numbers VALUES($1,'+74950000001',$2,true)",[org,trunk]);
     await db.query("INSERT INTO control.calls VALUES($1,$2,$3,$4,'legacy','legacy-key','+79261234567','+74950000001',$5,10,'ended',clock_timestamp(),clock_timestamp())",[org,call,attempt,member,trunk]);
     await db.query("INSERT INTO control.usage_ledger(organization_id,call_id,kind,units) VALUES($1,$2,'charge',3)",[org,call]);
-    await db.query('BEGIN');
-    await db.query(await readFile(new URL('./migrations/004-web.sql',import.meta.url),'utf8'));
-    await db.query('COMMIT');
+    const directory=await mkdtemp(join(tmpdir(),'sashatel-migration-'));
+    try {
+      const file=join(directory,'url');
+      await writeFile(file,url.toString(),{mode:0o600});
+      const migrate=()=>promisify(execFile)(process.execPath,['migrate.ts'],{
+        cwd:new URL('.',import.meta.url),
+        env:{...process.env,MIGRATION_DATABASE_URL_FILE:file,ADOPT_PILOT_SCHEMA:'verified'},
+      });
+      await migrate();
+      await migrate();
+      assert.equal((await db.query('SELECT count(*)::int AS count FROM public.sashatel_migrations')).rows[0].count,5);
+    } finally {await rm(directory,{recursive:true,force:true});}
     const {rows:[legacy]}=await db.query('SELECT id,first_name,last_name,phone,phone_epoch FROM control.users WHERE id=$1',[user]);
     assert.deepEqual(legacy,{id:user,first_name:null,last_name:null,phone:null,phone_epoch:'42'});
     assert.equal((await db.query('SELECT attempt_id FROM control.calls WHERE id=$1',[call])).rows[0].attempt_id,attempt);
