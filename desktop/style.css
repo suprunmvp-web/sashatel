@@ -29,8 +29,6 @@ svg, img { flex-shrink: 0; vertical-align: middle; }
 .operator div > span { display: block; color: var(--muted); font-size: 11px; }
 .connection { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
 .status-dot { display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-.connection.registered { color: var(--pos); }
-.connection.registered .status-dot { background: var(--pos); }
 .mode-note { display: flex; align-items: center; gap: 7px; margin: 0 22px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 10px; flex-shrink: 0; }
 .mode-note svg { width: 14px; height: 14px; }
 .mode-note b { color: var(--fg-2); font-weight: 500; }

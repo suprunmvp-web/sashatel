@@ -2,7 +2,9 @@
 export type CallState = 'idle' | 'connecting' | 'ringing' | 'active' | 'terminating' | 'ended' | 'failed';
 export type Mode = 'demo' | 'live';
 export interface CallSnapshot {
-  /** Real registration/transport status supplied by the integration facade, never inferred from call state. */
+  /** Legacy transport observation, not permission or operator readiness. `registered` must never imply Ready.
+   * A separate Backend-approved read-only readiness contract is required before showing a ready state (#20).
+   */
   connection: 'unavailable' | 'disconnected' | 'connecting' | 'registered';
   state: CallState;
   callId: string | null;

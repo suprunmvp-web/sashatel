@@ -13,7 +13,7 @@ The isolated demo adapter is **not a second production lifecycle**. It has no tr
 Read the actual shared API from `packages/call-lifecycle/src` in PR #2 / `feat/call-lifecycle-core` (`1655e7e` inspected). The production facade should:
 
 - Forward `start(raw)` and `endCall(callId)` results without optimistic success. Forward subscriptions and read `getSnapshot()` initially: Core subscriptions do not send an initial callback.
-- Expose the same `state`, `callId`, `number`, `canStart`, `durationMs`, `connectedAt`, `reason`. Add `connection` only from the actual SIP registration/transport owner; do not infer registration from call state or a resolved start command.
+- Expose the same `state`, `callId`, `number`, `canStart`, `durationMs`, `connectedAt`, `reason`. Retain `connection` only as a legacy transport observation; do not infer operator readiness from registration, call state or a resolved command. Product decision #20 requires a separate Backend-approved read-only availability/Caller ID contract before a ready state can be displayed.
 - Use one owner for the call and one canonical Core import. The view never recreates Core to clear a failure. Core's `canStart=false` stays authoritative, including terminal quarantine after unconfirmed cleanup.
 - Preserve Core-owned monotonic duration. The view's 250 ms repaint reads `getSnapshot().durationMs` and never starts or advances call states. Repainting alone cannot confirm an answer.
 - Return sanitized user-facing command errors. UI uses textContent and does not expose native exceptions. Lifecycle ownership, disposal, reattachment after reload, cross-window arbitration and SIP cleanup belong to the integration owner, not view unmount.
@@ -57,3 +57,12 @@ Integration prerequisites belong to the Audio task (Issue #5):
 - Single owner/process lifecycle and real transport registration source; production history/auth API.
 - Resolve the independent branches' Electron package/build/security edits; choose the release packager. This UI's unpacked host build is for review, not a signing/notarization pipeline.
 - Verify minimum content size and macOS traffic-light/titlebar behavior, Retina zoom, VoiceOver, keyboard clipboard, real TCC and USB/Bluetooth hot-unplug, sleep/wake and a packaged app. Cloud Linux screenshots do not validate any of those physical/macOS behaviors.
+
+
+## Product boundary — approved decision #20
+
+Source: https://github.com/suprunmvp-web/sashatel/issues/20 (2026-11-16T23:10:42Z). It supersedes the Desktop trunk-management scope suggested earlier in #19. Desktop is the operator client; administrative telephony setup belongs to the Web organization interface. This UI baseline has no trunk management UI, credentials, administrative HTTPS adapter or privileged provisioning IPC.
+
+The own follow-up branch `feature/desktop-ui-operator-status`, based on UI head `156c578`, corrects one existing indicator: legacy `connection: 'registered'` now shows neutral “Готовность не подтверждена”, never a green “Телефония подключена”. Disconnected/unavailable and unrecognized runtime values fail closed to “Телефония недоступна”. Demo remains explicitly disconnected. The existing CallPort signature is retained for integration compatibility; it is not an approved operator-ready API. No new ready flag, endpoint, IPC, Caller ID selector or administrative workflow is introduced. Future readiness/Caller ID data must come through a separately approved minimal Backend operator contract. Call command guards and the single owner remain unchanged.
+
+Issue #20 also orders removal of administrative trunk prototypes from PR #10. That integration branch has a separate owner under #9; this UI follow-up does not edit it or claim that its cleanup is complete. Web UX for #19 requires separate approval; the Desktop prototype is not a Web design source to copy automatically.
