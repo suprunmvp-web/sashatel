@@ -352,6 +352,7 @@ async function bootstrap() {
   }
 }
 window.addEventListener("hashchange", () => {
+  if (location.hash === "#content") return;
   void bootstrap();
 });
 void bootstrap();

@@ -77,6 +77,17 @@ try {
         await page.getByRole("button", { name: "Переключить тему" }).count(),
         0,
       );
+      await page.getByLabel("Имя", { exact: true }).fill("Сохранить");
+      await page
+        .getByRole("link", { name: "К содержанию", exact: true })
+        .focus();
+      await page
+        .getByRole("link", { name: "К содержанию", exact: true })
+        .press("Enter");
+      assert.equal(
+        await page.getByLabel("Имя", { exact: true }).inputValue(),
+        "Сохранить",
+      );
       assert.equal(await page.locator("[name=news]").isChecked(), false);
       assert.equal(await page.locator("[name=terms]").isChecked(), false);
       assert.equal(
