@@ -34,3 +34,7 @@ contextBridge.exposeInMainWorld('sashatel', Object.freeze({
     }
   })
 }));
+
+contextBridge.exposeInMainWorld('sashatelOperator', Object.freeze({
+  readTelephonyStatus: () => ipcRenderer.invoke('operator:telephony-status')
+}));

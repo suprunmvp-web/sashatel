@@ -4,6 +4,7 @@ import { CoreCallFacade } from './src/core-call-facade.js';
 import { DemoHistory } from './src/demo-history.js';
 import { UnavailableAudio } from './src/unavailable-audio.js';
 import { AudioServiceFacade } from './src/audio-facade.js';
+import { watchOperatorStatus } from './src/operator-status.js';
 import { mountDesktop } from './src/view.js';
 
 // Single composition root. No backend credentials or arbitrary IPC exposed to UI.
@@ -22,4 +23,14 @@ const controller = new DesktopController(services);
 const root = document.getElementById('app');
 if (!root) throw new Error('Missing app root');
 const unmount = mountDesktop(root, controller);
-window.addEventListener('pagehide', () => { window.clearInterval(poll); unmount(); controller.dispose(); calls.dispose(); }, { once: true });
+const operator = window.sashatelOperator;
+const note = root.querySelector('#operator-telephony-note');
+const stopOperator = operator && note && calls.mode !== 'demo' ? watchOperatorStatus(
+  () => operator.readTelephonyStatus(),
+  status => {
+    const message = !status?.available ? 'Телефония недоступна' :
+      status.canCall ? 'Звонки в Desktop пока недоступны' : 'Нет допуска к звонкам';
+    note.textContent = status?.callerId ? `${message} · Исходящий номер ${status.callerId}` : message;
+  }
+) : undefined;
+window.addEventListener('pagehide', () => { window.clearInterval(poll); stopOperator?.(); unmount(); controller.dispose(); calls.dispose(); }, { once: true });

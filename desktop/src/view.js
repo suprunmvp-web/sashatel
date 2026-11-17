@@ -27,7 +27,7 @@ export function mountDesktop(root, controller) {
         <div class="operator"><span class="avatar" aria-hidden="true">${isDemo ? 'Д' : 'О'}</span><div><strong>${isDemo ? 'Демо-оператор' : 'Оператор'}</strong><span id="operator-status">Свободен</span></div></div>
         <div class="connection"><span class="status-dot"></span><span id="connection-status"></span></div>
       </div>
-      <div class="mode-note">${icon('info')}<span>${isDemo ? '<b>Demo/Test · демо-вызовы</b> · телефония не подключена' : 'SIP не подключён · вызовы недоступны'}</span></div>
+      <div class="mode-note">${icon('info')}<span id="operator-telephony-note" aria-live="polite">${isDemo ? '<b>Demo/Test · демо-вызовы</b> · телефония не подключена' : 'Вызовы недоступны'}</span></div>
       <main id="main" tabindex="-1">
         <section id="dialer-screen" aria-labelledby="dialer-title">
           <div class="page-heading"><div><p class="eyebrow">РАБОЧЕЕ МЕСТО</p><h1 id="dialer-title">Новый звонок</h1></div><span class="tag">${isDemo ? 'DEMO' : 'Исходящий'}</span></div>

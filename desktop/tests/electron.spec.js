@@ -113,7 +113,8 @@ test('default launch has real audio but no Demo transport controls and cannot or
   const app = await electron.launch({ chromiumSandbox: true, ...(packaged ? { executablePath: packaged } : {}), args: [...(process.platform === 'linux' && !process.env.DISPLAY ? ['--headless', '--ozone-platform=headless', '--disable-gpu'] : []), ...(packaged ? [] : [path.resolve('.')])], env: { ...process.env, SASHATEL_DEMO: '0' } });
   try {
     const page = await app.firstWindow();
-    await expect(page.locator('.mode-note')).toContainText('вызовы недоступны');
+    await expect(page.locator('.mode-note')).toContainText('Телефония недоступна');
+    expect(await page.evaluate(() => Object.keys(window.sashatelOperator))).toEqual(['readTelephonyStatus']);
     await page.locator('#phone').fill('9991234567'); await expect(page.locator('#call')).toBeDisabled();
     expect(await page.evaluate(() => typeof window.sashatel.demo)).toBe('undefined');
     expect(await page.evaluate(() => !!window.sashatelAudio)).toBe(true);

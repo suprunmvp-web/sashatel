@@ -79,6 +79,12 @@ export type ElectronCallAPI = Omit<import('../../packages/call-lifecycle/src/ind
     Readonly<{ ok: false; error: Readonly<{ domain: 'owner'; code: 'TRANSPORT_UNAVAILABLE' }> }>
   >;
 };
+export interface OperatorTelephonyStatus {
+  available: boolean;
+  callerId: string | null;
+  canCall: boolean;
+  expiresAt: number;
+}
 declare global {
   interface Window {
     sashatel?: {
@@ -87,6 +93,7 @@ declare global {
       demo?: { send(value: { callId: string; event: DemoEvent }): Promise<boolean> };
       audio?: { reportIssue(value: { callId: string; code: string }): Promise<boolean> };
     };
+    sashatelOperator?: { readTelephonyStatus(): Promise<OperatorTelephonyStatus | null> };
     sashatelAudio?: PublishedAudioService;
   }
 }

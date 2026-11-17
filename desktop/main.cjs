@@ -2,6 +2,11 @@
 const { app, BrowserWindow, session, ipcMain, systemPreferences, powerMonitor } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const operatorBackend = {
+  origin: process.env.SASHATEL_OPERATOR_API_ORIGIN,
+  token: process.env.SASHATEL_OPERATOR_API_TOKEN,
+};
+delete process.env.SASHATEL_OPERATOR_API_TOKEN;
 const demo = process.env.SASHATEL_DEMO === '1';
 let owner, callIPC;
 const { createPolicy } = require('./security.cjs');
@@ -92,6 +97,9 @@ app.whenReady().then(async () => {
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     callback({ cancel: !policy.allowedResource(details.url) });
   });
+  const { createOperatorStatusReader, installOperatorStatusIPC } = await import('./integration/operator-status.mjs');
+  installOperatorStatusIPC(ipcMain, policy, createOperatorStatusReader(operatorBackend));
+  operatorBackend.token = undefined;
   installAudioIPC();
   createWindow();
   app.on('activate', () => {
