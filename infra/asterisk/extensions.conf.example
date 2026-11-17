@@ -12,3 +12,5 @@ exten => 1002,1,Dial(PJSIP/1002,25,i)
 [from-1002]
 exten => 1001,1,Dial(PJSIP/1001,25,i)
  same => n,Hangup()
+
+#tryinclude "/etc/sashatel-asterisk/uis-managed/bundles/active/extensions.conf"
