@@ -25,10 +25,18 @@ resource "yandex_vpc_subnet" "private" {
 resource "yandex_vpc_security_group" "hosts" {
   name       = "${local.prefix}-hosts"
   network_id = yandex_vpc_network.main.id
+  dynamic "ingress" {
+    for_each = var.admin_cidrs
+    content {
+      protocol       = "TCP"
+      port           = 22
+      v4_cidr_blocks = [ingress.value]
+    }
+  }
   ingress {
-    protocol       = "TCP"
-    port           = 22
-    v4_cidr_blocks = var.admin_cidrs
+    protocol          = "TCP"
+    port              = 22
+    security_group_id = yandex_vpc_security_group.bastion.id
   }
   egress {
     protocol       = "TCP"
