@@ -50,7 +50,7 @@ Message безопасный пользовательский текст; кли
 Web identity использует same-origin Backend/BFF. Refresh и account access в Secure HttpOnly host-only cookies (SameSite=Lax, Path=/; отдельные имена), origin allowlist и CSRF token на изменяющих запросах, GET без эффектов кроме наблюдаемого timestamp. Desktop передаёт access через Authorization: Bearer. Public client_type не является доказательством audience; сервер выдаёт credentials через отдельные Web cookie и Desktop device-authorisation flows.
 
 Типы:
-`Account={id:UUID,email:string,email_verified:boolean,display_name:string}`.
+`Account={id:UUID,email:string,email_verified:boolean,first_name:string|null,last_name:string|null,phone:string|null,phone_verified:false,display_name:string|null}`.
 `Organization={id:UUID,inn:string,legal_name:string,membership_id:UUID,role:"owner"|"admin"|"employee",status:"active"|"suspended"}`.
 `Context={id:UUID,organization:Organization,context_epoch:integer,expires_at:timestamp}`.
 `DesktopTokens={access_token:string,token_type:"Bearer",expires_in:300,refresh_token:string,refresh_expires_at:timestamp,family_id:UUID,account:Account,context:Context|null}`.
@@ -60,7 +60,7 @@ Web ответ login/refresh — `{account:Account,family_id:UUID,access_expires
 
 | Route | Request | Success и ограничения |
 | --- | --- | --- |
-| POST /v1/auth/register | {email,password,display_name} | Web only. 202 {challenge_id:UUID,expires_in:600,resend_after:60}. Создать pending identity и email job атомарно; одинаковый ответ для существующего адреса, synthetic challenge без изменения существующего пароля |
+| POST /v1/auth/register | {first_name,last_name,email,phone,password} | Web only. 202 {challenge_id:UUID,expires_in:600,resend_after:60}. Создать pending identity и email job атомарно; одинаковый ответ для существующего адреса, synthetic challenge без изменения существующего пароля |
 | POST /v1/auth/email/verify | {challenge_id,code:string} | 200 {verified:true}; только действительный registration challenge. Создаёт account-only Web family/cookies. Повтор 400 CODE_INVALID_OR_EXPIRED |
 | POST /v1/auth/email/resend | {challenge_id} | 202 {challenge_id,expires_in:600,resend_after:60}; предыдущий код инвалидируется только при принятии нового email job в одной транзакции |
 | POST /v1/auth/login | {email,password,device_id} | Web cookies, 200 Web ответ. Неподтверждённый email — 403 EMAIL_UNVERIFIED только после проверки пароля; никакого tenant access |
@@ -348,3 +348,17 @@ Backend принимает эти правила как предлагаемый
 POST /v1/auth/email/complete {} + CSRF + исходная preauth cookie → 200 {verified:true} с Web account cookies. Работает только при успешном ранее потреблённом коде и живом grant. Перевыпуск в пределах TTL отзывает предыдущую provisional Web family, выдаёт новую и сохраняет абсолютный исходный TTL grant; Desktop/прочие family не затрагиваются. По завершении обычного authenticated bootstrap grant закрывается. Если complete response снова потерян, тот же scoped POST можно повторить до TTL; plaintext токены на сервере для replay не сохраняются. Без grant — 400 CODE_INVALID_OR_EXPIRED. После TTL требуется обычный login email/password, email остаётся verified. Новый resend/register аннулирует grant. Completion не является повторным успешным verify и не обнуляет ограничения.
 
 Это дополнительная форма wire для явного ACK #24; не включать в runtime молча.
+
+
+## 17. Web ACK и обязательные поля — 18.11
+
+[ACK Web по ядру §16](https://github.com/suprunmvp-web/sashatel/pull/14#issuecomment-6962594739) получен. Следующие уточнения направляются Web отдельно.
+
+Register принимает только {first_name,last_name,email,phone,password}. first_name/last_name — обязательные строки 1–80 Unicode codepoints после trim, без управляющих символов; сервер сохраняет отдельно. phone — обязательная международная строка с +, сервер нормализует разрешённые пробелы/скобки/дефисы и валидирует numbering plan через libphonenumber, сохраняет E.164. 422 INVALID_PHONE / INVALID_PROFILE для неверных полей. SMS отсутствует, phone_verified=false, телефон не credential/recovery key. display_name вычисляется из first_name для совместимого приветствия, клиент его не задаёт. Для legacy first_name,last_name,phone=NULL, display_name берётся из существующего значения только при его наличии; данные миграцией не выдумываются. Форма сотрудников: имя/фамилия, email, phone, role, presence в пределах membership scope; редактирование чужих credentials запрещено.
+
+Consent checkboxes из preview не становятся обязательными Backend-полями по одному UI. Согласие terms/PD и marketing требует утверждённых document IDs/versions/URLs и отдельного правового решения. Текущий согласованный register DTO не принимает news/terms; UI может удерживать их в preview, но не заявляет server receipt. Перед production документирование правового основания/приёма согласий отдельный gate, не выдумывать consent=true. Контакты не отправляются в analytics/Telegram/raw logs/CRM на этом этапе.
+
+Уточнения ACK:
+- Empty DaData lookup → 404 RESOURCE_NOT_FOUND, outage →503 ORGANIZATION_LOOKUP_UNAVAILABLE.
+- Organization дополнен verification_status:"unverified"|"verified" во всех create/list/context/bootstrap.
+- Lost verify-response: заменяет прежнее предложение перевыпуска provisional family. Completion grant TTL5min привязан к preauth и ОДНОЙ уже созданной family. Bootstrap сообщает verification_completion_available. POST /v1/auth/email/complete восстанавливает cookies той же family; повтор не создаёт/заменяет family. Для этого encrypted short-lived receipt хранит исходные credentials до первого успешного authenticated bootstrap/TTL/logout. Key вне БД. Logout/login/register/resend закрывают receipt, никакое старое preauth не восстанавливает сессию после logout или более нового входа. 400 CODE_INVALID_OR_EXPIRED при закрытом grant. GET не выпускает credentials.
