@@ -295,3 +295,47 @@ Additive global identity/email proof → Web login/refresh/logout → DaData loo
 Точные request/response формы §3–4/7 направляются Web UI и Desktop для review. Web — HttpOnly cookie + CSRF; Desktop текущий механизм пока не переключает. CSRF bootstrap предлагается GET /v1/auth/csrf → 200 {csrf_token:string}, pre-auth host cookie Secure/HttpOnly/SameSite=Lax, token передаётся X-CSRF-Token, сервер сверяет Origin и session-bound HMAC. Token доступен Web memory, credentials не выдаются JS. Это wire proposal до явного подтверждения UI.
 
 Тесты нового кода — concurrent register/email uniqueness, concurrent verify/expiry/attempts/resend, email error/retry без orphan, login/logout/refresh race/reuse, повтор organization create/INN conflict, rollback при audit failure, tenant isolation и совместимость всех миграций с прежними calls/IDs. Старый зелёный CI не подтверждает этот этап. Runtime пока не изменён.
+
+
+## 16. Web wire clarification для PR #24 — на явное подтверждение
+
+Срез Web 6155076. Этот раздел уточняет §§3–4/7/15; новые routes здесь ещё не реализованы. Email sink даёт тестовые delivery receipts, реальную доставку принимают отдельно. Поля challenge_id не являются credentials. preauth_session — opaque 256-bit cookie, сервер хранит digest; хранение challenge в localStorage не требуется.
+
+### Bootstrap и resume
+
+GET /v1/auth/csrf → 200 {csrf_token:string}, Set-Cookie __Host-sashatel-preauth (Secure,HttpOnly,SameSite=Lax,Path=/) при отсутствии preauth; response no-store. CSRF HMAC связан с browser preauth/family и origin, TTL 1 час. Все POST требуют X-CSRF-Token и exact Origin. Ошибка 403 CSRF_INVALID, клиент получает новый bootstrap и повторяет только безопасный запрос с прежним ключом. Preauth cookie TTL 24 часа, не является account login.
+
+GET /v1/auth/bootstrap → 200:
+`{account:Account|null,family_id:UUID|null,context:Context|null,challenge:Challenge|null}`.
+Expired access при живом refresh → 401 ACCESS_EXPIRED; Web BFF выполняет один refresh и повторяет bootstrap. Без account credentials возвращается anonymous 200 с принадлежащим preauth challenge. Revoked/expired family → 401 SESSION_REVOKED/REFRESH_EXPIRED при refresh, cookie очищается. Сетевой отказ → 503 AUTH_UNAVAILABLE, UI не объявляет logout или потерю challenge.
+
+`Challenge={challenge_id:UUID,email:string,expires_at:timestamp,resend_at:timestamp,can_verify:boolean,delivery:{state:"queued"|"accepted"|"failed",retryable:boolean}}`.
+Для recovery view email маскируется; registration view может показывать введённый адрес только из текущего preauth scope. Искусственный challenge для существующего verified email использует тот же wire и реальный neutral email notice, не меняет пароль существующего аккаунта. accepted означает принятие email-провайдером/тестовым sink, не попадание во входящие. Bounce/timeout может менять failed. Статус не даёт права account login и не раскрывает наличие пользователя.
+
+GET /v1/auth/email/challenges/{challenge_id} → 200 Challenge только при совпадающем preauth scope. Чужой/несуществующий/очищенный challenge → 404 RESOURCE_NOT_FOUND. Poll не чаще 5 секунд, 429 RATE_LIMITED с Retry-After. После expiry статус доступен до окончания preauth retention, can_verify=false. После закрытия браузера persistent cookie восстанавливает challenge в пределах 24 часов; при отсутствии cookie возобновление требует нового register, одного UUID недостаточно. После successful verify challenge становится consumed, bootstrap возвращает account и challenge:null.
+
+### Register, verify, resend, исправление email
+
+POST /v1/auth/register {email,password,display_name} → 202 {challenge_id,expires_in:600,resend_after:60}; сохраняет текущий challenge в preauth session. Для сетевого retry обязательно Idempotency-Key UUID, scope preauth+key, payload fingerprint с HMAC, 24 часа retention. Повтор того же key/payload возвращает исходный receipt без нового кода, изменённый payload → 409 IDEMPOTENCY_CONFLICT. Не хранить plaintext пароль для сравнения.
+
+POST /v1/auth/email/verify {challenge_id,code} → 200 {verified:true}, Set-Cookie Web account credentials; account/context получать bootstrap. Неправильный, истёкший, уже использованный код или исчерпанный challenge → 400 CODE_INVALID_OR_EXPIRED, без вымышленных wrong/expired distinctions в UI. При threshold отдельно возвращается 429 RATE_LIMITED до обращения к challenge. can_verify отражает невозможность продолжать, не раскрывает секрет. Верификация должна быть атомарна с созданием Web family и audit; lost response разрешается bootstrap, не вторым автоматическим verify.
+
+POST /v1/auth/email/resend {challenge_id} → 202 {challenge_id,expires_in:600,resend_after:60}; новый challenge_id, старый отзывается. Только свой preauth, cooldown/лимит → 429 RATE_LIMITED + retry_after_seconds. Idempotency-Key как у register, иначе потерянный ответ может создать второй код. Queue failure до commit → 503 EMAIL_DELIVERY_UNAVAILABLE, прежний код действителен. После commit failure provider отражается delivery.failed, resend возможен по cooldown/бюджету. До accepted UI говорит «Отправляем», не «Письмо доставлено».
+
+Исправление адреса — повтор POST register с новым адресом, повторным вводом password и новым key, в той же preauth. После принятия новой записи предыдущий challenge этой preauth отзывается; не менять email уже verified account и не заменять пароль существующего аккаунта. При failed transaction прежний challenge остаётся. Ограничения aggregate по IP/email сохраняются; смена адреса не снимает anti-abuse. При активном verified account register возвращает 409 ALREADY_AUTHENTICATED, клиент идёт в account; изменение email verified account — отдельный будущий flow.
+
+### Organization bootstrap и неопределённый create
+
+GET /v1/organizations → 200 {items:Organization[]} из §7. POST /v1/session/organization и account bootstrap действуют по §7. Read чужого org ID → 404 RESOURCE_NOT_FOUND, публичный UUID не даёт доступа.
+
+POST /v1/organizations/lookup {inn} → 200 {lookup_id,inn,legal_name,legal_address,expires_at}, verified Web family, no-store. TTL lookup 15 минут. 422 INN_INVALID, 503 ORGANIZATION_LOOKUP_UNAVAILABLE. Lookup не создаёт org, не верифицирует полномочия.
+
+POST /v1/organizations {lookup_id,confirm:true}, Idempotency-Key UUID → 201 {organization:Organization}; повтор того же user/key/payload возвращает 200 {organization:Organization} с Idempotency-Replayed:true. Конфликт payload → 409 IDEMPOTENCY_CONFLICT. Иной владелец/другой create при уже существующем ИНН → 409 ORGANIZATION_ALREADY_EXISTS без его данных. Scope user+operation+key, receipt хранится долговременно вместе с org creation audit, не теряется при Web logout.
+
+GET /v1/organizations/creation-status/{idempotency_key} → 200 {organization:Organization} после committed результата для текущего verified account; отсутствующий/чужой key → 404 RESOURCE_NOT_FOUND. Эта ручка нужна для server-side восстановления, не требует доверия mock. При недоступности БД 503, UI показывает неопределённость, не создаёт новый key. При 404 клиент вправе повторить исходный POST с тем же key/payload. Если первый transaction ещё не закоммичен, уникальный idempotency lock сериализует POST; один owner/org. Истёкший lookup для нового create → 409 LOOKUP_EXPIRED; уже committed receipt читается раньше проверки lookup expiry.
+
+Web сохраняет только create key и lookup receipt в sessionStorage (без tokens/password); после потери локального key GET organizations восстанавливает созданную org. Автоматически повторять create с новым key после timeout запрещено. Создание org не меняет выбранный context; UI явно вызывает /session/organization.
+
+### Согласование
+
+Backend принимает эти правила как предлагаемый wire для review #24. Нужен явный ответ Web по bootstrap/resume, delivery semantics, corrected email и same-key recovery. Если UI обнаружит расхождение, обсуждаем конкретную схему до runtime. Отсутствие ответа не является согласием.
