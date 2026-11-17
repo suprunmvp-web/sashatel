@@ -318,7 +318,7 @@ GET /v1/auth/email/challenges/{challenge_id} → 200 Challenge только пр
 
 POST /v1/auth/register {email,password,display_name} → 202 {challenge_id,expires_in:600,resend_after:60}; сохраняет текущий challenge в preauth session. Для сетевого retry обязательно Idempotency-Key UUID, scope preauth+key, payload fingerprint с HMAC, 24 часа retention. Повтор того же key/payload возвращает исходный receipt без нового кода, изменённый payload → 409 IDEMPOTENCY_CONFLICT. Не хранить plaintext пароль для сравнения.
 
-POST /v1/auth/email/verify {challenge_id,code} → 200 {verified:true}, Set-Cookie Web account credentials; account/context получать bootstrap. Неправильный, истёкший, уже использованный код или исчерпанный challenge → 400 CODE_INVALID_OR_EXPIRED, без вымышленных wrong/expired distinctions в UI. При threshold отдельно возвращается 429 RATE_LIMITED до обращения к challenge. can_verify отражает невозможность продолжать, не раскрывает секрет. Верификация должна быть атомарна с созданием Web family и audit; lost response разрешается bootstrap, не вторым автоматическим verify.
+POST /v1/auth/email/verify {challenge_id,code} → 200 {verified:true}, Set-Cookie Web account credentials; account/context получать bootstrap. Неправильный, истёкший, уже использованный код или исчерпанный challenge → 400 CODE_INVALID_OR_EXPIRED, без вымышленных wrong/expired distinctions в UI. При threshold отдельно возвращается 429 RATE_LIMITED до обращения к challenge. can_verify отражает невозможность продолжать, не раскрывает секрет. Верификация должна быть атомарна с созданием Web family и audit; lost response разрешается через bootstrap и scoped completion receipt ниже, не повторным потреблением кода.
 
 POST /v1/auth/email/resend {challenge_id} → 202 {challenge_id,expires_in:600,resend_after:60}; новый challenge_id, старый отзывается. Только свой preauth, cooldown/лимит → 429 RATE_LIMITED + retry_after_seconds. Idempotency-Key как у register, иначе потерянный ответ может создать второй код. Queue failure до commit → 503 EMAIL_DELIVERY_UNAVAILABLE, прежний код действителен. После commit failure provider отражается delivery.failed, resend возможен по cooldown/бюджету. До accepted UI говорит «Отправляем», не «Письмо доставлено».
 
@@ -339,3 +339,12 @@ Web сохраняет только create key и lookup receipt в sessionStora
 ### Согласование
 
 Backend принимает эти правила как предлагаемый wire для review #24. Нужен явный ответ Web по bootstrap/resume, delivery semantics, corrected email и same-key recovery. Если UI обнаружит расхождение, обсуждаем конкретную схему до runtime. Отсутствие ответа не является согласием.
+
+
+### Потерянный verify-response — уточнение self-audit
+
+Успешный verify атомарно записывает короткий completion grant, привязанный к preauth digest, подтверждённому account и challenge, TTL5min. В bootstrap добавляется обязательное verification_completion_available:boolean; поле true доступно только этой preauth cookie при живом grant. GET не создаёт/перевыпускает credentials.
+
+POST /v1/auth/email/complete {} + CSRF + исходная preauth cookie → 200 {verified:true} с Web account cookies. Работает только при успешном ранее потреблённом коде и живом grant. Перевыпуск в пределах TTL отзывает предыдущую provisional Web family, выдаёт новую и сохраняет абсолютный исходный TTL grant; Desktop/прочие family не затрагиваются. По завершении обычного authenticated bootstrap grant закрывается. Если complete response снова потерян, тот же scoped POST можно повторить до TTL; plaintext токены на сервере для replay не сохраняются. Без grant — 400 CODE_INVALID_OR_EXPIRED. После TTL требуется обычный login email/password, email остаётся verified. Новый resend/register аннулирует grant. Completion не является повторным успешным verify и не обнуляет ограничения.
+
+Это дополнительная форма wire для явного ACK #24; не включать в runtime молча.
