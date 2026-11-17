@@ -69,7 +69,11 @@ class IsolatedRuntime(Runtime):
         output = self.cli("core show channels count").stdout
         if not re.search(r"^[ \t]*0 active channels?[ \t\r]*$", output, re.M):
             raise ValueError(f"active or unverified channels: {output!r}")
-        self.cli("core stop gracefully")
+        try:
+            self.cli("core stop gracefully")
+        except subprocess.TimeoutExpired:
+            # The CLI can lose its reply as Asterisk shuts down. Verify exit below.
+            pass
         self.process.wait(timeout=15)
 
     def cleanup(self):
