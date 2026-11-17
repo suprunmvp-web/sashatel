@@ -181,6 +181,7 @@ export class WebAuth {
     await db.query(`INSERT INTO web_auth.challenges(id,browser_hash,email,profile,password_hash,code_hash,expires_at)
       VALUES($1,$2,$3,$4,$5,$6,$7)`,[id,hash(ctx.browser),email,details,password_hash,this.fingerprint([id,code]),deadline(600)]);
     await db.query('UPDATE web_auth.browsers SET challenge_id=$2 WHERE hash=$1',[hash(ctx.browser),id]);
+    await this.audit(db,ctx,'account.challenge_created',null,null,id);
     // Delivery occurs after commit. Only ciphertext is persisted in the durable outbox.
     await db.query('INSERT INTO web_auth.mail_jobs(challenge_id,envelope) VALUES($1,$2)',[id,this.seal({email,code})]);
     return {challenge_id:id,expires_in:600,resend_after:60};
