@@ -24,6 +24,7 @@ class IsolatedRuntime(Runtime):
             "".join(f"\n{key} => {root}" for key in
                     ("astvarlibdir", "astdbdir", "astdatadir", "astspooldir",
                      "astrundir", "astlogdir", "astkeydir")) + "\n")
+        (root / "modules.conf").write_text("[modules]\nautoload=yes\n")
         bundle = root / "managed/bundles/active"
         (root / "pjsip.conf").write_text(
             "[local]\ntype=transport\nprotocol=udp\nbind=127.0.0.1:5060\n"
@@ -103,7 +104,7 @@ def execute(binary, modules):
             raise AssertionError("both Local legs did not appear")
         try:
             with case.assertRaises(ValueError):
-                runtime.drain()
+                case.apply(case.request(first["revision"]))
         finally:
             for channel in ("ci-leg-one", "ci-leg-two"):
                 try:
@@ -117,6 +118,7 @@ def execute(binary, modules):
             time.sleep(0.1)
         else:
             raise AssertionError("ARI teardown left a channel")
+        case.assertEqual(case.open_worker().status()["active_revision"], first["revision"])
         change = case.request(first["revision"])
         real_switch = case.worker.switch
 
