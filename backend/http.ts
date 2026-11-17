@@ -64,6 +64,9 @@ export function createApi(control: ControlPlane, ready: () => Promise<unknown>, 
       }
       const bearer = req.headers.authorization?.match(/^Bearer (\S+)$/)?.[1];
       if (!bearer) throw new ApiError(401, 'INVALID_SESSION');
+      if (req.method === 'GET' && path === '/v1/operator/telephony') {
+        return send(200,await control.operatorTelephony(bearer));
+      }
       const trunkRoute = path.match(/^\/v1\/trunks(?:\/([^/]+))?$/);
       if (trunkRoute) {
         if (!trunks) throw new ApiError(503,'TRUNK_SERVICE_UNAVAILABLE');
