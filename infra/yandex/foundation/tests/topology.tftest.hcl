@@ -88,6 +88,7 @@ run "bastion_restricted_source" {
     environment          = "staging"
     enable_admin_bastion = true
     admin_public_cidrs   = ["192.0.2.42/32"]
+    admin_cidrs          = []
   }
   assert {
     condition     = length(yandex_compute_instance.bastion) == 1 && yandex_compute_instance.bastion[0].network_interface[0].nat
