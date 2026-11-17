@@ -51,6 +51,16 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       assert(address && typeof address !== 'string');
       const base = 'http://127.0.0.1:' + address.port;
       const headers = { authorization:'Bearer ' + a.token, 'content-type':'application/json', 'idempotency-key':'http' };
+      const readOperator = async (token: string) => fetch(base + '/v1/operator/telephony',
+        {headers:{authorization:'Bearer ' + token}});
+      const status = await readOperator(a.token);
+      assert.equal(status.status,200);
+      assert.equal(status.headers.get('cache-control'),'no-store');
+      const {observed_at_ms,...availability} = await status.json();
+      assert.deepEqual(availability,{telephony_available:false,caller_id:null,can_call:false});
+      assert((await (await readOperator(a.token)).json()).observed_at_ms > observed_at_ms);
+      const adminActor = await fixture({role:'organization_admin'});
+      assert.equal((await readOperator(adminActor.token)).status,403);
       const response = await fetch(base + '/v1/calls', { method:'POST', headers, body:JSON.stringify({destination}) });
       assert.equal(response.status,202);
       const { call_id } = await response.json();
