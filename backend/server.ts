@@ -25,6 +25,9 @@ const ready=async()=>{
   await pool.query('SELECT completion_family FROM web_auth.browsers LIMIT 0');
   const {rows:[rls]}=await pool.query("SELECT bool_and(relforcerowsecurity) AS enabled FROM pg_class WHERE oid IN ('control.organizations'::regclass,'control.memberships'::regclass)");
   if(!rls.enabled) throw new Error('Tenant RLS required');
+  const {rows:[grants]}=await pool.query(`SELECT has_table_privilege(current_user,'web_auth.audit','INSERT') AS append,
+    has_table_privilege(current_user,'web_auth.audit','UPDATE,DELETE') AS mutate`);
+  if(!grants.append||grants.mutate) throw new Error('Append-only audit grants required');
 };
 const api=createApi(control,ready,undefined,{auth,origin:WEB_ORIGIN});
 let running=false;
