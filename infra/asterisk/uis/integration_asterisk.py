@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -17,6 +18,10 @@ from test_live_worker import LiveWorkerTest
 class IsolatedRuntime(Runtime):
     def __init__(self, root, binary, modules):
         self.root, self.binary, self.process = root, binary, None
+        data = modules.parent.parent / "var/lib/asterisk"
+        for name in ("static-http", "rest-api"):
+            shutil.copytree(data / name, root / name)
+        self.log = root / "fixture.log"
         self.cli_config = root / "asterisk.conf"
         self.cli_config.write_text(
             "[directories]\nastetcdir => " + str(root) +
@@ -42,9 +47,10 @@ class IsolatedRuntime(Runtime):
                               check=check, text=True, capture_output=True, timeout=5)
 
     def start(self):
-        self.process = subprocess.Popen(
-            [self.binary, "-f", "-C", str(self.cli_config)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        with self.log.open("ab") as log:
+            self.process = subprocess.Popen(
+                [self.binary, "-f", "-c", "-C", str(self.cli_config)],
+                stdin=subprocess.DEVNULL, stdout=log, stderr=log)
         for _ in range(80):
             result = self.cli("core show uptime", check=False)
             if result.returncode == 0 and "System uptime" in result.stdout:
@@ -144,6 +150,10 @@ def execute(binary, modules):
         disable = case.request(first["revision"], enabled=False)
         case.assertEqual(case.worker.apply(disable), "disabled")
         print("PASS: real Asterisk registration object, restart, active-call guard and two-leg ARI teardown")
+    except Exception:
+        if runtime.log.exists():
+            print(runtime.log.read_text(errors="replace")[-8000:], file=sys.stderr)
+        raise
     finally:
         case.doCleanups()
 
