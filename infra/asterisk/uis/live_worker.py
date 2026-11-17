@@ -28,7 +28,7 @@ def command(*args, check=True):
 
 class Runtime:
     def cli(self, instruction, check=True):
-        return command(BINARY, "-C", CONFIG, "-rx", instruction, check=check)
+        return command(BINARY, "-n", "-C", CONFIG, "-rx", instruction, check=check)
 
     def active(self):
         return command("/usr/bin/systemctl", "is-active", "--quiet", UNIT,
@@ -38,7 +38,7 @@ class Runtime:
         if not self.active():
             return
         channels = self.cli("core show channels count").stdout
-        require(re.search(r"^0 active channels$", channels, re.M))
+        require(re.search(r"^[ \t]*0 active channels?[ \t\r]*$", channels, re.M))
         self.cli("core stop gracefully")
         for _ in range(60):
             if command("/usr/bin/systemctl", "show", "-p", "ActiveState", "--value",
