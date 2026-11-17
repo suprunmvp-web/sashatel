@@ -1,0 +1,32 @@
+name: UIS provisioning
+on:
+  pull_request:
+    paths: ['infra/asterisk/**', '.github/workflows/uis-provisioning.yml']
+  push:
+    branches: [feature/asterisk-foundation]
+    paths: ['infra/asterisk/**', '.github/workflows/uis-provisioning.yml']
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: python3 infra/asterisk/verify-static.py
+      - run: python3 -m unittest discover -s infra/asterisk/uis -v
+  isolated-asterisk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential ca-certificates curl pkg-config python3 patch libedit-dev libjansson-dev libsqlite3-dev libssl-dev libxml2-dev uuid-dev
+          bash infra/asterisk/build.sh "$RUNNER_TEMP/uis-stage"
+      - run: |
+          tree="$RUNNER_TEMP/uis-stage/opt/sashatel-asterisk/22.12.0"
+          sudo unshare --net bash -euc '
+            ip link set lo up
+            ip address add 9.9.9.9/32 dev lo
+            python3 "$1" "$2/sbin/asterisk" "$2/lib/asterisk/modules"
+          ' -- "$GITHUB_WORKSPACE/infra/asterisk/uis/integration_asterisk.py" "$tree"
