@@ -201,6 +201,40 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     }
   });
 
+  await t.test('deleting a UIS trunk fences a late provisioning result', async () => {
+    const owner = await fixture({role:'organization_admin'});
+    const trunks = new TrunkService(control,randomBytes(32),new Set(['sip.example.test:5060']));
+    const trunk = await trunks.create(owner.token,'in-flight',{
+      name:'In-flight',auth_mode:'registration_credentials',registrar_host:'sip.example.test',
+      registrar_port:5060,username:'test-user',password:'test-secret',
+    });
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const adapter = {
+      async upsert() {
+        entered.resolve();
+        await release.promise;
+        return 'registered' as const;
+      },
+      async remove(job: {generation:number}) { assert.equal(job.generation,2); },
+    };
+    const inflight = trunks.provisionNext(owner.tenant,adapter);
+    await Promise.race([entered.promise,inflight.then(() => { throw new Error('Expected an in-flight UPSERT'); })]);
+    try {
+      assert.equal((await trunks.read(owner.token,trunk.id)).status,'registering');
+      await trunks.remove(owner.token,trunk.id);
+      await trunks.provisionNext(owner.tenant,adapter);
+    } finally {
+      release.resolve();
+      await inflight;
+    }
+    await assert.rejects(trunks.read(owner.token,trunk.id),code('TRUNK_NOT_FOUND'));
+    const {rows:[record]} = await admin.query(
+      'SELECT generation,status FROM control.managed_trunks WHERE id=$1',[trunk.id]);
+    assert.deepEqual(record,{generation:2,status:'registering'});
+    assert.equal((await admin.query('SELECT 1 FROM control.trunk_secrets WHERE trunk_id=$1',[trunk.id])).rowCount,0);
+  });
+
   await t.test('critical tenant suspension hangs up an active fake call', async () => {
     const a = await fixture({number:'+74950001032'});
     const call = await control.authorize(a.token,'active-revoke',destination);
