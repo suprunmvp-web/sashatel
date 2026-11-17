@@ -1,6 +1,6 @@
 # AUTH-01 / SESSION-01 / ORG-01 — контракт и миграция
 
-Статус — предложение на утверждение, 17.11.2026. Этот diff меняет только документацию. HTTP ниже ещё не реализован. Продуктовые требования имеют приоритет над пилотным API.
+Статус — проект технического контракта, обновлён явными решениями владельца 17.11.2026. Продуктовые решения раздела 14 утверждены владельцем и заменяют соответствующие положения прежнего ТЗ; технические механизмы остаются проектом. Этот diff меняет только документацию. HTTP ниже ещё не реализован. Продуктовые требования имеют приоритет над пилотным API.
 
 ## Источники и проверенный срез
 
@@ -22,7 +22,7 @@
 | Operator GET | Проверяет сессию, увеличивает timestamp снимка | Не меняет phone_epoch, не отзывает вызов. Пока возвращает false/null/false |
 | Tenant isolation | FORCE RLS на tenant-таблицах, составные FK | Runtime читает глобальные users и number_attempts. Для новой модели выделить узкую identity-boundary и функции чтения собственных memberships без произвольного tenant override |
 | Звонки и история | Стабильные call_id, FK на membership/session, серверные события | Нет записей/production media. Сессии и memberships нельзя физически удалять с каскадом |
-| Деньги | authorize требует wallet и резерв, settlement ограничен reserved | Несовместимо с постоплатой без кредитного лимита. Новый продуктовый gate проверяет просрочку и доступ, без обязательного баланса и искусственного бюджета |
+| Деньги | authorize требует wallet и резерв, settlement ограничен reserved | Несовместимо с постоплатой без кредитного лимита. Новый продуктовый gate проверяет просрочку и доступ, без обязательного аванса; индивидуальный кредитный лимит optional и по умолчанию отсутствует (§14) |
 | Logout/expiry | Отзыв bearer; перед dispatch сессия проверяется снова | После dispatch нет гарантии hangup при logout/expiry. Нельзя выдавать это за согласованную политику текущего разговора |
 
 Текущие scrypt параметры не версионированы. Предлагается сохранить verify старого формата, новые хеши хранить с явными scrypt N/r/p/salt/key-length, целевой baseline N=131072,r=8,p=1 и maxmem >=256 MiB, с ограничением параллелизма KDF и измерением на сервере. Rehash при успешном входе. Пароль 12–128 Unicode codepoints, до 512 UTF-8 bytes, без trim/нормализации/обрезания. Точный baseline — техническое предложение для нагрузочной проверки.
@@ -35,7 +35,7 @@
 
 Новые таблицы account_families, refresh_credentials, access_credentials, organization_contexts, phone_leases, email_challenges, recovery_grants, organization_invitations, ownership_transfers. Токены opaque random 256-bit, БД хранит digest, refresh использует отдельный pepper из secret manager. Семья содержит auth_epoch, context содержит membership authorization_version, lease содержит fence. revoked_at и причины сохраняются для аудита.
 
-В organization хранить owner_membership_id NOT NULL с deferred составным FK на активное membership этой организации. Роль membership — admin|employee; owner определяется единственным указателем, имеет owner capabilities. Активность/verified owner и запрет его удаления обеспечиваются транзакциями с блокировкой organization и deferred constraint trigger. Платформенные support grants вне memberships, с аудитом и явным scope.
+В organization хранить nullable owner_membership_id с deferred составным FK на активное membership этой организации. Роль membership — admin|employee; owner определяется единственным указателем, имеет owner capabilities. Для self-service создания owner обязателен, для внутреннего создания допускается временное отсутствие owner. Активность/verified email назначаемого owner и запрет его удаления клиентским admin обеспечиваются транзакциями с блокировкой organization и deferred constraint trigger. Внутренние роли SashaTel owner/admin/manager хранятся вне клиентских memberships, с аудитом и явным scope закреплённых организаций для manager. Служебный actor сохраняет собственную identity.
 
 Desktop scopes независимо от организационной роли — operator.read, calls.start-own, calls.read-own, calls.hangup-own, recordings.read-own. Web owner/admin — org.read, members.manage (с защитой owner), trunks.manage, calls.read-tenant, recordings.read-tenant, billing.read/manage. Employee Web — onboarding, приглашения и свой аккаунт. Участие employee даёт звонки по умолчанию, отдельного клиентского переключателя звонков нет.
 
@@ -106,7 +106,7 @@ GET account/org/operator не меняет lease/auth_epoch, не продлев
 | POST /v1/organizations/lookup | {inn:string} | Web verified only, 200 {lookup_id:UUID,inn,legal_name,legal_address,expires_at}; сервер проверяет checksum 10/12 цифр, обращается к DaData, сохраняет snapshot на 15 минут |
 | POST /v1/organizations | {lookup_id,confirm:true} + Idempotency-Key | Web verified only, 201 {organization:Organization}; owner membership создаётся атомарно. Context выбирается отдельным route |
 
-Организация создаётся одной транзакцией с owner, entitlement_defaults и billing_profile(mode=postpaid_no_credit_limit), audit/outbox для внутреннего кабинета. Транк и звонки изначально недоступны до фактического provisioning. Никаких автоматических кредитных лимитов/обязательного аванса. DaData lookup выполняется до transaction, create проверяет freshness и привязку lookup к account, перечитывает snapshot. При outage 503 и повтор lookup, без частичной организации. Idempotency scope account+key, различный lookup даёт conflict; дубликат ИНН — 409 ORGANIZATION_ALREADY_EXISTS без раскрытия владельца. Предлагается уникальный нормализованный ИНН на организацию; branch/KPP cases должны быть утверждены до UNIQUE.
+Организация создаётся одной транзакцией с owner, entitlement_defaults и billing_profile(mode=postpaid,credit_limit_minor=NULL), audit/outbox для внутреннего кабинета. Транк и звонки изначально недоступны до фактического provisioning. Новые организации неверифицированы, новые транки выключены. credit_limit_minor=NULL означает отсутствие ограничения; индивидуальный положительный лимит задают внутренние сотрудники по правилам §14. Обязательный аванс не вводится. DaData lookup выполняется до transaction, create проверяет freshness и привязку lookup к account, перечитывает snapshot. При outage 503 и повтор lookup, без частичной организации. Idempotency scope account+key, различный lookup даёт conflict; дубликат ИНН — 409 ORGANIZATION_ALREADY_EXISTS без раскрытия владельца. Предлагается уникальный нормализованный ИНН на организацию; branch/KPP cases должны быть утверждены до UNIQUE.
 
 Приглашения — Web POST /v1/organizations/{id}/invitations {email,role:"admin"|"employee"} → 202 {id,expires_at}; GET metadata и POST /v1/invitations/{token}/accept {} → 200 {organization:Organization}. Токен 256-bit, hash, TTL 7 дней, одноразовый, привязан к canonical verified email. Token из ссылки сразу обменять в защищённый Web flow и удалить из URL через redirect, Referrer-Policy=no-referrer. Invite token не даёт account session. При существующем membership повтор acceptance идемпотентен и не повышает роль автоматически.
 
@@ -141,7 +141,7 @@ Start и revocation проверяют версии в одной DB transaction
 `200 {telephony_available:boolean,caller_id:string|null,can_call:boolean,observed_at_ms:number}`.
 Desktop-scoped context и operator.read, собственный разрешённый Caller ID. now timestamp строго возрастает в context; no-store. Смена context немедленно очищает snapshot на клиенте. GET не приобретает lease и не отзывает текущий разговор. До готовности call gate false/null/false.
 
-POST /v1/calls повторно проверяет актуальные user/family/membership/org, phone lease/fence, entitlement, overdue state, trunk/Caller ID и concurrency/номерные ограничения. Advisory true не резервирует право и не гарантирует последующий start. Web credential получает 403 CLIENT_SCOPE_DENIED. В продуктовой модели убрать available>=reserve_per_call, INSUFFICIENT_BALANCE и reserved cap как условия доступа/начисления; учитывать фактический usage независимо от аванса. Пилотный ledger оставить для исторической сверки, без переноса его единиц в рубли.
+POST /v1/calls повторно проверяет актуальные user/family/membership/org, phone lease/fence, entitlement, overdue state, trunk/Caller ID и concurrency/номерные ограничения. Advisory true не резервирует право и не гарантирует последующий start. Web credential получает 403 CLIENT_SCOPE_DENIED. В продуктовой модели заменить pilot available>=reserve_per_call и reserved cap на актуальные правила просрочки и optional credit limit (§14). Пилотные единицы не использовать как неявный продуктовый бюджет; учитывать фактический usage. Пилотный ledger оставить для исторической сверки, без переноса его единиц в рубли.
 
 GET /v1/calls и recording endpoint всегда используют audience и ownership: Desktop только собственные, Web owner/admin вся своя организация. Запись выдавать через authenticated stream или короткий signed URL после проверки доступа, с tenant-bound storage keys. Возврат записи и детальная CDR история — ещё отдельная реализация.
 
@@ -153,7 +153,7 @@ GET /v1/calls и recording endpoint всегда используют audience �
 4. manager → employee; organization_admin → admin; supervisor mapping требует явного выбора owner, никаких скрытых расширений роли. superadmin убрать из tenant roles в отдельные platform grants, права персонально проверить.
 5. Новые Web/ Desktop families внедрить через один shared auth service. Новые audience scopes закрывают Desktop trunk/admin/history-tenant. Legacy sessions пометить pilot-only, запретить регистрацию/обмен на production family и автоматический перенос секретов.
 6. Calls сохраняют historical session_hash и membership_id; добавить nullable family/context/lease IDs для новых вызовов. Никакого переписывания call_id, времён, charges и неизвестных состояний. Legacy активные calls завершить/сверить до cutover phone epoch. Legacy endpoint отключить для новых starts при cutover, teardown подтверждать.
-7. Переключить только тестовую организацию на postpaid entitlement, добавить overdue policy и реальный usage settlement; пилотный wallet остаётся изолированным fixture. Проверить поздние CDR с объёмом выше старого резерва. Продукт не наследует credit limit.
+7. Переключить только тестовую организацию на postpaid entitlement, добавить утверждённые части overdue policy, nullable индивидуальный credit limit и реальный usage settlement; пилотный wallet остаётся изолированным fixture. Проверить поздние CDR с объёмом выше старого резерва. Продукт не наследует значения pilot wallet/credit: лимит новых организаций NULL, индивидуальное назначение аудируется.
 8. Тестовый rollout Web → email → org/DaData → invite → Desktop browser sign-in → org selection → lease → operator GET → calls/history/recording. Затем совместный стенд Backend/Telephony, без PSTN до отдельного допуска.
 9. После проверки клиентов прекратить выдачу legacy tokens, дождаться expiry/reconciliation, убрать legacy auth в отдельной миграции. Rollback до cutover возвращает только тестовую группу на legacy; после новых credentials/data rollback через forward-fix, не восстанавливать использованные refresh/коды и старые phone fences.
 
@@ -197,3 +197,85 @@ GET /v1/calls и recording endpoint всегда используют audience �
 Проверены охват всех десяти пунктов запроса, ссылки на закреплённые heads, таблицы HTTP и конфликт pilot/product. Дополнительная проверка совместимости: login использует INSERT INTO sessions VALUES без списка колонок, а migration 003 добавляет колонку с DEFAULT. PostgreSQL допускает её значение по умолчанию при текущем INSERT, поэтому это не подтверждённая runtime ошибка. При дальнейшем расширении схемы использовать именованные поля во всех INSERT и сохранить regression login после всех миграций.
 
 Security follow-up: code resend не должен бесконечно обнулять суммарный бюджет попыток, общий лимит verify — 20 неуспехов/час на адрес независимо от challenge; исчерпание даёт 429. Device authorization ограничить 5 созданий/час на IP/device и 5 неверных user_code/15мин на Web family, code обмена hash/TTL/consumed_at проверять атомарно. Phone lease heartbeat 15 секунд, stale после 45 секунд только закрывает новые starts; выдача нового lease требует fenced teardown/reconciliation, без автоматического объявления старого call завершённым. Эти значения — предложения до согласования TTL.
+
+
+## 14. Обновление по явным решениям владельца — нормативный приоритет
+
+Этот раздел заменяет противоречащие положения исходного ТЗ и прежних разделов документа. Изменения касаются проектирования. Реализация полного биллинга в этот diff не входит.
+
+### Внутренние роли и серверная авторизация
+
+Внутренние роли SashaTel — Владелец, Администратор, Менеджер. Это отдельная система полномочий от клиентских owner/admin/employee. Предлагаемые таблицы platform_memberships(user_id, role, active, authorization_version) и platform_organization_assignments(platform_membership_id, organization_id, active). Internal Manager читает и обслуживает исключительно закреплённые организации. Internal Owner/Admin имеют платформенный scope согласно серверной role policy. Назначение platform role не происходит через публичную регистрацию или клиентское membership.
+
+Каждая служебная операция проверяет действительный actor, активную внутреннюю роль, актуальный organization assignment и permission. Авторизация повторяется под блокировками в транзакции изменения. Отзыв закрепления немедленно запрещает новые операции, подписки и получение выгрузок. actor_user_id служебного сотрудника никогда не заменяется user_id клиента. Impersonation и выдача клиентской сессии из служебного доступа не входят в контракт.
+
+UUID — только идентификатор. Scope проверяется для list/detail/update/delete, вложенных объектов, recordings, exports, signed-download grants, jobs и event replay. Фоновая работа наследует зафиксированное ограничение scope и перепроверяет право перед выдачей результата. Служебный доступ к транкам не подразумевает возврат SIP plaintext. Cross-scope объект возвращает 404 RESOURCE_NOT_FOUND, запрещённая операция в доступной организации — 403 PERMISSION_DENIED. Новые runtime роли не получают BYPASSRLS.
+
+### Создание, назначение owner и верификация
+
+Self-service создание атомарно назначает создателя единственным клиентским owner. Организация из внутренней админки может иметь owner_membership_id=NULL. Указатель позволяет максимум одного owner; NULL разрешён для internally_created и после разрешённого внутреннего снятия owner до назначения замены. Клиентские API не могут снять последнего owner или перейти к NULL. Не назначать случайного admin при миграции.
+
+Внутренний сотрудник в своём scope может назначить/заменить клиентского owner без подтверждения и уведомления клиента. Обязательны собственная серверная identity, permission org.owner.assign, проверка активного членства цели в той же организации, expected ownership_version, атомарное изменение и audit. Проверка подтверждённого email цели остаётся предложением безопасности для согласования, а не дополнительным требованием владельца. Бывший owner становится клиентским admin, если его membership сохраняется. Самостоятельная передача клиентским owner по §7 сохраняет подтверждение; internal assignment использует отдельный административный маршрут и не создаёт email challenge. Конкурентная замена даёт 409 OWNERSHIP_CHANGED.
+
+Каждая новая организация verification_status=unverified независимо от способа создания. Верификация — внутренняя проверка подписанного договора и реквизитов, а не email/DaData lookup. Внутренние сотрудники в scope могут установить или снять её, permission org.verify. Хранить verification_version, actor/time, ссылку на подтверждающий документ с проверкой scope и ограниченные audit metadata. Не хранить в аудите содержимое договора.
+
+Каждый новый trunk enabled=false. Активация требует verified organization на Backend и повторной проверки в provisioning/dispatch. UI disabled недостаточен. Предлагаемые раздельные поля — enabled intent, registration status, effective eligibility; registration не включает trunk автоматически. При снятии verification новые активации/starts запрещены и старые jobs не могут включить trunk. Судьба текущего разговора при снятии verification остаётся открытой для явного решения, автоматический hangup этим документом не утверждён. Изменение реквизитов verified организации пока не реализовывать с автоматическим сохранением или снятием verification.
+
+### Optional credit limit и финансовые действия
+
+Новые организации по умолчанию credit_limit_minor=NULL — ограничение отсутствует. Положительное целое значение в минимальных единицах валюты означает установленный индивидуальный лимит. Ноль и отрицательные значения не кодируют отсутствие лимита, дают 422 INVALID_CREDIT_LIMIT. Удаление настройки записывает NULL.
+
+Internal Manager может установить/удалить лимит и проводить пополнения/списания только закреплённых организаций. Internal Owner/Admin используют платформенный scope. Каждый тип операции имеет отдельное permission и аудит. Пополнение/списание задаётся положительным amount_minor и kind=credit|debit, с currency, reason и Idempotency-Key; signed amount от клиента не принимается. Повтор не создаёт вторую проводку. Корректировка оформляется новой связанной записью, история не переписывается.
+
+Достижение лимита запрещает новые вызовы и сохраняет текущие. При снижении лимита ниже текущей экспозиции новые вызовы блокируются сразу. Удаление лимита снимает только credit-limit gate, остальные причины запрета сохраняются. Нужна транзакционная защита конкурентных starts/изменений лимита. Точная формула экспозиции и учёт ещё не финализированных разговоров — технический/финансовый контракт для отдельного решения, не копирование pilot reserve_per_call.
+
+Клиентский API billing summary включает credit_limit только если он установлен, например {credit_limit:{amount_minor:500000,currency:"RUB"}}; при отсутствии ключ опущен. UI показывает положительную сумму только при наличии настройки. Валюта и масштаб единиц должны быть явными. Это не новая обязательная предоплата. Продуктовый расчёт постоплаты и судьба нулевого баланса ещё требуют указанных ниже правил.
+
+### Дата оплаты
+
+Изменить будущую месячную дату оплаты могут только внутренние Owner/Admin, permission billing.payment_date.change. Internal Manager получает 403 независимо от закрепления организации. Request содержит proposed_day, expected_version и contract_amendment_confirmed=true — явное подтверждение сотрудником, что договор изменён. false/отсутствие подтверждения даёт 422 CONTRACT_CHANGE_CONFIRMATION_REQUIRED.
+
+Меняется только будущая месячная дата оплаты, расчетный период остаётся прежним. Выставленные счета не пересчитываются и не получают новую дату автоматически. До определения поведения короткого месяца нельзя реализовывать молчаливый clamp 29–31 числа. Нужны отдельные правила effective_from и границы будущего расписания в контракте реализации.
+
+### Надёжный аудит и Telegram
+
+Изменение и audit event коммитятся одной PostgreSQL transaction. Событие содержит event_id, server timestamp, actor_user_id, actor_type=platform|customer, проверенную role/scope snapshot, organization_id, action, target_type/id, request_id и безопасный before/after diff. Для ownership указывать прежний/новый membership; для verification — состояние/версию; для credit limit — старое/новое значение; для проводки — ID, kind, amount/currency; для даты — старое/новое правило и подтверждение договора.
+
+Append-only audit доступен по отдельному разрешению, runtime не может UPDATE/DELETE. Ошибка сохранения обязательного audit откатывает изменение. Контроль retention/backup и обнаружение пропусков — серверные требования. Время берётся с сервера. Raw HTTP requests, passwords, codes, refresh, SIP-секреты, договоры и лишние персональные данные в audit не включаются.
+
+Telegram получает асинхронную очищенную проекцию через transactional outbox, с retry/backoff, event_id dedup и allowlist полей/адресата. Сбой Telegram не отменяет уже закоммиченную операцию и не заменяет серверный audit. Повторная доставка допустима, действие по Telegram автоматически не исполняется. В этой задаче Telegram сообщения и автоматизации не создаются.
+
+### Затронутые миграции — план
+
+| Изменение | Additive schema / constraint | Совместимость |
+| --- | --- | --- |
+| Internal roles/scope | platform_memberships, assignments, permission mapping, authorization_version, scope-aware RLS/functions | Пилотный superadmin не превращать автоматически во внутреннего Owner; подтвердить назначения |
+| Customer owner | nullable owner_membership_id, ownership_version, creation_source, deferred same-tenant FK и guards | Self-service требует owner атомарно; internally created допускает временный NULL; старые calls/memberships сохраняются |
+| Verification | status=unverified DEFAULT, version, evidence reference и actor/time | Не считать старые организации verified по факту существования; backfill только по подтверждённой проверке |
+| Trunk activation | enabled DEFAULT false, activation/verification version и job fencing | Сохранить регистрационные наблюдения, запретить активацию stale job после снятия verification |
+| Credit limit | nullable positive amount_minor + currency/version, check >0 OR NULL | Без переноса pilot wallet/credit values; ledger финансовых корректировок append-only, idempotency scope |
+| Payment schedule | future payment-day rule/version, contract-confirmation audit reference | Без UPDATE уже выставленных счетов и без смены расчётного периода |
+| Audit/outbox | typed actor/target, sanitized before/after, append-only grants, delivery jobs | Существующие audit rows сохраняются; старую provenance помечать unknown, не выдумывать actor |
+
+Номера файлов миграций назначать после сверки текущего head, не менять уже применённые 001–003. Запуск миграций в этом documentation diff не выполнялся.
+
+### Обязательные дополнительные тесты
+
+- Matrix internal Owner/Admin/Manager × assigned/unassigned org; клиентский owner/admin не получает platform privileges; platform actor не превращается в клиента.
+- UUID/IDOR для всех вложенных объектов, recording download, CSV export result и событий; отзыв assignment во время job/подписки закрывает выдачу, pooled connection не переносит scope.
+- Self-service создаёт ровно одного owner, internal create допускает NULL; internal scoped assignment проходит без клиентского кода/уведомления; клиентский admin не меняет owner; concurrent replacement оставляет одного owner и корректный actor audit.
+- Все новые org unverified и trunks disabled; прямой HTTP enable unverified отклоняется; verify/revoke race с activation/start; stale provisioning result не обходит verification version.
+- NULL limit допускает отсутствие credit gate; положительный лимит виден в клиентском summary, отсутствие скрывает поле; zero/negative invalid; set/remove и достигнутый лимит блокируют только starts. Concurrent start/limit change не обходят утверждённый расчёт экспозиции.
+- Manager credit/debit/limit только assigned; replay key не дублирует проводку; missing mandatory audit откатывает финансовое изменение.
+- Payment date Owner/Admin only, Manager denied; отсутствие contract confirmation отклонено; future rule меняется без изменения периода и существующих invoices. Edge cases короткого месяца ожидают продуктового решения.
+- Audit содержит настоящего actor, organization, время и before/after; redaction не пропускает секреты/сырые запросы; Telegram outage/retry не теряет audit и не повторяет бизнес-действие.
+
+### Открытые решения — не утверждены
+
+1. Правила изменения реквизитов после верификации.
+2. Доступность кабинета при долге.
+3. Восстановление при нулевом балансе.
+4. Точный отсчёт пяти рабочих дней.
+5. Последний день короткого месяца.
+
+Также остаются открытые технические/продуктовые вопросы предыдущих разделов, которые новые решения явно не закрывают — Desktop flow/TTL/reuse, текущий разговор при logout/revoke, exposure accounting и pilot mapping. Не включать выбранные по умолчанию ответы в реализацию.
