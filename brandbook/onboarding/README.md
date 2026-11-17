@@ -13,3 +13,11 @@ Challenge timers come from preview API response using proposed backend values 60
 Do not deploy this directory as a production service. The proposed landing integration is a link from sashatel.ru to platform.sashatel.ru; review preview is isolated at /brandbook/onboarding/.
 
 PR preview uses the existing Vercel brandbook root at `/onboarding/?preview=1`. This adds a separate path and preserves the root brandbook. Production deployment is outside this task.
+
+## Review checks
+
+Local browser inspection on macOS exercised signup, wrong code, welcome, INN error/recovery, confirmation, empty organization and delivery failure. Local console was clean. The in-app viewport override did not change its measured width, so breakpoint verification is taken from the automated Chromium matrix instead.
+
+GitHub Actions checks all four requested widths in both themes, real browser clipboard paste, Enter submission, focus on errors, password autocomplete attributes and show/hide, cancellation, ambiguous-create retry, duplicate clicks, reload/resume, logout, session expiry, foreign UUID rejection in the fixture and long Cyrillic organization names. It captures screenshots and results.json with the tested commit SHA. Delivery, resend cooldown/recovery, email correction and lookup outages are included. Real password-manager autofill UI, real email delivery, DaData, cookie restoration after browser restart, refresh/CSRF and Backend tenant isolation still require runtime acceptance.
+
+Vercel automatically produces an authenticated PR preview under `/onboarding/?preview=1`; its SSO protection remains enabled. Local browser review uses `/brandbook/onboarding/?preview=1` from the repository-root server. The live landing CTA and production domain routing await acceptance and the Backend.

@@ -1,9 +1,9 @@
 name: Web onboarding preview
 on:
   pull_request:
-    paths: ['brandbook/onboarding/**', '.github/workflows/web-onboarding.yml']
+    paths: ["brandbook/onboarding/**", ".github/workflows/web-onboarding.yml"]
   push:
-    branches: ['feature/web-onboarding-preview']
+    branches: ["feature/web-onboarding-preview"]
 permissions:
   contents: read
 jobs:
@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
       - run: npm ci --prefix brandbook/onboarding
       - run: cd brandbook/onboarding && npx playwright install --with-deps chromium
       - name: Configure Chromium sandbox
