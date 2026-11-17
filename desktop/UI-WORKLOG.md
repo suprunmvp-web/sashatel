@@ -29,3 +29,14 @@ On subsequent runs first inspect own PR/head, existing workflow status, new UI I
 - This scheduled run successfully resumed the Cloud checkout and executed shell/test commands independently of the owner's Mac. The earlier unresolved environment observation above is historical; it is not a current provisioning blocker. No real SIP or physical audio/macOS proof is claimed.
 
 - Local verification completed: strict typecheck, lint, 33/33 unit tests, 7/7 Chromium scenarios, Electron source E2E, Linux packaging and packaged Electron E2E all passed. Updated actual Electron history/minimum-window captures were visually inspected. Review 5912232629 is implemented in this PR; final GitHub CI evidence is recorded in the PR body after push.
+
+
+## Product decision #20 — operator availability follow-up, 2026-11-17
+
+- New approved policy: https://github.com/suprunmvp-web/sashatel/issues/20, created/updated 2026-11-16T23:10:42Z; no comments at audit. Earlier #19's Desktop trunk-management suggestion is superseded. Do not reintroduce it on a later scheduled run.
+- Own continuation: `feature/desktop-ui-operator-status` from `feature/desktop-ui-cloud` / `156c578`. Parent PR #8 remains unchanged; a separate focused Draft PR will target the own UI branch. This new task is not a repeat of review 5912232629.
+- Verified defect in own UI: `registered` was rendered as green “Телефония подключена”, despite no readiness contract. The follow-up retains the legacy port but renders registration as neutral unconfirmed readiness, unavailable/unknown observations as unavailable. No new Backend API, IPC, ready flag, Caller ID feature or trunk controls.
+- PR #10 and the integration branch remain owned by Integration Engineer / Tech Lead under #9. Do not perform their administrative-code cleanup in parallel. #20 as a whole is not closed by this indicator correction.
+- Regression component test failed on the old UI, then passed after the fix. It checks both themes, neutral text/dot colors, unknown values, and absence of technical/operator administrative controls. The two new screenshots are Chromium UI contract fixtures with a fake port, not Electron/live registration or a real Backend readiness check.
+
+- Final local validation passed: strict typecheck, ESLint, 33 unit tests, 8 Chromium scenarios (including neutral registration/unknown/prototype-key cases in both themes), Electron source E2E, Linux host build and packaged Electron E2E. The two new Chromium contract-fixture captures were visually inspected. Existing nine Electron images are retained as baseline evidence; fresh current-run Electron captures are published by CI. macOS, physical audio, actual registration and Backend readiness remain unverified.

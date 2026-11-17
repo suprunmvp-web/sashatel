@@ -5,14 +5,15 @@ async function call(page) {
   await page.getByLabel('Номер телефона', { exact: true }).fill('+7 (999) 123-45-67');
   await page.getByRole('button', { name: 'Тестовый звонок' }).click();
 }
-async function setupFixture(page) {
+async function setupFixture(page, { live = false } = {}) {
   await page.goto('/tests/fixture.html');
-  await page.evaluate(async () => {
+  await page.evaluate(async live => {
     const { DesktopController } = await import('/src/controller.js');
     const { DemoCallAdapter } = await import('/src/demo-adapter.js');
     const { DemoHistory } = await import('/src/demo-history.js');
     const { mountDesktop } = await import('/src/view.js');
     const calls = new DemoCallAdapter();
+    if (live) calls.mode = 'live';
     const listeners = new Set();
     const audio = {
       snapshot: { available: true, permission: 'granted', outputSelection:true, result:'', inputs: [{id:'mic',label:'USB microphone'}], outputs: [{id:'out',label:'USB headset'}], inputId:'mic', outputId:'out', volume:.7, testing:null, level:0, message:'' },
@@ -31,7 +32,7 @@ async function setupFixture(page) {
     const controller = new DesktopController({ calls, audio, history, demo: calls });
     const unmount = mountDesktop(document.getElementById('app'), controller);
     window.fixture = { controller, calls, audio, history, unmount, listeners };
-  });
+  }, live);
 }
 
 test('input editing, selection, clipboard, Enter and duplicate commands', async ({ page }) => {
@@ -208,4 +209,36 @@ test('history labels require service-confirmed answer evidence', async ({page}) 
   await page.getByRole('button',{name:'Набрать +7 999 123-45-67'}).last().click();
   await expect(page.locator('#phone')).toHaveValue('+79991234567');
   await expect(page.locator('#call-screen')).toBeHidden();
+});
+
+
+test('operator status never treats registration as readiness or exposes technical diagnostics', async ({page}) => {
+  await setupFixture(page, {live:true});
+  for (const theme of ['light','dark']) {
+    await page.getByRole('button',{name:'Настройки',exact:true}).click();
+    await page.getByRole('button',{name:theme==='light'?'Светлая':'Тёмная',exact:true}).click();
+    await page.getByRole('button',{name:'Телефон',exact:true}).click();
+    for (const [connection,label] of [
+      ['connecting','Проверяем доступность…'],
+      ['registered','Готовность не подтверждена'],
+      ['disconnected','Телефония недоступна'],
+      ['unavailable','Телефония недоступна'],
+      ['unapproved-ready-value','Телефония недоступна'],
+      ['toString','Телефония недоступна'],
+      ['constructor','Телефония недоступна'],
+      ['__proto__','Телефония недоступна'],
+      ['registered','Готовность не подтверждена'],
+    ]) {
+      await page.evaluate(connection=>{const {calls}=window.fixture;calls.snapshot={...calls.snapshot,connection};calls.publish();},connection);
+      await expect(page.locator('#connection-status')).toHaveText(label);
+      expect(await page.evaluate(()=>{
+        const neutral=getComputedStyle(document.getElementById('operator-status')).color;
+        return {text:getComputedStyle(document.querySelector('.connection')).color===neutral,dot:getComputedStyle(document.querySelector('.status-dot')).backgroundColor===neutral};
+      })).toEqual({text:true,dot:true});
+    }
+    await expect(page.getByText('Телефония подключена',{exact:true})).toHaveCount(0);
+    await expect(page.getByRole('button',{name:/транк|SIP|REGISTER|UIS|Asterisk|secret/i})).toHaveCount(0);
+    expect(await page.locator('body').innerText()).not.toMatch(/\b(SIP|REGISTER|trunk|Asterisk|secret|UIS)\b|транк/i);
+    await page.screenshot({animations:'disabled',path:`artifacts/chromium-operator-status-${theme}.png`});
+  }
 });

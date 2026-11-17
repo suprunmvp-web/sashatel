@@ -4,6 +4,8 @@ import { displayNumber, duration, sanitizePhone } from './format.js';
 const stateLabels = { idle: 'Готов к набору', connecting: 'Соединяем…', ringing: 'Ожидаем ответа…', active: 'Разговор', terminating: 'Завершаем…', ended: 'Вызов завершён', failed: 'Не удалось соединиться' };
 /** @type {Record<import('./contracts').HistoryItem['status'], string>} */
 const historyStatusLabels = { answered: 'Завершён', cancelled: 'Отменён', missed: 'Без ответа', failed: 'Ошибка', unknown: 'Результат неизвестен' };
+/** Transport observations are not a Backend-approved operator readiness signal (product decision #20). */
+const connectionLabels = { unavailable: 'Телефония недоступна', disconnected: 'Телефония недоступна', connecting: 'Проверяем доступность…', registered: 'Готовность не подтверждена' };
 const reasons = {
   cancelled: 'Вызов отменён до ответа.', 'no-answer': 'Абонент не ответил.',
   rejected: 'Абонент отклонил вызов.', 'connection-lost': 'Соединение потеряно.',
@@ -245,9 +247,8 @@ export function mountDesktop(root, controller) {
   function render() {
     const s = controller.snapshot;
     const live = controller.inCall;
-    const connectionLabels = { unavailable: 'Телефония не подключена', disconnected: 'Нет подключения', connecting: 'Подключаем телефонию…', registered: 'Телефония подключена' };
-    get('#connection-status').textContent = connectionLabels[isDemo ? 'unavailable' : s.connection];
-    get('.connection').classList.toggle('registered', !isDemo && s.connection === 'registered');
+    get('#connection-status').textContent = isDemo ? 'Телефония не подключена'
+      : Object.hasOwn(connectionLabels, s.connection) ? connectionLabels[s.connection] : connectionLabels.unavailable;
     get('#dialer-screen').hidden = live || controller.screen !== 'dialer';
     get('#call-screen').hidden = !live;
     get('#history-screen').hidden = live || controller.screen !== 'history';
