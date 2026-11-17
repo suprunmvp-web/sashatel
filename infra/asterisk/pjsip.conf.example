@@ -63,3 +63,5 @@ type=auth
 auth_type=userpass
 username=1002
 password=@SECRET_1002@
+
+#tryinclude "/etc/sashatel-asterisk/uis-managed/bundles/active/pjsip.conf"
