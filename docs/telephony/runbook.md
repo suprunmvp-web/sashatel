@@ -72,7 +72,7 @@ git rev-parse HEAD > "$scratch/git-sha"
 dpkg-query -W > "$scratch/packages.txt"
 tree="$scratch/stage/opt/sashatel-asterisk/22.12.0"
 test -x "$tree/sbin/asterisk"
-"$tree/sbin/asterisk" -V
+LD_LIBRARY_PATH="$tree/lib" "$tree/sbin/asterisk" -V
 (cd "$tree" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$scratch/staged.sha256"
 sha256sum "$scratch/"{git-sha,packages.txt,build.log,staged.sha256}
 # STOP. Сохранить evidence bundle до применения B.1.
