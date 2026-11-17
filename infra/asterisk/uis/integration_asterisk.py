@@ -45,17 +45,18 @@ class IsolatedRuntime(Runtime):
                                        "[ci]\ntype=user\npassword=isolated-ci\nread_only=no\n")
 
     def cli(self, instruction, check=True):
-        return subprocess.run([self.binary, "-C", str(self.cli_config), "-rx", instruction],
+        return subprocess.run([self.binary, "-n", "-C", str(self.cli_config), "-rx", instruction],
                               check=check, text=True, capture_output=True, timeout=5, env=self.environment)
 
     def start(self):
+        self.log_offset = len(self.log.read_text(errors="replace")) if self.log.exists() else 0
         with self.log.open("ab") as log:
             self.process = subprocess.Popen(
                 [self.binary, "-f", "-vvv", "-C", str(self.cli_config)],
                 stdin=subprocess.DEVNULL, stdout=log, stderr=log, env=self.environment)
         for _ in range(80):
             result = self.cli("core show uptime", check=False)
-            if result.returncode == 0 and "System uptime" in result.stdout:
+            if result.returncode == 0 and "System uptime" in result.stdout and "Asterisk Ready." in self.log.read_text(errors="replace")[self.log_offset:]:
                 return
             if self.process.poll() is not None:
                 break
@@ -65,8 +66,9 @@ class IsolatedRuntime(Runtime):
     def drain(self):
         if self.process is None or self.process.poll() is not None:
             return
-        if not re.search(r"^0 active channels$", self.cli("core show channels count").stdout, re.M):
-            raise ValueError("active channels")
+        output = self.cli("core show channels count").stdout
+        if not re.search(r"^[ \t]*0 active channels?[ \t\r]*$", output, re.M):
+            raise ValueError(f"active or unverified channels: {output!r}")
         self.cli("core stop gracefully")
         self.process.wait(timeout=15)
 
