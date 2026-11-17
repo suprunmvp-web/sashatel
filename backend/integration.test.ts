@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { test } from 'node:test';
 import pg from 'pg';
 import { ApiError, ControlPlane, hashPassword } from './control.ts';
 import { FakeAri } from './fake-ari.ts';
+import { TrunkService } from './trunks.ts';
 import { createApi } from './http.ts';
 
 const runtimeUrl = process.env.DATABASE_URL;
@@ -139,6 +140,64 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       const { rows: [stored] } = await admin.query(
         'SELECT c.state,w.available FROM control.calls c JOIN control.wallets w USING(organization_id) WHERE c.id=$1',[call.call_id]);
       assert.deepEqual(stored,{ state:expired ? 'expired' : 'failed', available:'100' });
+    }
+  });
+
+  await t.test('UIS trunk HTTP API scopes access and redacts credentials through retry and deletion', async () => {
+    const owner = await fixture({role:'organization_admin'});
+    const other = await fixture({role:'organization_admin'});
+    const manager = await fixture();
+    const input = {name:'UIS pilot',auth_mode:'registration_credentials',registrar_host:'sip.example.test',
+      registrar_port:5060,username:'private-username',password:'private-password'};
+    const trunks = new TrunkService(control,randomBytes(32),new Set(['sip.example.test:5060']));
+    const api = createApi(control,() => pool.query('SELECT 1'),trunks);
+    api.listen(0,'127.0.0.1');
+    await once(api,'listening');
+    try {
+      const address = api.address();
+      assert(address && typeof address !== 'string');
+      const base = 'http://127.0.0.1:' + address.port + '/v1/trunks';
+      const headers = {authorization:'Bearer ' + owner.token,'content-type':'application/json','idempotency-key':'create-uis'};
+      const response = await fetch(base,{method:'POST',headers,body:JSON.stringify(input)});
+      assert.equal(response.status,202);
+      const created = await response.json();
+      assert.equal(created.status,'configuring');
+      assert(!JSON.stringify(created).includes('private-'));
+      assert.equal((await trunks.create(owner.token,'create-uis',input)).id,created.id);
+      await assert.rejects(trunks.create(owner.token,'create-uis',{...input,password:'new'}),code('IDEMPOTENCY_CONFLICT'));
+      await assert.rejects(trunks.create(owner.token,'other',{...input,registrar_host:'127.0.0.1'}),code('REGISTRAR_NOT_ALLOWED'));
+      await assert.rejects(trunks.read(manager.token),code('TRUNK_PERMISSION_REQUIRED'));
+      await assert.rejects(trunks.read(other.token,created.id),code('TRUNK_NOT_FOUND'));
+      const {rows:[secret]} = await admin.query('SELECT envelope FROM control.trunk_secrets WHERE trunk_id=$1',[created.id]);
+      assert(!secret.envelope.includes('private-'));
+      assert.equal((await control.transaction(other.tenant,db => db.query('SELECT * FROM trunk_secrets'))).rowCount,0);
+
+      let attempts = 0;
+      const adapter = {
+        async upsert(job: {trunkId:string;generation:number}, endpoint: {host:string;port:number}, credentials: {username:string;password:string}) {
+          attempts++;
+          assert.equal(job.trunkId,created.id);
+          assert.equal(job.generation,1);
+          assert.deepEqual(endpoint,{host:input.registrar_host,port:input.registrar_port});
+          assert.deepEqual(credentials,{username:input.username,password:input.password});
+          if (attempts === 1) throw new Error('simulated provider outage');
+          return 'registered' as const;
+        },
+        async remove(job: {generation:number}) { assert.equal(job.generation,2); },
+      };
+      await trunks.provisionNext(owner.tenant,adapter);
+      assert.equal((await trunks.read(owner.token,created.id)).status,'degraded');
+      await admin.query('UPDATE control.trunk_jobs SET available_at=clock_timestamp() WHERE trunk_id=$1',[created.id]);
+      await Promise.all([trunks.provisionNext(owner.tenant,adapter),trunks.provisionNext(owner.tenant,adapter)]);
+      assert.equal(attempts,2);
+      assert.equal((await trunks.read(owner.token,created.id)).status,'registered');
+      assert.equal((await admin.query('SELECT active FROM control.trunks WHERE id=$1',[created.id])).rows[0].active,false);
+      for (let i=0;i<2;i++) assert.equal((await fetch(base+'/'+created.id,{method:'DELETE',headers})).status,202);
+      await assert.rejects(trunks.read(owner.token,created.id),code('TRUNK_NOT_FOUND'));
+      await trunks.provisionNext(owner.tenant,adapter);
+      assert.equal((await admin.query('SELECT 1 FROM control.trunk_secrets WHERE trunk_id=$1',[created.id])).rowCount,0);
+    } finally {
+      await new Promise<void>(resolve => api.close(() => resolve()));
     }
   });
 
