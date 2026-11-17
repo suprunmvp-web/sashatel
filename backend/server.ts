@@ -1,6 +1,7 @@
 import pg from 'pg';
 import { ControlPlane, uuid } from './control.ts';
 import { FakeAri } from './fake-ari.ts';
+import { TrunkService } from './trunks.ts';
 import { createApi } from './http.ts';
 
 const { DATABASE_URL, CALL_DAY_TIMEZONE, FAKE_ARI_TENANTS, PORT = '8080' } = process.env;
@@ -12,7 +13,11 @@ const heartbeat = new Map<string, number>();
 const control = new ControlPlane(pool, CALL_DAY_TIMEZONE, tenant =>
   performance.now() - (heartbeat.get(tenant) ?? -Infinity) < 5000);
 const gateway = new FakeAri();
-const api = createApi(control, () => pool.query('SELECT 1 FROM control.organizations LIMIT 1'));
+const trunkKey = process.env.UIS_VAULT_KEY_HEX;
+if (trunkKey && !/^[0-9a-fA-F]{64}$/.test(trunkKey)) throw new Error('Invalid UIS vault key');
+const registrars = new Set((process.env.UIS_REGISTRARS ?? '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
+const trunks = trunkKey && registrars.size ? new TrunkService(control, Buffer.from(trunkKey,'hex'), registrars) : undefined;
+const api = createApi(control, () => pool.query('SELECT 1 FROM control.organizations LIMIT 1'), trunks);
 let running = false;
 const timer = setInterval(async () => {
   if (running) return;
