@@ -1,43 +1,40 @@
-import pg from 'pg';
-import { ControlPlane, uuid } from './control.ts';
-import { FakeAri } from './fake-ari.ts';
-import { TrunkService } from './trunks.ts';
+import { readFile } from 'node:fs/promises';
+import { ControlPlane } from './control.ts';
 import { createApi } from './http.ts';
+import { databasePool } from './db.ts';
+import { WebAuth } from './web-auth.ts';
+import { DaDataLookup, EmailSink } from './web-ports.ts';
 
-const { DATABASE_URL, CALL_DAY_TIMEZONE, FAKE_ARI_TENANTS, PORT = '8080' } = process.env;
-if (!DATABASE_URL || !FAKE_ARI_TENANTS) throw new Error('DATABASE_URL and explicit FAKE_ARI_TENANTS are required');
-const tenants = [...new Set(FAKE_ARI_TENANTS.split(','))];
-if (!tenants.every(tenant => uuid.test(tenant))) throw new Error('Invalid FAKE_ARI_TENANTS');
-const pool = new pg.Pool({ connectionString: DATABASE_URL, connectionTimeoutMillis: 5000 });
-const heartbeat = new Map<string, number>();
-const control = new ControlPlane(pool, CALL_DAY_TIMEZONE, tenant =>
-  performance.now() - (heartbeat.get(tenant) ?? -Infinity) < 5000);
-const gateway = new FakeAri();
-const trunkKey = process.env.UIS_VAULT_KEY_HEX;
-if (trunkKey && !/^[0-9a-fA-F]{64}$/.test(trunkKey)) throw new Error('Invalid UIS vault key');
-const registrars = new Set((process.env.UIS_REGISTRARS ?? '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
-const trunks = trunkKey && registrars.size ? new TrunkService(control, Buffer.from(trunkKey,'hex'), registrars) : undefined;
-const api = createApi(control, () => pool.query('SELECT 1 FROM control.organizations LIMIT 1'), trunks);
-let running = false;
-const timer = setInterval(async () => {
-  if (running) return;
-  running = true;
-  try {
-    await Promise.all(tenants.map(async tenant => {
-      try {
-        await control.processOne(tenant, gateway);
-        heartbeat.set(tenant, performance.now());
-      } catch {
-        heartbeat.delete(tenant);
-        console.error('Control Plane worker failed to process an outbox command');
-      }
-    }));
-  } finally {
-    running = false;
-  }
-}, 250);
-api.listen(Number(PORT), '127.0.0.1');
-process.once('SIGTERM', () => {
+const {DATABASE_URL_FILE,DATABASE_CA_FILE,AUTH_KEY_FILE,WEB_ORIGIN,
+ EMAIL_SINK_DIRECTORY,DADATA_API_KEY_FILE,PORT='8080',BIND_HOST='127.0.0.1'}=process.env;
+if(!DATABASE_URL_FILE||!AUTH_KEY_FILE||!WEB_ORIGIN||!EMAIL_SINK_DIRECTORY
+ ||process.env.EMAIL_MODE!=='sink'||process.env.LIVE_CALL_DISPATCH!=='disabled') {
+  throw new Error('S1 requires database/auth secret files, exact Web origin, email sink and disabled call dispatch');
+}
+const pool=await databasePool(DATABASE_URL_FILE,DATABASE_CA_FILE);
+const key=(await readFile(AUTH_KEY_FILE,'utf8')).trim();
+if(!/^[0-9a-fA-F]{64}$/.test(key)) throw new Error('AUTH key must be 32-byte hex');
+const lookup=DADATA_API_KEY_FILE?new DaDataLookup((await readFile(DADATA_API_KEY_FILE,'utf8')).trim()):
+  {async lookup():Promise<never> {throw new Error('DaData not configured');}};
+const auth=new WebAuth(pool,Buffer.from(key,'hex'),new EmailSink(EMAIL_SINK_DIRECTORY),lookup);
+const control=new ControlPlane(pool);
+const ready=async()=>{
+  const {rows:[role]}=await pool.query('SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user');
+  if(role.rolsuper||role.rolbypassrls) throw new Error('Unsafe runtime role');
+  await pool.query('SELECT first_name,last_name,phone FROM control.users LIMIT 0');
+  await pool.query('SELECT completion_family FROM web_auth.browsers LIMIT 0');
+  const {rows:[rls]}=await pool.query("SELECT bool_and(relforcerowsecurity) AS enabled FROM pg_class WHERE oid IN ('control.organizations'::regclass,'control.memberships'::regclass)");
+  if(!rls.enabled) throw new Error('Tenant RLS required');
+};
+const api=createApi(control,ready,undefined,{auth,origin:WEB_ORIGIN});
+let running=false;
+const timer=setInterval(async()=>{
+  if(running) return;
+  running=true;
+  try {await auth.deliverOne();} catch {console.error('Email outbox temporarily unavailable');} finally {running=false;}
+},500);
+api.listen(Number(PORT),BIND_HOST);
+process.once('SIGTERM',()=>{
   clearInterval(timer);
-  api.close(() => { void pool.end(); });
+  api.close(()=>{void pool.end();});
 });
