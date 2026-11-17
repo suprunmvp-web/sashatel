@@ -1,4 +1,6 @@
 # ARCH-01 — матрица текущего состояния и второй проход
+**Уточнение от 18.11.2026.** Направление принято для проработки, YC остаётся кандидатом до capacity/plan review. Создание ресурсов не разрешено. Новые решения и нециклические этапы описаны в [ARCH-01-v2](ARCH-01-v2.md), реализации IaC посвящён отдельный DEPLOY-01a Draft PR от main `fff308d7156d52bc3fcecdb024863f0b471679bd`. Цифры и статусы исходного аудита ниже — срез 17.11, не runtime evidence на 18.11.
+
 
 Проверены файлы по закреплённым head SHA, CI и обсуждениям. Срез 17.11.2026. Чтение кода и результата CI выполнено через GitHub connector. Новые runtime-тесты в ARCH-01 не запускались. Удалённого аудита VPS, облачного аккаунта, DNS и поставщика почты в этом задании не было.
 
@@ -6,7 +8,7 @@
 
 Прочитаны целиком handoff и ТЗ из ветки docs/product-spec-v1-20261117. Изучен лист «Задачи» таблицы «Билдим телефонию», включая ARCH-01 строка 37, DEPLOY-01 39, DB-01 40, EMAIL-01 42, PROVISION-01 45, NET-01 46, RECORD-01 48, INTEGRATION-01 49, OPS-01 50 и SCALE-01 51. Лист не изменялся, новые листы не создавались.
 
-Приняты Web регистрация/email-код/организация по ИНН, Web-only администрирование транков, Desktop-only вызовы, VPN только для инженеров. Утверждена постоплата без скрытого кредитного лимита, тариф SashaTel 3 ₽/мин, оператор отдельно. История и защищённая запись входят в ближайший сквозной результат. Юридическая и финансовая приёмка клиентского пилота остаётся отдельной.
+Приняты Web регистрация/email-код/организация по ИНН, Web-only администрирование транков, Desktop-only вызовы, VPN только для инженеров. Утверждена постоплата с опциональным кредитным лимитом, по умолчанию отсутствующим, тариф SashaTel 3 ₽/мин, оператор отдельно. История и защищённая запись входят в ближайший сквозной результат. Юридическая и финансовая приёмка клиентского пилота остаётся отдельной.
 
 [Handoff](https://github.com/suprunmvp-web/sashatel/blob/docs/product-spec-v1-20261117/docs/product/PROJECT-HANDOFF-RU.md), [ТЗ](https://github.com/suprunmvp-web/sashatel/blob/docs/product-spec-v1-20261117/docs/product/sashatel-spec-v1.0.md), [план, лист «Задачи»](https://docs.google.com/spreadsheets/d/1Lx7pDi7Wchuk6vgNUkeEzzuzJZadhSd2cDXWvTJA6vY/edit#gid=1649692683).
 
@@ -34,7 +36,7 @@
 | Provisioning | Python single-scope manifest/lock/атомарный symlink/rollback | Реальный Asterisk fixture зелёный | Live REGISTER исторически описан на Timeweb | Реальный systemd и состояние VPS сейчас неизвестны. Нельзя повторять старое «Asterisk отсутствует». |
 | UIS transport | UDP bind 5062, REGISTER profile | Fixture регистрирующий объект, без связи с UIS | В поздних комментариях есть исходящий REGISTER | Входящий 401 не наблюдался по отчёту. Ожидается Timeweb. Нет текущего доказательства Registered/usable. |
 | Media/recording | Lab PJSIP/dialplan, Desktop TestTransport; production WebRTC/запись не подтверждены | ARI Local pair не проверяет Desktop↔UIS media | Не установлено | WSS/DTLS, ICE/TURN, protected recording pipeline и E2E нужны. |
-| Биллинг | Wallet reserve и INSUFFICIENT_BALANCE до вызова; used инкрементируется при intent | Пилотные accounting tests | Боевой учёт не подтверждён | Расхождение с постоплатой и dispatch policy. Округление не утверждено. |
+| Биллинг | Wallet reserve и INSUFFICIENT_BALANCE до вызова; used инкрементируется при intent | Пилотные accounting tests | Боевой учёт не подтверждён | Расхождение с принятой моделью финансового gate и dispatch policy. Округление не утверждено. |
 | Recovery | Worker pending rollback, idempotent request и node restart fixture | Изолированные проверки | Backup/PITR deployment отсутствует в доказательствах | Systemd reboot, managed DB restore, recording recovery и multi-trunk ещё проверить. |
 
 Owning code — [Backend server](https://github.com/suprunmvp-web/sashatel/blob/c2f0317f7b88fcec5bbcb56fdcb4baf3142acb12/backend/server.ts), [HTTP](https://github.com/suprunmvp-web/sashatel/blob/c2f0317f7b88fcec5bbcb56fdcb4baf3142acb12/backend/http.ts), [control](https://github.com/suprunmvp-web/sashatel/blob/c2f0317f7b88fcec5bbcb56fdcb4baf3142acb12/backend/control.ts), [trunks](https://github.com/suprunmvp-web/sashatel/blob/c2f0317f7b88fcec5bbcb56fdcb4baf3142acb12/backend/trunks.ts), [SQL 001](https://github.com/suprunmvp-web/sashatel/blob/c2f0317f7b88fcec5bbcb56fdcb4baf3142acb12/backend/migrations/001.sql), [SQL 002](https://github.com/suprunmvp-web/sashatel/blob/c2f0317f7b88fcec5bbcb56fdcb4baf3142acb12/backend/migrations/002-uis.sql), [runtime grants](https://github.com/suprunmvp-web/sashatel/blob/c2f0317f7b88fcec5bbcb56fdcb4baf3142acb12/backend/migrations/runtime.sql).
@@ -49,7 +51,7 @@ Desktop/telephony code — [main](https://github.com/suprunmvp-web/sashatel/blob
 | --- | --- | --- |
 | Web signup/email/ИНН и trunk management, Desktop calls, без VPN клиента | Принято в продукте | Реализовать по ТЗ |
 | PostgreSQL сохранить | Принято текущей архитектурой и запросом | Замена не предлагается |
-| Постоплата без кредитного лимита | Принято в продукте | Backend убрать prepaid gate до продуктового E2E |
+| Постоплата, кредитный лимит опционален и по умолчанию отсутствует | Принято в продукте | Backend согласует финансовый gate до продуктового E2E |
 | Yandex Cloud, три DB AZ и off-provider backup | Предложено ARCH-01 | Владелец утверждает после capacity/коммерческого review |
 | Node 24 LTS / PostgreSQL 17 / Asterisk 22 LTS | Предложено | Backend/Telephony фиксируют patches и совместный manifest |
 | RTO/RPO/SLO и 90 дней записей для sizing | Предложено | Владелец и эксплуатация утверждают после restore/load tests |
