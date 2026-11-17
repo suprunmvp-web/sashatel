@@ -1,0 +1,38 @@
+name: DEPLOY-01a offline validation
+on:
+  pull_request:
+    paths: ['infra/yandex/**', '.github/workflows/deploy-foundation.yml']
+  push:
+    branches: [feature/deploy-01a-foundation]
+    paths: ['infra/yandex/**', '.github/workflows/deploy-foundation.yml']
+permissions:
+  contents: read
+concurrency:
+  group: foundation-offline-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  schema-and-mocks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install verified Terraform
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --proto '=https' -fsSL https://releases.hashicorp.com/terraform/1.11.4/terraform_1.11.4_linux_amd64.zip -o "$RUNNER_TEMP/terraform.zip"
+          printf '%s  %s\n' 1ce994251c00281d6845f0f268637ba50c0005657eb3cf096b92f753b42ef4dc "$RUNNER_TEMP/terraform.zip" | sha256sum --check
+          mkdir "$RUNNER_TEMP/tf-bin"
+          unzip -q "$RUNNER_TEMP/terraform.zip" -d "$RUNNER_TEMP/tf-bin"
+          echo "$RUNNER_TEMP/tf-bin" >> "$GITHUB_PATH"
+      - run: terraform -chdir=infra/yandex fmt -check -recursive
+      - name: Provider schemas, no backend or cloud credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for root in bootstrap foundation lock-probe; do
+            terraform -chdir="infra/yandex/$root" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="infra/yandex/$root" validate -no-color
+          done
+      - name: Mock topology and security assertions
+        run: terraform -chdir=infra/yandex/foundation test -no-color
