@@ -106,7 +106,7 @@ GET account/org/operator не меняет lease/auth_epoch, не продлев
 | POST /v1/organizations/lookup | {inn:string} | Web verified only, 200 {lookup_id:UUID,inn,legal_name,legal_address,expires_at}; сервер проверяет checksum 10/12 цифр, обращается к DaData, сохраняет snapshot на 15 минут |
 | POST /v1/organizations | {lookup_id,confirm:true} + Idempotency-Key | Web verified only, 201 {organization:Organization}; owner membership создаётся атомарно. Context выбирается отдельным route |
 
-Организация создаётся одной транзакцией с owner, entitlement_defaults и billing_profile(mode=postpaid,credit_limit_minor=NULL), audit/outbox для внутреннего кабинета. Транк и звонки изначально недоступны до фактического provisioning. Новые организации неверифицированы, новые транки выключены. credit_limit_minor=NULL означает отсутствие ограничения; индивидуальный положительный лимит задают внутренние сотрудники по правилам §14. Обязательный аванс не вводится. DaData lookup выполняется до transaction, create проверяет freshness и привязку lookup к account, перечитывает snapshot. При outage 503 и повтор lookup, без частичной организации. Idempotency scope account+key, различный lookup даёт conflict; дубликат ИНН — 409 ORGANIZATION_ALREADY_EXISTS без раскрытия владельца. Предлагается уникальный нормализованный ИНН на организацию; branch/KPP cases должны быть утверждены до UNIQUE.
+Организация создаётся одной транзакцией с owner, entitlement_defaults и billing_profile(mode=postpaid,credit_limit_minor=NULL), audit/outbox для внутреннего кабинета. Транк и звонки изначально недоступны до фактического provisioning. Новые организации неверифицированы, новые транки выключены. credit_limit_minor=NULL означает отсутствие ограничения; индивидуальный положительный лимит задают внутренние сотрудники по правилам §14. Обязательный аванс не вводится. DaData lookup выполняется до transaction, create проверяет freshness и привязку lookup к account, перечитывает snapshot. При outage 503 и повтор lookup, без частичной организации. Idempotency scope account+key, различный lookup даёт conflict; дубликат ИНН — 409 ORGANIZATION_ALREADY_EXISTS без раскрытия владельца. Утверждено 18.11: одна организация на нормализованный ИНН, филиалы внутри неё.
 
 Приглашения — Web POST /v1/organizations/{id}/invitations {email,role:"admin"|"employee"} → 202 {id,expires_at}; GET metadata и POST /v1/invitations/{token}/accept {} → 200 {organization:Organization}. Токен 256-bit, hash, TTL 7 дней, одноразовый, привязан к canonical verified email. Token из ссылки сразу обменять в защищённый Web flow и удалить из URL через redirect, Referrer-Policy=no-referrer. Invite token не даёт account session. При существующем membership повтор acceptance идемпотентен и не повышает роль автоматически.
 
@@ -219,7 +219,7 @@ Self-service создание атомарно назначает создате
 
 Каждая новая организация verification_status=unverified независимо от способа создания. Верификация — внутренняя проверка подписанного договора и реквизитов, а не email/DaData lookup. Внутренние сотрудники в scope могут установить или снять её, permission org.verify. Хранить verification_version, actor/time, ссылку на подтверждающий документ с проверкой scope и ограниченные audit metadata. Не хранить в аудите содержимое договора.
 
-Каждый новый trunk enabled=false. Активация требует verified organization на Backend и повторной проверки в provisioning/dispatch. UI disabled недостаточен. Предлагаемые раздельные поля — enabled intent, registration status, effective eligibility; registration не включает trunk автоматически. При снятии verification новые активации/starts запрещены и старые jobs не могут включить trunk. Судьба текущего разговора при снятии verification остаётся открытой для явного решения, автоматический hangup этим документом не утверждён. Изменение реквизитов verified организации пока не реализовывать с автоматическим сохранением или снятием verification.
+Каждый новый trunk enabled=false. Активация требует verified organization на Backend и повторной проверки в provisioning/dispatch. UI disabled недостаточен. Предлагаемые раздельные поля — enabled intent, registration status, effective eligibility; registration не включает trunk автоматически. При снятии verification новые активации/starts запрещены и старые jobs не могут включить trunk. При снятии verification текущие разговоры продолжаются штатно. До верификации клиентские owner/admin меняют ИНН и юридическое название, employee не меняет. После verification изменения применяет сотрудник SashaTel после проверки запроса; до применения действуют прежние реквизиты. Старые документы сохраняют прежние реквизиты.
 
 ### Optional credit limit и финансовые действия
 
@@ -229,7 +229,7 @@ Internal Manager может установить/удалить лимит и п
 
 Достижение лимита запрещает новые вызовы и сохраняет текущие. При снижении лимита ниже текущей экспозиции новые вызовы блокируются сразу. Удаление лимита снимает только credit-limit gate, остальные причины запрета сохраняются. Нужна транзакционная защита конкурентных starts/изменений лимита. Точная формула экспозиции и учёт ещё не финализированных разговоров — технический/финансовый контракт для отдельного решения, не копирование pilot reserve_per_call.
 
-Клиентский API billing summary включает credit_limit только если он установлен, например {credit_limit:{amount_minor:500000,currency:"RUB"}}; при отсутствии ключ опущен. UI показывает положительную сумму только при наличии настройки. Валюта и масштаб единиц должны быть явными. Это не новая обязательная предоплата. Продуктовый расчёт постоплаты и судьба нулевого баланса ещё требуют указанных ниже правил.
+Клиентский API billing summary включает credit_limit только если он установлен, например {credit_limit:{amount_minor:500000,currency:"RUB"}}; при отсутствии ключ опущен. UI показывает положительную сумму только при наличии настройки. Валюта и масштаб единиц должны быть явными. Это не новая обязательная предоплата. После погашения задолженности до balance>=0 финансовая блокировка автоматически снимается, остальные gates сохраняются.
 
 ### Дата оплаты
 
@@ -270,12 +270,28 @@ Telegram получает асинхронную очищенную проекц
 - Payment date Owner/Admin only, Manager denied; отсутствие contract confirmation отклонено; future rule меняется без изменения периода и существующих invoices. Edge cases короткого месяца ожидают продуктового решения.
 - Audit содержит настоящего actor, organization, время и before/after; redaction не пропускает секреты/сырые запросы; Telegram outage/retry не теряет audit и не повторяет бизнес-действие.
 
-### Открытые решения — не утверждены
+### Действующие правила — утверждение владельца 18.11.2026
 
-1. Правила изменения реквизитов после верификации.
-2. Доступность кабинета при долге.
-3. Восстановление при нулевом балансе.
-4. Точный отсчёт пяти рабочих дней.
-5. Последний день короткого месяца.
+Долг запрещает новые звонки и сохраняет кабинет, историю, биллинг, документы и оплату. Вход не блокируется. После погашения до баланса >=0 финансовый запрет автоматически снимается; verification, trunk, permissions и telephony availability проверяются отдельно.
 
-Также остаются открытые технические/продуктовые вопросы предыдущих разделов, которые новые решения явно не закрывают — Desktop flow/TTL/reuse, текущий разговор при logout/revoke, exposure accounting и pilot mapping. Не включать выбранные по умолчанию ответы в реализацию.
+Пять рабочих дней начинаются после договорной даты оплаты, сама дата не включается. После окончания пятого рабочего дня при отрицательном балансе новые starts запрещены. Дополнительного grace period нет. Расчётный период сохраняется.
+
+Дата короткого месяца=min(anchor_day,days_in_month), исходный anchor сохраняется. 31 января → 28/29 февраля → 31 марта → 30 апреля. Выставленные документы автоматически не переписываются.
+
+Предложение для будущего billing-этапа — versioned производственный календарь РФ с федеральными праздниками и переносами для пятидневки, timezone Europe/Moscow. Годовой набор дат утверждает ответственный сотрудник с источником и audit. При отсутствии утверждённого года нет weekday fallback и автоматической блокировки по неподтверждённому deadline. Региональные/договорные исключения согласовать до реализации расписания. Это предложение календаря ещё не утверждено.
+
+### История заменённых решений
+
+- Исходная постоплата без лимита → 17.11 optional positive credit limit, default NULL.
+- Обязательный owner для всех → 17.11 временный NULL допустим при internal create, self-service назначает создателя.
+- Пять открытых вопросов §14 → 18.11 утверждены изменения реквизитов, кабинет при долге, восстановление >=0, отсчёт рабочих дней и short-month anchor.
+- Уникальность ИНН и TTL → 18.11 утверждены одна организация на ИНН (филиалы внутри); email code 10min, 5 попыток, resend60s; access5min; Web refresh7d idle/30d absolute; strict reuse без grace, потерянный refresh response требует login.
+- Desktop browser/PKCE, судьба разговора при Desktop logout/reuse и pilot owner mapping остаются будущими решениями и не задерживают новый Web onboarding.
+
+## 15. Первый ограниченный кодовый этап
+
+Additive global identity/email proof → Web login/refresh/logout → DaData lookup/create organization. Один self-service owner, org unverified, новые trunks disabled. Настоящий transactional audit важных изменений. Email port + test sink, real delivery отдельной приёмкой DevOps. Invitations, internal admin, financial ledger/scheduler и новый Desktop login — следующие этапы.
+
+Точные request/response формы §3–4/7 направляются Web UI и Desktop для review. Web — HttpOnly cookie + CSRF; Desktop текущий механизм пока не переключает. CSRF bootstrap предлагается GET /v1/auth/csrf → 200 {csrf_token:string}, pre-auth host cookie Secure/HttpOnly/SameSite=Lax, token передаётся X-CSRF-Token, сервер сверяет Origin и session-bound HMAC. Token доступен Web memory, credentials не выдаются JS. Это wire proposal до явного подтверждения UI.
+
+Тесты нового кода — concurrent register/email uniqueness, concurrent verify/expiry/attempts/resend, email error/retry без orphan, login/logout/refresh race/reuse, повтор organization create/INN conflict, rollback при audit failure, tenant isolation и совместимость всех миграций с прежними calls/IDs. Старый зелёный CI не подтверждает этот этап. Runtime пока не изменён.
