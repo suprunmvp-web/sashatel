@@ -39,7 +39,11 @@ class Runtime:
             return
         channels = self.cli("core show channels count").stdout
         require(re.search(r"^[ \t]*0 active channels?[ \t\r]*$", channels, re.M))
-        self.cli("core stop gracefully")
+        try:
+            self.cli("core stop gracefully")
+        except subprocess.TimeoutExpired:
+            # The CLI can lose its reply as Asterisk shuts down. Verify exit below.
+            pass
         for _ in range(60):
             if command("/usr/bin/systemctl", "show", "-p", "ActiveState", "--value",
                        UNIT).stdout.strip() in {"inactive", "failed"}:
