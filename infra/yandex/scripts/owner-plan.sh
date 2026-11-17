@@ -16,13 +16,19 @@ mkdir -p "$output"; chmod 700 "$output"
 export YC_TOKEN
 YC_TOKEN=$(yc iam create-token)
 trap 'unset YC_TOKEN' EXIT
+root_dir="$repo_root/$root"
+if [[ "$phase" = bootstrap ]]; then
+  root_dir="$output/bootstrap-root"
+  mkdir -p "$root_dir"
+  cp "$repo_root/bootstrap/main.tf" "$repo_root/bootstrap/locking.tf" "$repo_root/bootstrap/.terraform.lock.hcl" "$root_dir/"
+fi
 if [[ "$phase" = staging ]]; then
   [[ $# = 4 && "$4" = /* && -f "$4" ]] || exit 2
-  terraform -chdir="$repo_root/$root" init -input=false -lockfile=readonly -backend-config="$4" > "$output/init.log" 2>&1
+  terraform -chdir="$root_dir" init -input=false -lockfile=readonly -backend-config="$4" > "$output/init.log" 2>&1
 else
-  terraform -chdir="$repo_root/$root" init -input=false -lockfile=readonly > "$output/init.log" 2>&1
+  terraform -chdir="$root_dir" init -input=false -lockfile=readonly > "$output/init.log" 2>&1
 fi
-terraform -chdir="$repo_root/$root" plan -input=false -lock-timeout=5s -var-file="$vars" -out="$output/plan.bin" > "$output/plan.log" 2>&1
-terraform -chdir="$repo_root/$root" show -json "$output/plan.bin" > "$output/plan.json"
+terraform -chdir="$root_dir" plan -input=false -lock-timeout=5s -var-file="$vars" -out="$output/plan.bin" > "$output/plan.log" 2>&1
+terraform -chdir="$root_dir" show -json "$output/plan.bin" > "$output/plan.json"
 python3 "$repo_root/scripts/review-plan.py" "$phase" "$output/plan.json"
 echo 'Private plan saved locally. Do not upload binary, JSON or logs; review a sanitized summary.'
