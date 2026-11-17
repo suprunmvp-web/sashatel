@@ -36,9 +36,9 @@
   --line: #dedee2;
   --fg: #18181b;
   --sub: #64646d;
-  --accent: #765a25;
+  --accent: #34343c;
   --danger: #bd3647;
-  --warning-bg: #f7f3e8;
+  --warning-bg: #f0f1f4;
   --success: #168353;
   --font: Geist, Arial, sans-serif;
   --mono: "Geist Mono", monospace;
@@ -403,41 +403,6 @@ code {
   font-size: 12px;
   margin-top: 16px;
 }
-.preview-label {
-  color: var(--accent);
-  font: 11px var(--mono);
-}
-#preview-tools {
-  margin: 20px 48px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 12px;
-  color: var(--sub);
-  padding-bottom: 12px;
-}
-#preview-tools details {
-  max-width: 600px;
-}
-summary {
-  cursor: pointer;
-  min-height: 32px;
-}
-#preview-tools label {
-  margin: 12px 0;
-  max-width: 360px;
-}
-#preview-tools p {
-  margin: 8px 0;
-}
-footer {
-  margin: 0 48px;
-  padding: 20px 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  color: var(--sub);
-  font-size: 11px;
-  border-top: 1px solid var(--line);
-}
 @media (max-width: 768px) {
   .topbar {
     margin: 0 24px;
@@ -504,4 +469,241 @@ footer {
   * {
     scroll-behavior: auto !important;
   }
+}
+
+/* Auth is deliberately dark; platform theme preferences do not affect entry pages. */
+.topbar {
+  height: 88px;
+  border: 0;
+  margin: 0 48px;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+.wordmark {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+}
+main {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 48px, 440px);
+  margin: 52px auto 64px;
+  flex: initial;
+}
+#particles {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.55;
+}
+.in-workspace #particles {
+  display: none;
+}
+.greeting {
+  font-family: Georgia, serif;
+  font-size: 38px;
+  line-height: 1.12;
+  text-align: center;
+  font-weight: 400;
+  letter-spacing: -1.3px;
+  margin-bottom: 8px;
+  animation: arrive 0.8s ease both;
+}
+.greeting em {
+  font-weight: 400;
+  color: #e8c547;
+}
+.auth-switch {
+  color: var(--sub);
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 13px;
+}
+.auth-switch button {
+  color: var(--fg);
+  padding: 0;
+  min-height: 32px;
+  margin-left: 4px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+form {
+  gap: 18px;
+}
+label {
+  font-size: 13px;
+  font-weight: 500;
+  gap: 7px;
+}
+input {
+  height: 46px;
+  background: #131315;
+  border-color: #303034;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+input:hover {
+  border-color: #45454c;
+}
+input:focus {
+  border-color: #777780;
+}
+input::placeholder {
+  color: #75757e;
+  opacity: 1;
+}
+.name-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.password-row .icon-button {
+  height: 44px;
+  color: var(--sub);
+}
+.button {
+  min-height: 46px;
+  font-weight: 600;
+}
+.phone-field {
+  position: relative;
+}
+.phone-field > label {
+  margin-bottom: 7px;
+}
+.phone-row {
+  display: flex;
+  border: 1px solid #303034;
+  border-radius: 6px;
+  background: #131315;
+}
+.phone-row:focus-within {
+  border-color: #777780;
+}
+.phone-row input {
+  border: 0;
+  background: transparent;
+}
+#country-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid #303034;
+  border-radius: 5px 0 0 5px;
+  background: transparent;
+  font: 12px var(--mono);
+}
+#country-picker {
+  position: absolute;
+  z-index: 5;
+  top: 78px;
+  width: 100%;
+  background: #1a1a1e;
+  border: 1px solid #38383e;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 16px 48px #0009;
+}
+.country-search {
+  font-size: 11px;
+  color: var(--sub);
+}
+#country-options {
+  max-height: 240px;
+  overflow: auto;
+  margin-top: 8px;
+}
+.country-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 10px 8px;
+  border-radius: 4px;
+}
+.country-option:hover,
+.country-option:focus-visible {
+  background: #2b2b31;
+}
+.country-option span:last-child {
+  color: var(--sub);
+  font-family: var(--mono);
+}
+.consents {
+  display: grid;
+  gap: 14px;
+  margin: 4px 0 2px;
+}
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--sub);
+  cursor: pointer;
+}
+.check input {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: #e8c547;
+}
+:root[data-theme="light"] .workspace input {
+  background: var(--surface);
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 440px) {
+  .topbar {
+    height: 72px;
+  }
+  main {
+    margin-top: 28px;
+    width: calc(100% - 40px);
+  }
+  .greeting {
+    font-size: 34px;
+  }
+  .greeting em {
+    display: block;
+  }
+  .name-row {
+    gap: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .greeting {
+    animation: none;
+  }
+  input {
+    transition: none;
+  }
+}
+
+.workspace-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }

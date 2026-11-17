@@ -14,9 +14,11 @@ async function ready(page, text) {
   await page.getByRole("heading", { name: text, exact: true }).waitFor();
 }
 async function scenario(page, value) {
-  await page.locator("summary").click();
-  await page.locator("#scenario").selectOption(value);
-  await page.locator("summary").click();
+  await page.evaluate(
+    (value) =>
+      sessionStorage.setItem("sashatel.onboarding.preview.scenario", value),
+    value,
+  );
 }
 async function screenshot(page, name) {
   await page.screenshot({ path: `${evidence}/${name}.png`, fullPage: true });
@@ -25,21 +27,23 @@ async function screenshot(page, name) {
   );
   assert.equal(overflow, false, name + " horizontal overflow");
 }
+async function profile(page) {
+  await page.getByLabel("Фамилия", { exact: true }).fill("Иванова");
+  await page.getByLabel("Номер телефона", { exact: true }).fill("9991234567");
+  await page.locator("[name=terms]").check();
+}
 async function register(page) {
-  await ready(page, "Начните с знакомства");
-  await page
-    .getByLabel("Как к вам обращаться", { exact: true })
-    .fill("Александра");
-  await page
-    .getByLabel("Рабочий email", { exact: true })
-    .fill("preview@example.test");
+  await ready(page, "Давайте познакомимся.");
+  await page.getByLabel("Имя", { exact: true }).fill("Александра");
+  await page.getByLabel("Почта", { exact: true }).fill("preview@example.test");
   assert.equal(
     await page.locator("[name=password]").getAttribute("autocomplete"),
     "new-password",
   );
+  if (await page.locator("[name=surname]").count()) await profile(page);
   await page.locator("[name=password]").fill("fixture-password-123");
   await page
-    .getByRole("button", { name: "Создать аккаунт", exact: true })
+    .getByRole("button", { name: "Зарегистрироваться", exact: true })
     .click();
   await ready(page, "Проверьте почту");
 }
@@ -60,9 +64,38 @@ try {
         if (["error", "warning"].includes(m.type())) errors.push(m.text());
       });
       await page.goto(base + "?preview=1");
-      await ready(page, "Начните с знакомства");
-      if (theme === "dark")
-        await page.getByRole("button", { name: "Переключить тему" }).click();
+      await ready(page, "Давайте познакомимся.");
+      await page.evaluate(
+        (theme) => localStorage.setItem("sashatel.web.theme", theme),
+        theme,
+      );
+      assert.equal(
+        await page.locator("html").getAttribute("data-theme"),
+        "dark",
+      );
+      assert.equal(
+        await page.getByRole("button", { name: "Переключить тему" }).count(),
+        0,
+      );
+      assert.equal(await page.locator("[name=news]").isChecked(), false);
+      assert.equal(await page.locator("[name=terms]").isChecked(), false);
+      assert.equal(
+        await page.getByText("Preview · тестовые данные").count(),
+        0,
+      );
+      await page
+        .getByRole("button", { name: "Код страны", exact: true })
+        .click();
+      await page.getByLabel("Страна или код").fill("Армения");
+      await screenshot(page, `${width}-${theme}-country-picker`);
+      await page.getByLabel("Страна или код").press("ArrowDown");
+      await page.keyboard.press("Enter");
+      assert.match(
+        await page.locator("#country-code").textContent(),
+        /AM \+374/,
+      );
+      await page.locator("#phone").pressSequentially("abcабв123456");
+      assert.equal(await page.locator("#phone").inputValue(), "123456");
       await screenshot(page, `${width}-${theme}-register`);
       await register(page);
       await screenshot(page, `${width}-${theme}-verify`);
@@ -150,11 +183,12 @@ try {
       await page.getByRole("button", { name: "Выйти", exact: true }).click();
       await ready(page, "Войти в SashaTel");
       await page.reload();
-      await ready(page, "Начните с знакомства");
+      await ready(page, "Давайте познакомимся.");
       await page.getByRole("button", { name: "Войти", exact: true }).click();
       await page
         .getByLabel("Email", { exact: true })
         .fill("preview@example.test");
+      if (await page.locator("[name=surname]").count()) await profile(page);
       await page.locator("[name=password]").fill("fixture-password-123");
       assert.equal(
         await page.locator("[name=password]").getAttribute("autocomplete"),
@@ -170,7 +204,7 @@ try {
       // A new tab has no preview authentication; UUID alone cannot create a session.
       const closedReturn = await context.newPage();
       await closedReturn.goto(base + "?preview=1#/organizations/" + id);
-      await ready(closedReturn, "Начните с знакомства");
+      await ready(closedReturn, "Давайте познакомимся.");
       await context.close();
       results.push(
         `${width} ${theme}: path, paste, cancellation, retries, reload, logout, expiration, long name pass`,
@@ -183,11 +217,11 @@ try {
     });
     const page = await context.newPage();
     await page.goto(base + "?preview=1");
-    await ready(page, "Начните с знакомства");
-    if (theme === "dark")
-      await page.getByRole("button", { name: "Переключить тему" }).click();
-    await page.getByLabel("Как к вам обращаться", { exact: true }).fill("Вера");
-    await page.getByLabel("Рабочий email").fill("preview@example.test");
+    await ready(page, "Давайте познакомимся.");
+
+    await page.getByLabel("Имя", { exact: true }).fill("Вера");
+    await page.getByLabel("Почта").fill("preview@example.test");
+    if (await page.locator("[name=surname]").count()) await profile(page);
     await page.locator("[name=password]").fill("fixture-password-123");
     await page
       .getByRole("button", { name: "Показать пароль", exact: true })
@@ -201,25 +235,27 @@ try {
       .click();
     await scenario(page, "delivery");
     await page
-      .getByRole("button", { name: "Создать аккаунт", exact: true })
+      .getByRole("button", { name: "Зарегистрироваться", exact: true })
       .click();
     await page.getByRole("alert").waitFor();
     await screenshot(page, `1024-${theme}-delivery-error`);
     assert.equal(await page.locator("[name=password]").inputValue(), "");
     await scenario(page, "normal");
+    if (await page.locator("[name=surname]").count()) await profile(page);
     await page.locator("[name=password]").fill("fixture-password-123");
     await page.locator("[name=password]").press("Enter");
     await ready(page, "Проверьте почту");
     await page.getByRole("button", { name: "Исправить email" }).click();
-    await ready(page, "Начните с знакомства");
+    await ready(page, "Давайте познакомимся.");
     assert.equal(
-      await page.getByLabel("Рабочий email").inputValue(),
+      await page.getByLabel("Почта").inputValue(),
       "preview@example.test",
     );
-    await page.getByLabel("Рабочий email").fill("corrected@example.test");
+    await page.getByLabel("Почта").fill("corrected@example.test");
+    if (await page.locator("[name=surname]").count()) await profile(page);
     await page.locator("[name=password]").fill("fixture-password-123");
     await page
-      .getByRole("button", { name: "Создать аккаунт", exact: true })
+      .getByRole("button", { name: "Зарегистрироваться", exact: true })
       .click();
     await ready(page, "Проверьте почту");
     await page.clock.install();
@@ -273,12 +309,13 @@ try {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(base);
-  await ready(page, "Начните с знакомства");
-  await page.getByLabel("Как к вам обращаться", { exact: true }).fill("Тест");
-  await page.getByLabel("Рабочий email").fill("fixture@example.test");
+  await ready(page, "Давайте познакомимся.");
+  await page.getByLabel("Имя", { exact: true }).fill("Тест");
+  await page.getByLabel("Почта").fill("fixture@example.test");
+  if (await page.locator("[name=surname]").count()) await profile(page);
   await page.locator("[name=password]").fill("fixture-password-123");
   await page
-    .getByRole("button", { name: "Создать аккаунт", exact: true })
+    .getByRole("button", { name: "Зарегистрироваться", exact: true })
     .click();
   await page.getByRole("alert").waitFor();
   assert.match(await page.getByRole("alert").textContent(), /не подключён/);
