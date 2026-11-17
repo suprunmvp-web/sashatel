@@ -3,7 +3,7 @@
 Node.js 24 and PostgreSQL 17. The local HTTP server binds to loopback and requires an explicit list of tenants for the in-memory fake ARI. Use a disposable database for integration tests.
 
 1. Create an empty PostgreSQL database and a separate login named `control_runtime` with NOSUPERUSER and NOBYPASSRLS. Supply passwords externally.
-2. With a migration owner, run `psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql`. Integration fixtures require a local PostgreSQL administrator for seed rows behind FORCE RLS.
+2. With a migration owner, run `psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql -f migrations/002-uis.sql`. Integration fixtures require a local PostgreSQL administrator for seed rows behind FORCE RLS.
 3. `npm ci --ignore-scripts`, `npm run typecheck`, `npm test`. Set `TEST_ADMIN_URL` and `DATABASE_URL` to the migration admin and runtime URLs. CI supplies a disposable service and credentials.
 4. For manual use, seed organizations, users (passwords via `hashPassword`), memberships, subscriptions, wallets, trunks and approved phone numbers using an administrative connection. Set configuration from `.env.example` and run `npm start`.
 
@@ -28,3 +28,7 @@ The tenant row serializes mutations; the global E.164/date counter serializes sh
 The outbox claims a durable attempt before sending. A stale originate claim is inspected using the same attempt ID. Unknown means hold the call slot and reserve; operator or future authoritative reconciliation resolves the result. There is a fail-closed check before claim. The worker also queues hangup for active calls after a critical user, membership or tenant block. The live gateway must enforce authorization at the trunk boundary to close the cross-system revoke race. The fake uses memory, so it can recover a lost response within the same instance. Restart loses fake events and channels.
 
 Live ARI, gated PJSIP, WSS/ICE, CEL/CDR charge mapping, live gateway enforcement of active revocation, WebSocket replay, refresh, full administrative provisioning/audit and durable event ingestion are follow-up work. The current local fake server is for backend validation.
+
+## UIS
+
+See [the v1 contract](uis-trunks-api.md). Configure an externally managed 32-byte encryption key as UIS_VAULT_KEY_HEX and exact comma-separated UIS_REGISTRARS host:port pairs. Store the key separately from PostgreSQL and its backups. The HTTP process queues jobs. The private Telephony worker must supply a TrunkProvisioner to drain them. Tests drive the worker with synthetic provider outcomes. Managed trunks are provisioned inactive for Calls API.
