@@ -18,7 +18,7 @@ from test_live_worker import LiveWorkerTest
 class IsolatedRuntime(Runtime):
     def __init__(self, root, binary, modules):
         self.root, self.binary, self.process = root, binary, None
-        data = modules.parent.parent / "var/lib/asterisk"
+        data = modules.parents[2] / "var/lib/asterisk"
         for name in ("static-http", "rest-api"):
             shutil.copytree(data / name, root / name)
         self.log = root / "fixture.log"
@@ -49,7 +49,7 @@ class IsolatedRuntime(Runtime):
     def start(self):
         with self.log.open("ab") as log:
             self.process = subprocess.Popen(
-                [self.binary, "-f", "-c", "-C", str(self.cli_config)],
+                [self.binary, "-f", "-vvv", "-C", str(self.cli_config)],
                 stdin=subprocess.DEVNULL, stdout=log, stderr=log)
         for _ in range(80):
             result = self.cli("core show uptime", check=False)
