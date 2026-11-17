@@ -88,7 +88,7 @@ Codes — 6 цифр из CSPRNG, TTL 10 минут, 5 неверных попы
 
 ## 6. SESSION-01 и refresh
 
-Access TTL 5 минут. Refresh idle TTL 7 дней, absolute family TTL 30 дней для Web и Desktop, без автоматического продления absolute TTL. Нужны явные sign-in после absolute expiry. Предложения TTL подлежат утверждению.
+Access TTL 5 минут. Refresh idle TTL 7 дней, absolute family TTL 30 дней для Web и Desktop, без автоматического продления absolute TTL. Нужны явные sign-in после absolute expiry. Web TTL утверждены 18.11; Desktop TTL остаются предложением до отдельного согласования.
 
 Refresh блокирует user/auth_epoch и family, проверяет revoked/client binding/expiry, помечает старый digest used_at и создаёт ровно одного потомка. Хранить chain до absolute expiry + окно security audit. Повтор used credential отзывает всю семью и context, возвращает REFRESH_REUSED. Никакого grace window с двумя валидными потомками. Потеря ответа rotation требует нового login. Это осознанный UX/security tradeoff для подтверждения #10. Desktop использует единственный main broker, Web BFF сериализует refresh по family между вкладками. Не считать добросовестные параллельные запросы допустимыми без этого coordinator.
 
@@ -186,8 +186,8 @@ GET /v1/calls и recording endpoint всегда используют audience �
 Необходимо утвердить:
 1. Судьбу активного разговора при logout, reset/reuse, membership revoke и lease timeout (§8). Утверждённые overdue/trunk-disable правила уже учтены.
 2. Browser device authorization + PKCE для Desktop вместо ввода пароля в Electron; поддерживаемые OS и отказ при недоступном secure storage. Вопрос направить #10, молчание не означает согласие.
-3. TTL/codes/rate limits и strict refresh reuse без grace, включая потерю ответа и Web multi-tab coordinator.
-4. Уникальность организации по ИНН и поведение филиалов/KPP. Передача owner требует кода текущего owner и password step-up; нужна ли дополнительно акцептация цели.
+3. Web TTL/codes и strict reuse утверждены 18.11. Согласовать Web multi-tab coordinator и оставшиеся конфигурационные rate limits с UI/DevOps.
+4. Уникальность ИНН утверждена 18.11 — одна организация, филиалы внутри. Передача owner требует кода текущего owner и password step-up; нужна ли дополнительно акцептация цели.
 5. Подтверждённый список owner и mapping supervisor для pilot migration.
 
 Выполнено в этой задаче — сверка источников, кода/CI/комментариев, проект HTTP, review schema и threat/race self-audit. Новые runtime auth, email/DaData, миграции и тесты этого контракта не реализованы. Зелёный CI старых #14/#10 подтверждает только существующие suites.
@@ -235,7 +235,7 @@ Internal Manager может установить/удалить лимит и п
 
 Изменить будущую месячную дату оплаты могут только внутренние Owner/Admin, permission billing.payment_date.change. Internal Manager получает 403 независимо от закрепления организации. Request содержит proposed_day, expected_version и contract_amendment_confirmed=true — явное подтверждение сотрудником, что договор изменён. false/отсутствие подтверждения даёт 422 CONTRACT_CHANGE_CONFIRMATION_REQUIRED.
 
-Меняется только будущая месячная дата оплаты, расчетный период остаётся прежним. Выставленные счета не пересчитываются и не получают новую дату автоматически. До определения поведения короткого месяца нельзя реализовывать молчаливый clamp 29–31 числа. Нужны отдельные правила effective_from и границы будущего расписания в контракте реализации.
+Меняется только будущая месячная дата оплаты, расчетный период остаётся прежним. Выставленные счета не пересчитываются и не получают новую дату автоматически. Для короткого месяца использовать последний существующий день с сохранением исходного anchor, по утверждённому правилу ниже. Правило short-month anchor и отсчёт срока заданы ниже; effective_from будущего изменения согласовать на billing-этапе.
 
 ### Надёжный аудит и Telegram
 
@@ -267,7 +267,7 @@ Telegram получает асинхронную очищенную проекц
 - Все новые org unverified и trunks disabled; прямой HTTP enable unverified отклоняется; verify/revoke race с activation/start; stale provisioning result не обходит verification version.
 - NULL limit допускает отсутствие credit gate; положительный лимит виден в клиентском summary, отсутствие скрывает поле; zero/negative invalid; set/remove и достигнутый лимит блокируют только starts. Concurrent start/limit change не обходят утверждённый расчёт экспозиции.
 - Manager credit/debit/limit только assigned; replay key не дублирует проводку; missing mandatory audit откатывает финансовое изменение.
-- Payment date Owner/Admin only, Manager denied; отсутствие contract confirmation отклонено; future rule меняется без изменения периода и существующих invoices. Edge cases короткого месяца ожидают продуктового решения.
+- Payment date Owner/Admin only, Manager denied; отсутствие contract confirmation отклонено; future rule меняется без изменения периода и существующих invoices. Проверить 31 января → 28/29 февраля → 31 марта → 30 апреля, anchor не теряется.
 - Audit содержит настоящего actor, organization, время и before/after; redaction не пропускает секреты/сырые запросы; Telegram outage/retry не теряет audit и не повторяет бизнес-действие.
 
 ### Действующие правила — утверждение владельца 18.11.2026
