@@ -5,7 +5,7 @@ Base **fff308d7156d52bc3fcecdb024863f0b471679bd (main)**, ветка feature/dep
 ## Что находится в коде
 
 - bootstrap — отдельный local-state root, state bucket с versioning/KMS и prevent_destroy.
-- foundation — VPC/3 подсети/SG/NAT, private app/jobs VM, отдельные service accounts и resource-scoped IAM, PG17 (staging один host, production три), три закрытых versioned bucket, KMS, пустые Lockbox containers и HTTPS ALB с healthcheck.
+- foundation — VPC/3 подсети/SG/NAT, private app/jobs VM и опциональный restricted bastion, отдельные service accounts и resource-scoped IAM, PG17 (staging один host, production три), три закрытых versioned bucket, KMS, пустые Lockbox containers и HTTPS ALB с healthcheck.
 - edge по умолчанию выключен, DNS не создаётся. ALB требует существующего проверенного Certificate Manager certificate ID. При enable_edge резервируется адрес. Capacity/region binding адреса к ALB проверяются authenticated plan и созданием.
 - PBX/TURN, правила UIS/SIP/RTP/ARI, Postbox sender и off-provider backup пока входят в отдельные reviewed изменения. Foundation не создаёт ложный статус готовности телефонии.
 - Нет payload секретов, паролей DB/users, статических IAM keys или provisioners с remote shell в Terraform. Users/database/grants и приложение — следующий этап, ответственный Backend совместно с DB-01. Secret values загружаются доверенным оператором/сервисом напрямую в Lockbox после создания контейнеров.
@@ -23,7 +23,7 @@ done
 terraform -chdir=infra/yandex/foundation test
 ```
 
-Init загружает provider из registry, backend=false не читает удалённый state. Mock tests не вызывают cloud API, не создают ресурсы. Их plan является проверкой HCL/provider schema и проектных assertions. Он не доказывает цену, quota, image, zone availability, support restrictions, IAM/ACL, live health или RLS. CI содержит только эти проверки, без cloud secrets/OIDC/apply.
+Init загружает provider из registry, backend=false не читает удалённый state. Семь mock-сценариев дополнительно проверяют bastion без разрешённого источника и включение для фиксированного /32. Mock tests не вызывают cloud API, не создают ресурсы. Их plan является проверкой HCL/provider schema и проектных assertions. Он не доказывает цену, quota, image, zone availability, support restrictions, IAM/ACL, live health или RLS. CI содержит только эти проверки, без cloud secrets/OIDC/apply.
 
 Примеры mock zones a/b/d и ssh key синтетические. Они не являются выбранными зонами/ключом внедрения. Для реального планирования обязательны ровно три подтверждённые зоны, разные 10.x.x.0/24 CIDR и отдельные частные admin /32 через утверждённый ingress. Terraform проверяет непересечение переданных /24 между собой, конфликт с существующими сетями проверяется inventory. NAT обслуживает HTTPS/DNS egress. Через него не предусматривается provider SIP. По умолчанию private nodes не имеют входа с интернета и не обслуживают SSH через public IP.
 
@@ -64,7 +64,7 @@ Plan требует actual cloud IAM и remote state credentials, сам по с
 
 ## Следующие шаги после разрешённого создания
 
-Проверить VPC reachability из согласованного admin access (в текущий bootstrap VPN/bastion не включён, доступ нужно предварительно создать отдельным reviewed модулем или использовать существующий безопасный маршрут). Создать runtime/migration DB credentials напрямую через доверенный service API и Lockbox, применить Backend-owned migrations/grants, проверить pool/RLS, установить закреплённую сборку Web/Backend с ресурсными лимитами и health. Наличие папок /admin/ и /{organization_uuid}/ не задаёт роль/tenant: Backend проверяет trusted session и внутренние полномочия на каждом запросе. Public origin platform.sashatel.ru, лендинг sashatel.ru отдельный ресурс вне этого PR; staging.platform.sashatel.ru предложен для staging и требует DNS approval.
+Проверить VPC reachability из согласованного admin access (при существующем private admin route использовать его; иначе отдельно включить enable_admin_bastion с утверждёнными admin_public_cidrs /32. Только bastion имеет public IP и SSH ingress, private nodes доступны через ProxyJump, без agent forwarding. Тогда admin_cidrs может быть пустым). Создать runtime/migration DB credentials напрямую через доверенный service API и Lockbox, применить Backend-owned migrations/grants, проверить pool/RLS, установить закреплённую сборку Web/Backend с ресурсными лимитами и health. Наличие папок /admin/ и /{organization_uuid}/ не задаёт роль/tenant: Backend проверяет trusted session и внутренние полномочия на каждом запросе. Public origin platform.sashatel.ru, лендинг sashatel.ru отдельный ресурс вне этого PR; staging.platform.sashatel.ru предложен для staging и требует DNS approval.
 
 Сервисные SA в коде получают доступ к отдельным ресурсам, без folder editor. API читает recordings и DB-runtime secret; jobs — audit/exports upload и разрешённые service secrets. Секрет мигратора не доступен API/jobs. Jobs и API используют разные Linux service users и SA. Пока IAM для recording uploader/PBX и Postbox API не добавлен, его отсутствие должно приводить к отказу, а не выдаче generic editor. Bucket IAM bindings управляются авторитетно для соответствующей роли, сторонние ручные grants до применения нужно инвентаризировать.
 
