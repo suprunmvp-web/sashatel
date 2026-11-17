@@ -122,6 +122,7 @@ export class ControlPlane {
               s.phone_epoch = u.phone_epoch AND s.revoked_at IS NULL AND s.expires_at > clock_timestamp() AS valid,
               EXISTS (SELECT 1 FROM role_permissions p WHERE p.role_id=m.role_id AND p.permission='call') AS can_call,
               EXISTS (SELECT 1 FROM role_permissions p WHERE p.role_id=m.role_id AND p.permission='trunks.manage') AS can_manage_trunks,
+              EXISTS (SELECT 1 FROM role_permissions p WHERE p.role_id=m.role_id AND p.permission='operator.read') AS can_read_operator,
               EXISTS (SELECT 1 FROM role_permissions p WHERE p.role_id=m.role_id AND p.permission='cabinet') AS cabinet
        FROM sessions s JOIN memberships m ON (s.organization_id,s.membership_id)=(m.organization_id,m.id)
        JOIN users u ON u.id=m.user_id
@@ -130,6 +131,21 @@ export class ControlPlane {
     if (!session.user_active || !session.member_active) throw new ApiError(403, 'USER_REVOKED');
     if (!session.valid) throw new ApiError(401, 'INVALID_SESSION');
     return { ...session, maxCalls: org.max_calls };
+  }
+
+  async operatorTelephony(bearer: string) {
+    const { tenant, hash } = this.#credentials(bearer);
+    return this.transaction(tenant, async db => {
+      const actor = await this.#session(db, tenant, hash);
+      if (!actor.can_read_operator) throw new ApiError(403, 'OPERATOR_READ_REQUIRED');
+      const {rows:[snapshot]} = await db.query(
+        `UPDATE sessions SET operator_observed_at_ms=GREATEST(operator_observed_at_ms+1,
+          floor(extract(epoch FROM clock_timestamp())*1000)::bigint)
+          WHERE organization_id=$1 AND token_hash=$2 RETURNING operator_observed_at_ms`,
+        [tenant,hash]);
+      return {telephony_available:false,caller_id:null,can_call:false,
+        observed_at_ms:Number(snapshot.operator_observed_at_ms)};
+    });
   }
 
   async manageTrunks<T>(bearer: string, operation: (db: PoolClient, actor: {
