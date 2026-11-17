@@ -21,7 +21,7 @@ class IsolatedRuntime(Runtime):
         self.root, self.binary, self.process = root, binary, None
         self.environment = {**os.environ, "LD_LIBRARY_PATH": str(modules.parents[1])}
         data = modules.parents[2] / "var/lib/asterisk"
-        for name in ("static-http", "rest-api"):
+        for name in ("documentation", "static-http", "rest-api"):
             shutil.copytree(data / name, root / name)
         self.log = root / "fixture.log"
         self.cli_config = root / "asterisk.conf"
