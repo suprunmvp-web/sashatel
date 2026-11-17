@@ -1,6 +1,12 @@
 import { createUnavailableApi } from './api.js';
 const preview = new URLSearchParams(location.search).get('preview') === '1';
 const scenario = document.querySelector('#scenario');
+if (preview) {
+  try { scenario.value = sessionStorage.getItem('sashatel.onboarding.preview.scenario') || 'normal'; } catch { /* optional test preference */ }
+  scenario.addEventListener('change', () => {
+    try { sessionStorage.setItem('sashatel.onboarding.preview.scenario', scenario.value); } catch { /* optional test preference */ }
+  });
+}
 const api = preview ? (await import('./preview-api.js')).createPreviewApi(() => scenario.value) : createUnavailableApi();
 const root = document.querySelector('main');
 const state = { page: 'register', name: '', email: '', challengeId: null, expiresAt: 0, resendAt: 0,

@@ -121,6 +121,64 @@ try {
       results.push(`${width} ${theme}: path, paste, cancellation, retries, reload, logout, expiration, long name pass`);
     }
   }
+  for (const theme of ['light', 'dark']) {
+    const context = await browser.newContext({ viewport: { width: 1024, height: 1000 } });
+    const page = await context.newPage();
+    await page.goto(base + '?preview=1'); await ready(page, 'Начните с знакомства');
+    if (theme === 'dark') await page.getByRole('button', { name: 'Переключить тему' }).click();
+    await page.getByLabel('Как к вам обращаться', { exact: true }).fill('Вера');
+    await page.getByLabel('Рабочий email').fill('preview@example.test');
+    await page.locator('[name=password]').fill('fixture-password-123');
+    await page.getByRole('button', { name: 'Показать пароль', exact: true }).click();
+    assert.equal(await page.locator('[name=password]').getAttribute('type'), 'text');
+    await page.getByRole('button', { name: 'Скрыть пароль', exact: true }).click();
+    await scenario(page, 'delivery');
+    await page.getByRole('button', { name: 'Создать аккаунт', exact: true }).click();
+    await page.getByRole('alert').waitFor();
+    await screenshot(page, `1024-${theme}-delivery-error`);
+    assert.equal(await page.locator('[name=password]').inputValue(), '');
+    await scenario(page, 'normal');
+    await page.locator('[name=password]').fill('fixture-password-123');
+    await page.locator('[name=password]').press('Enter');
+    await ready(page, 'Проверьте почту');
+    await page.getByRole('button', { name: 'Исправить email' }).click();
+    await ready(page, 'Начните с знакомства');
+    assert.equal(await page.getByLabel('Рабочий email').inputValue(), 'preview@example.test');
+    await page.getByLabel('Рабочий email').fill('corrected@example.test');
+    await page.locator('[name=password]').fill('fixture-password-123');
+    await page.getByRole('button', { name: 'Создать аккаунт', exact: true }).click();
+    await ready(page, 'Проверьте почту');
+    await page.clock.install(); await page.clock.fastForward(61000);
+    await page.getByRole('button', { name: 'Отправить код ещё раз', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: 'Подождите' }).waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('#resend').isDisabled(), true);
+    await page.clock.fastForward(61000);
+    await scenario(page, 'delivery');
+    await page.getByRole('button', { name: 'Отправить код ещё раз', exact: true }).click();
+    await page.getByRole('alert').waitFor();
+    await screenshot(page, `1024-${theme}-resend-error`);
+    await scenario(page, 'normal');
+    await welcome(page);
+    await page.getByRole('button', { name: 'Создать организацию', exact: true }).click();
+    await page.getByLabel('ИНН организации или ИП').fill('7707083893');
+    for (const issue of ['lookup-missing', 'lookup-down', 'offline']) {
+      await scenario(page, issue);
+      await page.getByLabel('ИНН организации или ИП').press('Enter');
+      await page.getByRole('alert').waitFor();
+      await screenshot(page, `1024-${theme}-${issue}`);
+    }
+    await scenario(page, 'normal');
+    await page.getByLabel('ИНН организации или ИП').press('Enter');
+    await ready(page, 'Это ваша организация?');
+    // Double click while create is pending must still yield one organization.
+    await page.getByRole('button', { name: 'Создать кабинет', exact: true }).dblclick();
+    await ready(page, 'ООО «Тестовая организация SashaTel»');
+    await page.goto(base + '?preview=1#/organizations/11111111-1111-4111-8111-111111111111');
+    await ready(page, 'Войти в SashaTel'); await page.getByRole('alert').waitFor();
+    assert.match(await page.getByRole('alert').textContent(), /недоступен/);
+    await context.close();
+    results.push(`${theme}: delivery/resend/edit-email/lookup outages/double-submit/foreign UUID pass`);
+  }
   const context = await browser.newContext(); const page = await context.newPage();
   await page.goto(base); await ready(page, 'Начните с знакомства');
   await page.getByLabel('Как к вам обращаться', { exact: true }).fill('Тест');
