@@ -2,12 +2,21 @@
   "name": "sashatel-control-plane",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=24"},
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "node server.ts",
     "typecheck": "tsc --noEmit --strict --skipLibCheck --module nodenext --target es2024 --allowImportingTsExtensions *.ts",
-    "test": "node --test integration.test.ts"
+    "test": "node --test --test-concurrency=1 integration.test.ts web-auth.test.ts migration.test.ts server.test.ts"
   },
-  "dependencies": {"pg": "8.16.3"},
-  "devDependencies": {"@types/node": "24.10.0", "@types/pg": "8.15.5", "typescript": "5.9.3"}
+  "dependencies": {
+    "libphonenumber-js": "^1.12.31",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "@types/pg": "8.15.5",
+    "typescript": "5.9.3"
+  }
 }
