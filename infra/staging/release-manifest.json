@@ -2,12 +2,48 @@
   "schema_version": 1,
   "release_id": "staging-20261118-01",
   "origin": "https://staging.platform.sashatel.ru",
-  "infrastructure": {"source_sha": "9740fa8ba5a4146fd5a946959d6405021500cd3c", "cloud_id": "b1g4eft3gb4r2ag0s57v", "folder_id": "b1gi9a6fgkr55k6csn9s"},
-  "backend": {"candidate_sha": "3a67ba41440973be7989676da066edfcdfcd44d7", "release_sha": null, "image": null, "migration_argv": null, "start_argv": null, "schema_version": null, "readiness_path": null},
-  "web": {"candidate_sha": "d0f8dafde6c4ddf996036de4c37580830d823eb6", "release_sha": null, "artifact_sha256": null, "build_argv": null, "api_mode": "real"},
+  "infrastructure": {
+    "source_sha": "9740fa8ba5a4146fd5a946959d6405021500cd3c",
+    "cloud_id": "b1g4eft3gb4r2ag0s57v",
+    "folder_id": "b1gi9a6fgkr55k6csn9s"
+  },
+  "backend": {
+    "candidate_sha": "6e01c154a53759e3a122c56226dd835a6e079313",
+    "release_sha": "6e01c154a53759e3a122c56226dd835a6e079313",
+    "image": null,
+    "migration_argv": [
+      "node",
+      "migrate.ts"
+    ],
+    "start_argv": [
+      "node",
+      "server.ts"
+    ],
+    "schema_version": null,
+    "readiness_path": "/ready",
+    "contract_ack": "https://github.com/suprunmvp-web/sashatel/pull/14#issuecomment-6964322671"
+  },
+  "web": {
+    "candidate_sha": "d0f8dafde6c4ddf996036de4c37580830d823eb6",
+    "release_sha": null,
+    "artifact_sha256": null,
+    "build_argv": null,
+    "api_mode": "real"
+  },
   "telephony_enabled": false,
   "email_mode": "test_sink",
   "sink_access": "testers_only",
-  "acceptance": {"browser_flow": false, "cross_tenant_denied": false, "https_cookies": false, "application_restart": false, "database_restore": false},
-  "blockers": ["Backend onboarding runtime and executable migration release not delivered", "Web real API build not delivered", "Authenticated Terraform plan not executed", "sashatel.ru NS/SOA NXDOMAIN on Google and Cloudflare resolvers; ownership/delegation pending"]
+  "acceptance": {
+    "browser_flow": false,
+    "cross_tenant_denied": false,
+    "https_cookies": false,
+    "application_restart": false,
+    "database_restore": false
+  },
+  "blockers": [
+    "Backend container build/managed DB acceptance and staging lookup mode pending",
+    "Web real API build not delivered",
+    "Authenticated Terraform plan not executed",
+    "sashatel.ru NS/SOA NXDOMAIN on Google and Cloudflare resolvers; ownership/delegation pending"
+  ]
 }

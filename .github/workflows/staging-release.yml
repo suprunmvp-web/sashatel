@@ -15,3 +15,36 @@ jobs:
       - run: python3 -m unittest discover -s infra/staging -p 'test_*.py'
       - name: Validate manifest JSON (does not mark deployment ready)
         run: python3 -m json.tool infra/staging/release-manifest.json > /dev/null
+  backend-container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 6e01c154a53759e3a122c56226dd835a6e079313
+      - name: Build delivered Backend release (no cloud credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 6e01c154a53759e3a122c56226dd835a6e079313
+          docker build --pull -f backend/Dockerfile --label org.opencontainers.image.revision=6e01c154a53759e3a122c56226dd835a6e079313 -t sashatel-backend:6e01c154 backend
+          docker run --rm --entrypoint node sashatel-backend:6e01c154 --version
+          docker run --rm --entrypoint node sashatel-backend:6e01c154 --check server.ts
+          docker run --rm --entrypoint sh sashatel-backend:6e01c154 -c 'test -r migrations/004-web.sql && test -r migrate.ts && test -r web-auth.ts'
+          mkdir "$RUNNER_TEMP/backend-delivery"
+          docker image inspect sashatel-backend:6e01c154 --format '{{.Id}}' > "$RUNNER_TEMP/backend-delivery/docker-image-id.txt"
+          docker image inspect node:24.22.1-bookworm-slim --format '{{json .RepoDigests}}' > "$RUNNER_TEMP/backend-delivery/base-image-digests.json"
+          docker save sashatel-backend:6e01c154 -o "$RUNNER_TEMP/backend-delivery/backend.tar"
+          cd "$RUNNER_TEMP/backend-delivery"
+          sha256sum backend.tar > SHA256SUMS
+          printf '%s\n' 6e01c154a53759e3a122c56226dd835a6e079313 > source-sha.txt
+      - name: Scan container archive for fixable high severity vulnerabilities
+        shell: bash
+        run: docker run --rm -v "$RUNNER_TEMP/backend-delivery:/scan:ro" aquasec/trivy:0.76.2 image --input /scan/backend.tar --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+      - name: Retain temporary delivery archive (not an OCI registry digest)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backend-6e01c154-docker-archive
+          path: ${{ runner.temp }}/backend-delivery/
+          retention-days: 1
+          if-no-files-found: error
