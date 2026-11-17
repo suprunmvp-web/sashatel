@@ -1,4 +1,6 @@
 # ARCH-01 — ресурсы, внедрение и приёмка
+**Уточнение от 18.11.2026.** Направление принято для проработки, YC остаётся кандидатом до capacity/plan review. Создание ресурсов не разрешено. Новые решения и нециклические этапы описаны в [ARCH-01-v2](ARCH-01-v2.md), реализации IaC посвящён отдельный DEPLOY-01a Draft PR от main `fff308d7156d52bc3fcecdb024863f0b471679bd`. Цифры и статусы исходного аудита ниже — срез 17.11, не runtime evidence на 18.11.
+
 
 План для review, владельцы ролей предложены. Изменения инфраструктуры выполняются после отдельного утверждения конкретного Terraform plan и окна. Цель релизной приёмки — Web signup → email code → организация ИНН → UIS в Web → тот же аккаунт Desktop → реальный разрешённый звонок → история и защищённая запись.
 
@@ -51,11 +53,11 @@ PBX обновляется по одному узлу через drain, пров
 
 ## Задачи и зависимости
 
-Последовательность после принятия ARCH-01 — DEPLOY-01a описывает IaC/контуры без app rollout. DB-01, EMAIL-01 и OPS-01a идут параллельно после этого. DEPLOY-01b выкатывает совместимую сборку после DB-01 и INTEGRATION-01. AUTH-01 использует EMAIL-01. OPS-01b и restore proof закрываются до первого клиентского E2E. Не дожидаться NET-01 для Web/auth/БД.
+Последовательность после принятия ARCH-01 — B0 account/capacity → B1 state bootstrap/locking → B2 private staging foundation → S1 ранний Backend/Web и fixtures → I1 совместные испытания. DB-01/EMAIL-01/OPS-01 выполняются параллельно после B2. S1 не требует полного INTEGRATION-01/MEDIA-01 и ответа Timeweb. Отдельный L1 разрешает live SIP/PSTN; R1 выкатывает принятую сборку. Входы/выходы и владельцы уточнены в ARCH-01-v2.
 
 | ID / предложенный владелец | Зависимость | Проверяемая приёмка |
 | --- | --- | --- |
-| DEPLOY-01a / DevOps | ARCH review, cloud capacity и account access | Reviewed Terraform plan, раздельные environment IAM/network/state, список изменений/стоимость, нет public DB/ARI |
+| DEPLOY-01a / DevOps | ARCH направление, offline код; auth inventory/quote после access | Reviewed Terraform plan, раздельные environment IAM/network/state, список изменений/стоимость, нет public DB/ARI |
 | DB-01 / Backend + DevOps | DEPLOY-01a | PG17 HA, migration/runtime grants, TLS, FORCE RLS под реальным pool, failover и PITR в новый кластер, журнал фактического RTO/RPO |
 | EMAIL-01 / Backend + DevOps | DNS approval, DEPLOY-01a | Postbox identity, DKIM/SPF/DMARC, реальные code/reset/invite в mail.ru/yandex/gmail, bounce/timeout/retry и ограничение повторов без логирования кода |
 | OPS-01a / DevOps | DEPLOY-01a | Dashboards/alerts, отдельный backup account и ключи, log redaction, audit dangerous ops, дежурный маршрут и тест доставки оповещения |
@@ -67,7 +69,7 @@ PBX обновляется по одному узлу через drain, пров
 | NET-01 / Telephony + owner + providers | Операторские tuples/ответ Timeweb | Контролируемая read-only диагностика, 401/200 доказаны или квалифицирован новый узел. Разрешения на конкретное live изменение отдельно |
 | MEDIA-01 / Desktop + Telephony + Backend | SESSION, PROVISION, NET и ARI adapter | WSS/DTLS-SRTP, ICE direct/relay, inbound-only authorized call ingress, реальный двусторонний звук, cancel/late answer/BYE/две legs/owner crash |
 | RECORD-01 / Backend + Telephony | DB/S3 и call events | Chunk upload checksum/retry, restart/S3 outage/spool alarm, foreign-tenant deny, revoke/expired access, история своего сотрудника и всей org по роли |
-| DEPLOY-01b / DevOps | DB-01, INTEGRATION-01 | Один release manifest, canary/rollback, health/reconnect, public edge abuse tests, отдельный live approval |
+| DEPLOY-01b ранний staging / DevOps | DB bootstrap и минимальный согласованный Backend/Web manifest | Один release manifest, canary/rollback, health/reconnect, public edge abuse tests, отдельный live approval |
 | INTEGRATION-01 / Tech Lead + компоненты | Контракты, AUTH/PROVISION/MEDIA | Зафиксированные SHA, реальный HTTP→job→PBX→history, две организации и delete/revoke. Fake mode не запускается в production manifest |
 | OPS-01b / DevOps + Backend | DB restore + deployed staging | Потеря app/DB/PBX/S3/vault, ручной DR drill, сохранение evidence и action owner, измеренные показатели |
 | SCALE-01 / QA + Telephony | MEDIA/RECORD | 20/40/80 calls, CPS bursts, WS/pool/IOPS, node loss; установлен admission cap и N+1 |
