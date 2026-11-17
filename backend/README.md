@@ -1,4 +1,18 @@
-# SashaTel Control Plane
+# S1 Web onboarding
+
+Current server entrypoint is an isolated Web/email-sink process with call dispatch disabled. See [release contract](release-contract.md) for container/migration commands, secret-file variables, PostgreSQL17, TLS, health and grants. One API process while refresh single-flight is in memory; distributed coordination is required before horizontal scaling.
+
+Run `npm ci --ignore-scripts`, `npm run typecheck`, `npm test` with disposable migrated PostgreSQL runtime/admin URLs. Tests require create-database permission on the test admin connection for migration compatibility. New migration 004 preserves historical IDs and nullable legacy contact fields.
+
+AUTH_KEY_FILE contains a 32-byte hex key, managed outside PostgreSQL. Email sink outputs test messages in a private directory. Real DaData lookup uses DADATA_API_KEY_FILE; tests inject an isolated lookup port. Real email and DaData delivery/managed DB acceptance remain separate.
+
+[Unified wire](../docs/backend/account-session-contract.md) is in the repository docs/backend directory. Web ACK is linked from PR14. Consent receipt/production legal documents are a separate gate.
+
+## Legacy pilot reference
+
+The following describes the prior fake-call harness, retained for regression tests. Its old launch configuration does not start S1.
+
+### Control Plane pilot
 
 Node.js 24 and PostgreSQL 17. The local HTTP server binds to loopback and requires an explicit list of tenants for the in-memory fake ARI. Use a disposable database for integration tests.
 
