@@ -1,0 +1,70 @@
+name: Desktop Integration
+on:
+  pull_request:
+    paths: ['desktop/**', 'packages/call-lifecycle/**', 'docs/desktop-integration*', '.github/workflows/desktop-ui.yml']
+  push:
+    branches: ['feature/desktop-integration']
+permissions:
+  contents: read
+concurrency:
+  group: desktop-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  desktop:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            desktop/package-lock.json
+            packages/call-lifecycle/package-lock.json
+      - run: npm ci --ignore-scripts=false
+      - run: npm --prefix ../packages/call-lifecycle ci --ignore-scripts
+      - run: npm --prefix ../packages/call-lifecycle run test:contracts && npm --prefix ../packages/call-lifecycle run test:coverage && npm --prefix ../packages/call-lifecycle run test:mutations
+      - run: npm run typecheck && npm run lint && npm test
+      - name: Remove source screenshots before fresh evidence
+        run: rm -f artifacts/*.png
+      - run: npx playwright install --with-deps chromium
+      - name: Enable the bundled SUID sandbox helpers (Ubuntu restricts unprivileged user namespaces)
+        run: |
+          task_chromium=$(node --input-type=module -e 'import { chromium } from "playwright"; console.log(chromium.executablePath())')
+          task_chromium_dir=$(dirname "$task_chromium")
+          sudo chown root:root "$task_chromium_dir/chrome_sandbox" node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 "$task_chromium_dir/chrome_sandbox" node_modules/electron/dist/chrome-sandbox
+          echo "CHROMIUM_PATH=$task_chromium" >> "$GITHUB_ENV"
+          echo "CHROME_DEVEL_SANDBOX=$task_chromium_dir/chrome_sandbox" >> "$GITHUB_ENV"
+      - run: npm run test:components
+      - run: xvfb-run -a npm run test:audio:electron
+        env:
+          CHROME_DEVEL_SANDBOX: ${{ github.workspace }}/desktop/node_modules/electron/dist/chrome-sandbox
+      - run: xvfb-run -a npm run test:electron
+        env:
+          CHROME_DEVEL_SANDBOX: ${{ github.workspace }}/desktop/node_modules/electron/dist/chrome-sandbox
+      - run: npm run build
+      - name: Archive portable build preserving executable permissions
+        run: tar -czf dist/SashaTel-linux-x64.tar.gz -C dist SashaTel-linux-x64
+      - name: Enable packaged sandbox helper for the sandboxed E2E run
+        run: |
+          sudo chown root:root dist/SashaTel-linux-x64/chrome-sandbox
+          sudo chmod 4755 dist/SashaTel-linux-x64/chrome-sandbox
+      - run: xvfb-run -a npm run test:electron
+        env:
+          CHROME_DEVEL_SANDBOX: ${{ github.workspace }}/desktop/dist/SashaTel-linux-x64/chrome-sandbox
+          SASHATEL_EXECUTABLE: ./dist/SashaTel-linux-x64/SashaTel
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-integration-evidence
+          path: |
+            desktop/artifacts/
+            desktop/test-results/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SashaTel-linux-x64
+          path: desktop/dist/SashaTel-linux-x64.tar.gz

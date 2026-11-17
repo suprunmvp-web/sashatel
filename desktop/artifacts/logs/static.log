@@ -1,0 +1,8 @@
+
+> sashatel-desktop@0.1.0 typecheck
+> tsc --noEmit
+
+
+> sashatel-desktop@0.1.0 lint
+> eslint .
+

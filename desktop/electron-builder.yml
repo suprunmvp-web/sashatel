@@ -1,0 +1,18 @@
+appId: com.sashatel.desktop
+productName: SashaTel
+files:
+  - main.cjs
+  - preload.cjs
+  - security.cjs
+  - index.html
+  - '**/*.{js,mjs,css,svg,png,jpg,jpeg,webp,gif,ico,avif}'
+  - '!**/{node_modules,test,tests,build,dist,docs,coverage}/**'
+  - '!**/.*'
+  - '!**/*.{test,spec}.*'
+mac:
+  target: dmg
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: SashaTel использует микрофон для проверки аудио и исходящих звонков.

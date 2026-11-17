@@ -1,0 +1,5 @@
+desktop/node_modules/
+desktop/dist/
+desktop/test-results/
+desktop/playwright-report/
+desktop/.cache/

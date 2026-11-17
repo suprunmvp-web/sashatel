@@ -1,0 +1,30 @@
+
+> sashatel-desktop@0.1.0 test:audio:electron
+> node --test --test-isolation=none test/electron/*.test.cjs
+
+✔ real Electron: secure startup, IPC, external navigation, and empty hardware inventory (549.068662ms)
+ℹ Native inventory counts: inputs=0, outputs=0. No physical capture requested at startup.
+▶ real Electron / Chromium: synthetic capture through production permission handlers and Web Audio
+  ✔ actual PCM input gives nonzero RMS; three repeated tests close resources (2065.89427ms)
+  ✔ software gain modifies a real outgoing stream; zero gain yields silence (515.605158ms)
+  ✔ exact input device selection and real setSinkId routing (294.004884ms)
+  ✔ concurrent requests, stopTests and suspend/resume are safe in Chromium (13.328122ms)
+  ✔ camera remains denied despite audio permission (4.619862ms)
+  ✔ simulated disconnect events on native tracks/elements release only media resources (22.287904ms)
+  ✔ cancelled native capture arriving late is actually stopped (28.925461ms)
+  ✔ 20 native capture/release cycles stop every raw and processed track (105.264611ms)
+  ✔ main-to-preload sleep/lock events keep the service suspended until both recover (23.579412ms)
+  ✔ all service-owned AudioContexts are actually closed (3.261792ms)
+  ✔ reload creates a fresh service with no active capture (75.415254ms)
+✔ real Electron / Chromium: synthetic capture through production permission handlers and Web Audio (3531.808806ms)
+ℹ Synthetic WAV and Chromium fake devices only: no physical microphone, output audibility, macOS TCC or sleep tested.
+✔ real Electron: new local UI assets load; private/symlink files, inline script and network remain denied (465.851244ms)
+ℹ App copied to a temporary directory; production HTML/renderer/CSS were not edited. CSP/network rules stayed enabled.
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4871.876043

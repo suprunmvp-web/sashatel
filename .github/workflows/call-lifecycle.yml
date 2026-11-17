@@ -1,0 +1,29 @@
+name: Call Lifecycle Core
+on:
+  pull_request:
+    paths:
+      - 'packages/call-lifecycle/**'
+      - '.github/workflows/call-lifecycle.yml'
+  push:
+    branches: ['feat/call-lifecycle-core', 'feat/core-desktop-contract', 'main']
+    paths:
+      - 'packages/call-lifecycle/**'
+      - '.github/workflows/call-lifecycle.yml'
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/call-lifecycle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # TypeScript is dev-only; no Electron binary, SIP SDK/account or runtime deps.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run test:contracts
+      - run: npm run test:coverage
+      - run: npm run test:mutations

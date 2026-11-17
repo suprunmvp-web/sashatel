@@ -1,0 +1,11 @@
+
+> @sashatel/call-lifecycle@0.1.0 test:mutations
+> node scripts/check-mutations.js
+
+Detected: old attempt can mutate the current call
+Detected: double click bypasses reservation
+Detected: duration starts before confirmed connection
+Detected: cleanup deadline releases uncertain session
+Detected: previous owner epoch can issue commands
+Detected: revoked renderer can still command calls
+Detected: audio loss silently ends the SIP call

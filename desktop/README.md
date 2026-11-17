@@ -1,33 +1,16 @@
-# SashaTel Desktop — v0.1.0
+# SashaTel Desktop
 
-Изолированный прототип desktop-звонилки для macOS и Windows. Он не изменяет существующий веб-кабинет в корне репозитория.
+Единая интеграционная Electron-сборка UI + Call Lifecycle Core/owner + Audio Device Service. Это Draft без SIP/Asterisk и без реальных звонков.
 
-## Запуск
-
-Требуется Node.js 24 LTS и npm.
-
-```bash
-cd desktop
-npm install
-npm start
+```sh
+npm ci --ignore-scripts=false
+npm start                    # Audio/Settings работают, вызовы заблокированы
+SASHATEL_DEMO=1 npm start     # отдельный явно управляемый Demo/Test
+npm run build                # host-platform Electron package, Linux проверен
 ```
 
-## Что работает
+Node.js 24. Для Cloud proxy: `NODE_USE_ENV_PROXY=1` при install/build. Для Windows используйте `$env:SASHATEL_DEMO='1'`.
 
-- Окно desktop-приложения, набор и проверка телефонного номера РФ.
-- Демо-вызов с состояниями «набор», «соединено», «завершено».
-- Локальная история тестовых вызовов и их длительность.
-- Безопасные настройки Electron: contextIsolation, sandbox, отключённый Node.js в UI, CSP, отсутствие загрузки внешних страниц.
+[Архитектура, команды, безопасность, ограничения и Mac checklist](../docs/desktop-integration.md) · [проверки и скриншоты](artifacts/README.md) · [Audio](audio/README.md) · [Core](../docs/core-desktop-contract.md).
 
-## Чего пока нет
-
-- Реального соединения SIP/WebRTC, микрофона и динамиков.
-- API, авторизации, многопользовательского режима, записи звонков.
-- CDR/CEL, Asterisk, карусели номеров, тарификации и списаний.
-- Сборки установщиков, автотестов и проверенного запуска на macOS/Windows.
-
-Тестовый таймер **не является** доказательством подключения, ответа собеседника или фактических минут. Демо-история не сохраняется между перезапусками.
-
-## Следующий шаг
-
-Подключить WebRTC/SIP адаптер к тестовому Asterisk по WSS с двумя сотрудниками; вынести секреты из UI, реализовать авторизацию и события звонков на backend. В документации и интерфейсе не выдавать демо-вызовы за настоящие. Производственные исходящие вызовы через Билайн — только после договорного и технического согласования.
+`npm test`, `npm run typecheck`, `npm run lint`, `npm run test:components`, `npm run test:audio:electron`, `npm run test:electron`. Packaged E2E: `SASHATEL_EXECUTABLE=./dist/SashaTel-linux-x64/SashaTel npm run test:electron`. Core проверки выполняются отдельно из `packages/call-lifecycle`.
