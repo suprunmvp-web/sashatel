@@ -1,5 +1,6 @@
 """Real Asterisk CI smoke. Run in a disposable network namespace."""
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -18,6 +19,7 @@ from test_live_worker import LiveWorkerTest
 class IsolatedRuntime(Runtime):
     def __init__(self, root, binary, modules):
         self.root, self.binary, self.process = root, binary, None
+        self.environment = {**os.environ, "LD_LIBRARY_PATH": str(modules.parents[1])}
         data = modules.parents[2] / "var/lib/asterisk"
         for name in ("static-http", "rest-api"):
             shutil.copytree(data / name, root / name)
@@ -44,13 +46,13 @@ class IsolatedRuntime(Runtime):
 
     def cli(self, instruction, check=True):
         return subprocess.run([self.binary, "-C", str(self.cli_config), "-rx", instruction],
-                              check=check, text=True, capture_output=True, timeout=5)
+                              check=check, text=True, capture_output=True, timeout=5, env=self.environment)
 
     def start(self):
         with self.log.open("ab") as log:
             self.process = subprocess.Popen(
                 [self.binary, "-f", "-vvv", "-C", str(self.cli_config)],
-                stdin=subprocess.DEVNULL, stdout=log, stderr=log)
+                stdin=subprocess.DEVNULL, stdout=log, stderr=log, env=self.environment)
         for _ in range(80):
             result = self.cli("core show uptime", check=False)
             if result.returncode == 0 and "System uptime" in result.stdout:
