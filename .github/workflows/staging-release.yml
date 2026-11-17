@@ -27,6 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = 6e01c154a53759e3a122c56226dd835a6e079313
+          docker pull node:24.22.1-bookworm-slim
           docker build --pull -f backend/Dockerfile --label org.opencontainers.image.revision=6e01c154a53759e3a122c56226dd835a6e079313 -t sashatel-backend:6e01c154 backend
           docker run --rm --entrypoint node sashatel-backend:6e01c154 --version
           docker run --rm --entrypoint node sashatel-backend:6e01c154 --check server.ts
