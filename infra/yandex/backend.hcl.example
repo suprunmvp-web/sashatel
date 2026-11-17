@@ -1,0 +1,13 @@
+# No credentials in this file. Use dedicated environment credentials.
+bucket = "REPLACE-WITH-EXISTING-STATE-BUCKET"
+key    = "staging/foundation.tfstate"
+region = "ru-central1"
+endpoints = {
+  s3 = "https://storage.yandexcloud.net"
+}
+skip_credentials_validation  = true
+skip_region_validation       = true
+skip_requesting_account_id   = true
+skip_metadata_api_check      = true
+skip_s3_checksum             = true
+use_lockfile                 = true
