@@ -73,3 +73,24 @@ run "reject_overlapping_subnets" {
   }
   expect_failures = [var.zones]
 }
+
+run "bastion_requires_source" {
+  command = plan
+  variables {
+    environment          = "staging"
+    enable_admin_bastion = true
+  }
+  expect_failures = [yandex_compute_instance.bastion]
+}
+run "bastion_restricted_source" {
+  command = plan
+  variables {
+    environment          = "staging"
+    enable_admin_bastion = true
+    admin_public_cidrs   = ["192.0.2.42/32"]
+  }
+  assert {
+    condition     = length(yandex_compute_instance.bastion) == 1 && yandex_compute_instance.bastion[0].network_interface[0].nat
+    error_message = "Only the dedicated bastion is public when enabled."
+  }
+}
