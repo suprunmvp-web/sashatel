@@ -118,9 +118,10 @@ export class ControlPlane {
     const org = await this.#organization(db, tenant);
     if (!org?.active) throw new ApiError(403, 'ORGANIZATION_SUSPENDED');
     const { rows: [session] } = await db.query(
-      `SELECT s.membership_id, m.role_id, m.active AS member_active, u.active AS user_active,
+      `SELECT s.membership_id, u.id AS user_id, m.role_id, m.active AS member_active, u.active AS user_active,
               s.phone_epoch = u.phone_epoch AND s.revoked_at IS NULL AND s.expires_at > clock_timestamp() AS valid,
               EXISTS (SELECT 1 FROM role_permissions p WHERE p.role_id=m.role_id AND p.permission='call') AS can_call,
+              EXISTS (SELECT 1 FROM role_permissions p WHERE p.role_id=m.role_id AND p.permission='trunks.manage') AS can_manage_trunks,
               EXISTS (SELECT 1 FROM role_permissions p WHERE p.role_id=m.role_id AND p.permission='cabinet') AS cabinet
        FROM sessions s JOIN memberships m ON (s.organization_id,s.membership_id)=(m.organization_id,m.id)
        JOIN users u ON u.id=m.user_id
@@ -129,6 +130,17 @@ export class ControlPlane {
     if (!session.user_active || !session.member_active) throw new ApiError(403, 'USER_REVOKED');
     if (!session.valid) throw new ApiError(401, 'INVALID_SESSION');
     return { ...session, maxCalls: org.max_calls };
+  }
+
+  async manageTrunks<T>(bearer: string, operation: (db: PoolClient, actor: {
+    tenant: string; membershipId: string; userId: string;
+  }) => Promise<T>) {
+    const {tenant,hash} = this.#credentials(bearer);
+    return this.transaction(tenant, async db => {
+      const actor = await this.#session(db, tenant, hash);
+      if (!actor.can_manage_trunks) throw new ApiError(403, 'TRUNK_PERMISSION_REQUIRED');
+      return operation(db,{tenant,membershipId:actor.membership_id,userId:actor.user_id});
+    });
   }
 
   async logout(bearer: string) {
