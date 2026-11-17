@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>SashaTel — создание кабинета</title>
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="../icons.js"></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#content">К содержанию</a>
+  <header class="topbar"><a class="wordmark" href="https://sashatel.ru">SashaTel</a><div class="utilities"><span id="environment"></span><button id="theme" class="icon-button" aria-label="Переключить тему" title="Переключить тему"><span data-icon="moon"></span></button></div></header>
+  <aside id="preview-tools" hidden><details><summary>Сценарии проверки</summary><label>Ответ тестового API<select id="scenario"><option value="normal">Обычный путь</option><option value="delivery">Ошибка доставки письма</option><option value="expired">Неверный или истёкший код</option><option value="rate">Лимит отправки писем</option><option value="lookup-missing">ИНН не найден</option><option value="lookup-down">Сервис реквизитов недоступен</option><option value="create-unknown">Потеря ответа при создании</option><option value="offline">Нет соединения</option><option value="session-expired">Истекла сессия</option></select></label><p>Письма не отправляются. Код <code>123456</code>. Тестовый ИНН <code>7707083893</code>. Данные реквизитов вымышлены.</p><button id="reset" class="text-button">Начать заново</button></details></aside>
+  <main id="content" tabindex="-1"></main>
+  <footer><span>Рабочее пространство вашей команды</span><span id="footer-status">SashaTel</span></footer>
+</body></html>

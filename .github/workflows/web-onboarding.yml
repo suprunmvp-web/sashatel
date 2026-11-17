@@ -1,0 +1,32 @@
+name: Web onboarding preview
+on:
+  pull_request:
+    paths: ['brandbook/onboarding/**', '.github/workflows/web-onboarding.yml']
+  push:
+    branches: ['feature/web-onboarding-preview']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix brandbook/onboarding
+      - run: cd brandbook/onboarding && npx playwright install --with-deps chromium
+      - name: Configure Chromium sandbox
+        run: |
+          task_browser=$(cd brandbook/onboarding && node --input-type=module -e 'import {chromium} from "playwright"; console.log(chromium.executablePath())')
+          task_dir=$(dirname "$task_browser")
+          sudo chown root:root "$task_dir/chrome_sandbox"
+          sudo chmod 4755 "$task_dir/chrome_sandbox"
+          echo "CHROME_DEVEL_SANDBOX=$task_dir/chrome_sandbox" >> "$GITHUB_ENV"
+      - run: python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/web-preview.log 2>&1 &
+      - run: npm test --prefix brandbook/onboarding
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-onboarding-evidence
+          path: evidence/
