@@ -492,17 +492,6 @@ main {
   margin: 52px auto 64px;
   flex: initial;
 }
-#particles {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  opacity: 0.55;
-}
-.in-workspace #particles {
-  display: none;
-}
 .greeting {
   font-family: Georgia, serif;
   font-size: 38px;
