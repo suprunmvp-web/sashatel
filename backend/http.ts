@@ -1,4 +1,6 @@
 import { createServer, type IncomingMessage } from 'node:http';
+import type { WebAuth } from './web-auth.ts';
+import { webHandler } from './web-http.ts';
 import type { TrunkService } from './trunks.ts';
 import { ApiError, ControlPlane } from './control.ts';
 
@@ -29,7 +31,8 @@ function field(value: unknown, limit: number) {
   return value;
 }
 
-export function createApi(control: ControlPlane, ready: () => Promise<unknown>, trunks?: TrunkService) {
+export function createApi(control: ControlPlane, ready: () => Promise<unknown>, trunks?: TrunkService, web?: {auth:WebAuth;origin:string}) {
+  const handleWeb=web?webHandler(web.auth,web.origin):null;
   const requests = new Map<string, number>();
   let window = 0;
   return createServer(async (req, res) => {
@@ -40,8 +43,10 @@ export function createApi(control: ControlPlane, ready: () => Promise<unknown>, 
       res.end(JSON.stringify(data));
     };
     try {
+      if (handleWeb && await handleWeb(req,res)) return;
       const path = req.url?.split('?')[0] ?? '';
-      if (req.method === 'GET' && path === '/health') {
+      if (req.method === 'GET' && path === '/live') return send(200,{status:'alive'});
+      if (req.method === 'GET' && ['/health','/ready'].includes(path)) {
         await ready();
         return send(200, { status: 'ready' });
       }
