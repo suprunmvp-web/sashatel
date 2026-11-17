@@ -28,7 +28,7 @@ variable "admin_cidrs" {
   description = "Private admin addresses routed by a separately approved VPN/bastion path."
   type        = list(string)
   validation {
-    condition     = length(var.admin_cidrs) > 0 && alltrue([for c in var.admin_cidrs : can(cidrhost(c, 0)) && can(regex("^10[.][0-9]+[.][0-9]+[.][0-9]+/32$", c))])
+    condition     = (length(var.admin_cidrs) > 0 || var.enable_admin_bastion) && alltrue([for c in var.admin_cidrs : can(cidrhost(c, 0)) && can(regex("^10[.][0-9]+[.][0-9]+[.][0-9]+/32$", c))])
     error_message = "Explicit restricted administrative sources required."
   }
 }
