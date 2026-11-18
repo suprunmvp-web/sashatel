@@ -1,0 +1,46 @@
+name: Timeweb SSH smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: timeweb-ssh-smoke
+  cancel-in-progress: false
+
+jobs:
+  verify-ssh:
+    name: Verify restricted SSH connection (read-only)
+    runs-on: ubuntu-latest
+    environment: timeweb-production
+    timeout-minutes: 5
+    steps:
+      - name: Validate SSH configuration
+        env:
+          HOST: ${{ vars.TIMEWEB_HOST }}
+          USER: ${{ vars.TIMEWEB_USER }}
+          DEPLOY_KEY: ${{ secrets.TIMEWEB_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.TIMEWEB_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST"
+          test -n "$USER"
+          test -n "$DEPLOY_KEY"
+          test -n "$KNOWN_HOSTS"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/timeweb_key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/timeweb_key" "$HOME/.ssh/known_hosts"
+          ssh-keygen -y -f "$HOME/.ssh/timeweb_key" >/dev/null
+          ssh -i "$HOME/.ssh/timeweb_key" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=12 \
+            -- "$USER@$HOST" 'test "$(whoami)" = "sashatel-deploy" && hostname'
+          rm -f "$HOME/.ssh/timeweb_key"
