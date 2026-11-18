@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0.0",
+  "ownership": {
+    "selection": "backend",
+    "dispatch": "private_ari_worker",
+    "raw_events": "asterisk_cdr_cel_ari",
+    "spam": "backend_spacetel",
+    "rating": "backend_classifier",
+    "ui": "web"
+  },
+  "rules": {
+    "daily_initiations_per_caller": 8,
+    "quality_first_check_after_initiations": 80,
+    "passive_blocks_dispatch": true,
+    "spam_unknown": "unknown",
+    "reserve_multiplier": 1.5,
+    "quality_auto_mass_deactivation": false
+  },
+  "request": {
+    "call_id": "uuid",
+    "idempotency_key": "opaque",
+    "organization_id": "uuid",
+    "trunk_id": "uuid",
+    "employee_id": "uuid",
+    "destination_e164": "+7...",
+    "caller_id_e164": "+7...",
+    "authorized_dispatch_id": "uuid"
+  },
+  "event": {
+    "schema_version": 1,
+    "event_id": "uuid",
+    "call_id": "uuid",
+    "pbx_instance_id": "nonempty",
+    "channel_id": "string",
+    "linkedid": "string|null",
+    "occurred_at": "UTC ISO8601",
+    "event_type": "dispatch|ringing|technical_answer|hangup|failure",
+    "sip_code": "integer|null",
+    "hangup_cause": "integer|null",
+    "caller_id_e164": "string",
+    "classifier_result": "human|machine|unknown|null",
+    "classifier_version": "string|null"
+  },
+  "notes": [
+    "call_id is business attempt, not unique CDR leg",
+    "use UTC event timestamps and agreed business timezone for daily cap",
+    "no ASR guarantee from ANSWERED",
+    "carrier CLI rewriting must be verified",
+    "never perform second originate after uncertain committed dispatch"
+  ]
+}
