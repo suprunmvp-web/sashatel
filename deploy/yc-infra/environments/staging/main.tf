@@ -38,7 +38,10 @@ variable "zone" {
   type    = string
   default = "ru-central1-a"
 }
-variable "vm_image_id" { type = string }
+# Yandex Cloud official Ubuntu 24.04 LTS image family; resolved at plan.
+data "yandex_compute_image" "ubuntu_2404" {
+  family = "ubuntu-2404-lts"
+}
 variable "ssh_public_key" { type = string }
 variable "ssh_cidrs" { type = list(string) }
 variable "db_resource_preset_id" {
@@ -51,7 +54,7 @@ module "environment" {
   environment           = "staging"
   folder_id             = var.folder_id
   zone                  = var.zone
-  vm_image_id           = var.vm_image_id
+  vm_image_id           = data.yandex_compute_image.ubuntu_2404.id
   ssh_public_key        = var.ssh_public_key
   ssh_cidrs             = var.ssh_cidrs
   vm_cores              = 2
