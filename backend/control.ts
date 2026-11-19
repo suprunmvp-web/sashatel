@@ -360,6 +360,10 @@ export class ControlPlane {
   async processOne(tenant:string,gateway:TelephonyGateway){
     const job=await this.transaction(tenant,async db=>{
       await this.#organization(db,tenant);
+      // Reclaim abandoned uncommitted slots before dispatching more calls.
+      // The global quota remains safe if this worker is offline: only capacity
+      // is temporarily unavailable, never silently oversubscribed.
+      await this.carousel.expireForTenant(db,tenant,100);
       // A revocation of an existing conversation requires a real hangup.
       await db.query(
         "WITH stopped AS ("+
