@@ -112,7 +112,7 @@ export class PrivateAriClient {
 
   async createMixingBridge(bridgeId:string):Promise<AriBridge> {
     if(!uuid.test(bridgeId))throw Error('ARI_BRIDGE_ID_INVALID');
-    return this.request('POST','bridges/'+bridgeId,{type:'mixing'});
+    return this.request<AriBridge>('POST','bridges/'+bridgeId,{type:'mixing'});
   }
 
   async addToBridge(bridgeId:string,channelIds:readonly string[]):Promise<void> {
