@@ -1,0 +1,53 @@
+name: SashaTel YC staging — verify S3 Terraform state access
+
+on:
+  push:
+    branches:
+      - feature/yc-staging-deployment-20261119
+    paths:
+      - .github/workflows/yc-staging-state-check.yml
+      - deploy/yc-infra/environments/staging/main.tf
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sashatel-staging-infra-state
+  cancel-in-progress: false
+
+jobs:
+  remote-state:
+    name: Check protected S3 backend (no resources changed)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/feature/yc-staging-deployment-20261119'
+    environment: staging-infra
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: deploy/yc-infra/environments/staging
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+      - name: Ensure environment secrets are present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$AWS_ACCESS_KEY_ID" || { echo "Missing protected AWS_ACCESS_KEY_ID" >&2; exit 1; }
+          test -n "$AWS_SECRET_ACCESS_KEY" || { echo "Missing protected AWS_SECRET_ACCESS_KEY" >&2; exit 1; }
+      - name: Initialize private Yandex Object Storage state (no apply)
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform init -reconfigure -input=false -no-color
+          terraform workspace list -no-color
+          echo "Remote S3 state initialized. No VM/DB resources created." >> "$GITHUB_STEP_SUMMARY"
+      - name: Document scope
+        run: echo "This workflow does not run terraform apply or create billable resources."
