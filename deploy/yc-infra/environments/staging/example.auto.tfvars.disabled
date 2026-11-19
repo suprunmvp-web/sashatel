@@ -11,4 +11,4 @@ existing_network_id = "enpthm9vaqno3a8ogprk"
 existing_subnet_id  = "e9bm2hfyk1kfsoyimttp"
 
 # Dedicated pull-only VM service account: container-registry.images.puller on staging registry.
-vm_service_account_id = "INSERT_STAGING_VM_PULL_SERVICE_ACCOUNT_ID"
+vm_service_account_id = "ajet0imh2qqqtr55h5im"
