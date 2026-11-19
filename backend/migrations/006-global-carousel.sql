@@ -16,6 +16,37 @@ CREATE TABLE carousel_numbers (
 CREATE INDEX carousel_active ON carousel_numbers(organization_id,trunk_id,e164)
  WHERE provider_approved AND status='active';
 
+-- v1.1 billing no longer reserves prepaid wallet units for a call.
+-- Keep legacy reserved column for historical 001 rows; new calls use 0.
+ALTER TABLE calls DROP CONSTRAINT calls_reserved_check;
+ALTER TABLE calls ADD CONSTRAINT calls_reserved_nonnegative CHECK(reserved>=0);
+ALTER TABLE calls ALTER COLUMN reserved SET DEFAULT 0;
+
+-- Postpaid evidence in exact kopecks: 3 RUB per 60 human seconds = 5 kopecks/s.
+-- Each business call settles once; corrections require a separately audited
+-- adjustment workflow, not an overwrite of monetary evidence.
+CREATE TABLE postpaid_usage (
+ organization_id uuid NOT NULL,
+ call_id uuid NOT NULL,
+ outcome text NOT NULL CHECK(outcome IN('human','machine','no_answer','rejected','error','unknown')),
+ billable_seconds integer NOT NULL CHECK(billable_seconds>=0),
+ amount_kopeks bigint NOT NULL CHECK(amount_kopeks>=0),
+ evidence_id text,
+ recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY(organization_id,call_id),
+ FOREIGN KEY(organization_id,call_id) REFERENCES calls(organization_id,id),
+ CHECK(
+   (outcome='human' AND evidence_id IS NOT NULL AND length(evidence_id)>0
+    AND amount_kopeks=billable_seconds::bigint*5)
+   OR (outcome<>'human' AND billable_seconds=0 AND amount_kopeks=0)
+ )
+);
+ALTER TABLE postpaid_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE postpaid_usage FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant ON postpaid_usage
+ USING(organization_id=nullif(current_setting('control.tenant',true),'')::uuid);
+GRANT SELECT,INSERT ON postpaid_usage TO control_runtime;
+
 -- This table MUST NOT be tenant-scoped: one real E.164 number, one daily quota.
 -- It is not directly accessible to control_runtime; only guarded functions mutate it.
 CREATE TABLE physical_caller_day (
