@@ -1,0 +1,6 @@
+# Rename only on your authorized runner; never commit any real values.
+# folder_id is the ID (not the name) of sashatel-staging.
+folder_id      = "INSERT_STAGING_FOLDER_ID"
+vm_image_id    = "INSERT_REVIEWED_UBUNTU_IMAGE_ID"
+ssh_public_key = "ssh-ed25519 INSERT_REAL_PUBLIC_KEY"
+ssh_cidrs      = ["INSERT_TRUSTED_IP/32"]
