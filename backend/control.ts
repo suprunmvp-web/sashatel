@@ -391,7 +391,7 @@ export class ControlPlane {
         try{
           const actor=await this.#session(db,tenant,held.session_hash);
           const {rows:[route]}=await db.query(
-            "SELECT n.active AND n.provider_approved AND n.status='active' "+
+            "SELECT n.provider_approved AND n.status='active' "+
             "AND t.active AND s.active AND s.telephony "+
             "AND COALESCE(m.trunk_override_id,o.default_trunk_id)=c.trunk_id AS allowed "+
             "FROM calls c JOIN carousel_numbers n ON "+
