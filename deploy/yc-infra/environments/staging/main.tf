@@ -14,6 +14,8 @@ provider "yandex" {
 }
 
 variable "folder_id" { type = string }
+variable "existing_network_id" { type = string }
+variable "existing_subnet_id" { type = string }
 variable "zone" {
   type    = string
   default = "ru-central1-a"
@@ -37,6 +39,8 @@ module "environment" {
   vm_cores              = 2
   vm_memory_gb          = 4
   db_resource_preset_id = var.db_resource_preset_id
+  existing_network_id = var.existing_network_id
+  existing_subnet_ids = { (var.zone) = var.existing_subnet_id }
   db_disk_size_gb       = 16
   subnets = {
     (var.zone) = { zone = var.zone, cidr = "10.77.0.0/24" }
