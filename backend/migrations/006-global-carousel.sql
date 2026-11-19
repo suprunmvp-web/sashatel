@@ -165,10 +165,39 @@ BEGIN
  RETURN 'released';
 END $$;
 
+-- Expired holds must be reclaimed by the DB authority, not by granting
+-- the HTTP runtime UPDATE access to dispatch or global quota tables.
+CREATE FUNCTION expire_physical_holds(tenant uuid, max_batch integer DEFAULT 100)
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=control,pg_catalog AS $$
+DECLARE h carousel_dispatches%ROWTYPE;
+DECLARE released integer:=0;
+BEGIN
+ IF tenant IS DISTINCT FROM nullif(current_setting('control.tenant',true),'')::uuid THEN
+  RAISE EXCEPTION 'TENANT_SCOPE_MISMATCH';
+ END IF;
+ IF max_batch<1 OR max_batch>500 THEN RAISE EXCEPTION 'INVALID_EXPIRY_BATCH'; END IF;
+ FOR h IN
+   SELECT * FROM carousel_dispatches
+   WHERE organization_id=tenant AND state='held' AND expires_at<=clock_timestamp()
+   ORDER BY expires_at,id FOR UPDATE SKIP LOCKED LIMIT max_batch
+ LOOP
+   UPDATE physical_caller_day SET held=held-1
+     WHERE e164=h.caller_id AND day=h.budget_day AND held>0;
+   IF NOT FOUND THEN RAISE EXCEPTION 'PHYSICAL_HOLD_MISSING'; END IF;
+   UPDATE carousel_dispatches SET state='released'
+     WHERE organization_id=tenant AND id=h.id;
+   released:=released+1;
+ END LOOP;
+ RETURN released;
+END $$;
+
+REVOKE ALL ON FUNCTION expire_physical_holds(uuid,integer) FROM PUBLIC;
 REVOKE ALL ON FUNCTION available_carousel_numbers(uuid,uuid,date) FROM PUBLIC;
 REVOKE ALL ON FUNCTION hold_physical_caller(uuid,text,date) FROM PUBLIC;
 REVOKE ALL ON FUNCTION finalize_physical_caller(uuid,uuid,text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION available_carousel_numbers(uuid,uuid,date),
+GRANT EXECUTE ON FUNCTION expire_physical_holds(uuid,integer),
+  available_carousel_numbers(uuid,uuid,date),
   hold_physical_caller(uuid,text,date),
   finalize_physical_caller(uuid,uuid,text) TO control_runtime;
 GRANT SELECT ON carousel_numbers,carousel_dispatches,carousel_outbox TO control_runtime;
