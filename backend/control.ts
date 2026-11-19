@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'no
 import { promisify } from 'node:util';
 import type { Pool, PoolClient } from 'pg';
 import { GlobalCarousel } from './global-carousel.ts';
+import { GlobalCarousel } from './global-carousel.ts';
 
 const derive = promisify(scrypt);
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -206,6 +207,65 @@ export class ControlPlane {
     await this.transaction(tenant, async db => {
       await this.#organization(db, tenant);
       await db.query('UPDATE sessions SET revoked_at=clock_timestamp() WHERE organization_id=$1 AND token_hash=$2 AND revoked_at IS NULL', [tenant, hash]);
+    });
+  }
+
+  /**
+   * Commercial v1.1 admission, integrated with the physical-number carousel.
+   * Deliberately NOT mounted on the public /v1/calls route until the legacy
+   * wallet-based outbox has been replaced with the one-shot ARI worker.
+   */
+  async prepareCommercialCall(bearer:string,key:string,destination:string) {
+    if (!e164.test(destination)||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(key))
+      throw new ApiError(400,'INVALID_CALL_REQUEST');
+    const {tenant,hash}=this.#credentials(bearer);
+    return this.transaction(tenant,async db=>{
+      const actor=await this.#session(db,tenant,hash);
+      if(!actor.can_call)throw new ApiError(403,'CALL_PERMISSION_REQUIRED');
+      // Idempotency must win over temporary availability changes.
+      const {rows:[old]}=await db.query(
+        'SELECT id AS call_id,state,destination,caller_id,trunk_id FROM carousel_dispatches '+
+        'WHERE organization_id=$1 AND membership_id=$2 AND request_key=$3',
+        [tenant,actor.membership_id,key]);
+      if(old){
+        if(old.destination!==destination)throw new ApiError(409,'IDEMPOTENCY_CONFLICT');
+        return old;
+      }
+      if(!this.workerAvailable(tenant))throw new ApiError(503,'CALL_WORKER_UNAVAILABLE');
+      const {rows:[sub]}=await db.query(
+        'SELECT active,telephony FROM subscriptions WHERE organization_id=$1',[tenant]);
+      if(!sub?.active||!sub.telephony)throw new ApiError(403,'TELEPHONY_DISABLED');
+      const {rows:[concurrency]}=await db.query(
+        "SELECT COUNT(*)::int AS used FROM carousel_dispatches WHERE organization_id=$1 "+
+        "AND state IN ('committed','unknown')",[tenant]);
+      if(concurrency.used>=actor.maxCalls)throw new ApiError(409,'CALL_CONCURRENCY_LIMIT');
+      const {rows:[route]}=await db.query(
+        'SELECT o.default_trunk_id,m.trunk_override_id FROM organizations o '+
+        'JOIN memberships m ON m.organization_id=o.id WHERE o.id=$1 AND m.id=$2',
+        [tenant,actor.membership_id]);
+      let trunkId:string|undefined=route?.trunk_override_id??route?.default_trunk_id??undefined;
+      if(!trunkId){
+        const {rows:active}=await db.query(
+          'SELECT id FROM trunks WHERE organization_id=$1 AND active ORDER BY id LIMIT 2',[tenant]);
+        if(active.length!==1)throw new ApiError(409,'TRUNK_ASSIGNMENT_REQUIRED');
+        trunkId=active[0].id;
+        await db.query('UPDATE organizations SET default_trunk_id=$2 '+
+          'WHERE id=$1 AND default_trunk_id IS NULL',[tenant,trunkId]);
+      }
+      const carousel=new GlobalCarousel();
+      try {
+        const held=await carousel.reserve(db,{
+          organizationId:tenant,membershipId:actor.membership_id,
+          effectiveTrunkId:trunkId,requestKey:key,destination});
+        return {call_id:held.id,state:held.state,destination:held.destination,
+          caller_id:held.caller_id,trunk_id:held.trunk_id};
+      } catch(error){
+        const code=error instanceof Error?error.message:'';
+        if(code==='NO_CALLER_ID'||code==='NUMBER_LIMIT_REACHED')
+          throw new ApiError(409,code);
+        if(code==='IDEMPOTENCY_CONFLICT')throw new ApiError(409,code);
+        throw error;
+      }
     });
   }
 
