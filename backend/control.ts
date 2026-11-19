@@ -384,7 +384,7 @@ export class ControlPlane {
         "SELECT c.* FROM calls c JOIN carousel_dispatches d "+
         "ON (c.organization_id,c.id)=(d.organization_id,d.id) "+
         "WHERE c.state='authorized' AND d.state='held' "+
-        "ORDER BY c.created_at LIMIT 1 FOR UPDATE OF c,d SKIP LOCKED");
+        "ORDER BY c.created_at LIMIT 1 FOR UPDATE OF c SKIP LOCKED");
       if(held){
         let valid=true;
         try{
