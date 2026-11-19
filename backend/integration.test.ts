@@ -107,6 +107,31 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.deepEqual(row,{available:'100',pending:'0'});
   });
 
+  await t.test('overdue postpaid invoices block only new calls and accept confirmed settlement',async()=>{
+    const a=await fixture({balance:0,number:'+74950002400'});
+    const invoice=randomUUID();
+    await admin.query(
+      "INSERT INTO control.billing_obligations(organization_id,id,issued_at,due_at,amount_kopeks,paid_kopeks,state) "+
+      "VALUES($1,$2,clock_timestamp()-interval '14 days',clock_timestamp()-interval '1 day',500,0,'issued')",
+      [a.tenant,invoice]);
+    await assert.rejects(control.authorize(a.token,'unpaid',destination),code('PAYMENT_OVERDUE'));
+    await admin.query('UPDATE control.billing_obligations SET paid_kopeks=250 WHERE id=$1',[invoice]);
+    await assert.rejects(control.authorize(a.token,'partial',destination),code('PAYMENT_OVERDUE'));
+    await admin.query('UPDATE control.billing_obligations SET paid_kopeks=500 WHERE id=$1',[invoice]);
+    const accepted=await control.authorize(a.token,'settled',destination);
+    // Becoming overdue after reservation invalidates a not-yet-committed
+    // dispatch without disrupting any already connected conversation.
+    await admin.query('UPDATE control.billing_obligations SET paid_kopeks=0 WHERE id=$1',[invoice]);
+    const gateway=new FakeAri();
+    await control.processOne(a.tenant,gateway);
+    assert.equal(gateway.attempts.size,0);
+    assert.equal((await control.calls(a.token,accepted.call_id)).state,'failed');
+    const {rows:[quota]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1',
+      [a.number]);
+    assert.deepEqual(quota,{held:0,used:0});
+  });
+
   await t.test('default trunk is inherited and member override selects only assigned carrier', async () => {
     const a = await fixture({number:'+74950002001'});
     const [adminUser,adminMember,adminDevice]=Array.from({length:3},()=>randomUUID());
