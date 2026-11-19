@@ -58,7 +58,7 @@ variable "existing_network_id" {
   default = null
   nullable = true
   validation {
-    condition = var.existing_network_id == null || length(trimspace(var.existing_network_id)) > 5
+    condition = var.existing_network_id == null ? true : length(trimspace(var.existing_network_id)) > 5
     error_message = "Existing VPC must be specified by its real network ID."
   }
 }
