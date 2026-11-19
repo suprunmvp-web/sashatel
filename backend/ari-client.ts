@@ -131,5 +131,11 @@ export class PrivateAriClient {
 }
 
 export class AriHttpError extends Error {
-  constructor(readonly status:number, readonly code:string) {super(code);}
+  readonly status:number;
+  readonly code:string;
+  constructor(status:number, code:string) {
+    super(code);
+    this.status=status;
+    this.code=code;
+  }
 }
