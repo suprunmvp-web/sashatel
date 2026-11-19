@@ -42,7 +42,7 @@ jobs:
       TF_INPUT: 'false'
       TF_VAR_folder_id: b1gi9a6fgkr55k6csn9s
       TF_VAR_existing_network_id: enpthm9vaqno3a8ogprk
-      TF_VAR_existing_subnet_id: e9bm2hfyk1kfsoyimttp
+      TF_VAR_existing_subnet_id: e9bm2hfvklkfsovjmttp
       TF_VAR_vm_service_account_id: ajet0imh2qqqtr55h5im
       TF_VAR_zone: ru-central1-a
       TF_VAR_ssh_public_key: ${{ vars.SSH_PUBLIC_KEY }}
