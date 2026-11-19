@@ -9,3 +9,6 @@ ssh_cidrs      = ["INSERT_TRUSTED_IP/32"]
 # Confirm the subnet zone matches the zone selected above.
 existing_network_id = "enpthm9vaqno3a8ogprk"
 existing_subnet_id  = "e9bm2hfyk1kfsoyimttp"
+
+# Dedicated pull-only VM service account: container-registry.images.puller on staging registry.
+vm_service_account_id = "INSERT_STAGING_VM_PULL_SERVICE_ACCOUNT_ID"
