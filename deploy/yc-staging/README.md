@@ -47,3 +47,9 @@ Source contracts: `docs/product/PROJECT-HANDOFF-RU.md` and `docs/product/sashate
 - Last successful image publication: `cr.yandex/crpjs1v75pobqqd0ij5t/sashatel-backend@sha256:fc298ec73e651c8862edd15ed9902a3380aef95c15171c1e56bbc4e7d155fd91`
 
 Identifiers are from user-provided screenshots / successful GitHub job; they are not credentials. Before apply, validate their zone, ownership, absence of overlap, and Yandex Cloud quotas via a read-only Terraform plan. The registry-push service account is NOT an infrastructure provisioning identity. No Terraform apply or staging VM/DB is performed by this PR.
+
+## Single staging release command (after infrastructure is provisioned)
+
+The reviewed Terraform VM installs Docker Engine and the Compose plugin from Docker's signed Ubuntu repository via cloud-init. It creates no credentials and does not run the application automatically. Use a reviewed Ubuntu image, check cloud-init completion, supply owner-controlled read-only secret files and short-lived registry login. After database backup confirmation, execute `sudo ./deploy/yc-staging/release.sh /etc/sashatel/staging/staging.env` from the deployment checkout. The release script validates the pinned OCI digest, Compose configuration and secret-file presence, pulls the tested image, runs checksum-guarded migrations **once**, starts the API loopback-only, checks `/ready` and attempts application-only rollback to the previous immutable image if readiness fails. It never rolls back PostgreSQL automatically.
+
+The deployment script does **not** create a VM, a database or secrets; it cannot be run from GitHub Actions without a protected staging runner, a separate scoped provisioning identity, secured remote Terraform state and approved resource cost. Readiness only means isolated Backend HTTP/DB health; neither real email delivery nor ARI/PSTN are enabled.
