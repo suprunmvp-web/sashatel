@@ -199,16 +199,16 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     await assert.rejects(reserve(a,'global-ninth'),/NUMBER_LIMIT_REACHED/);
 
     // Two concurrent ninth-slot contenders: one and only one can win.
-    await control.transaction(a.tenant,db=>carousel.finalize(db,{
-      organizationId:a.tenant,dispatchId:holds[0].id,action:'release'}));
+    await control.transaction(b.tenant,db=>carousel.finalize(db,{
+      organizationId:b.tenant,dispatchId:holds[0].id,action:'release'}));
     const results=await Promise.allSettled([reserve(a,'race-a'),reserve(b,'race-b')]);
     assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
     assert.equal(results.filter(x=>x.status==='rejected').length,1);
-    const final=await control.transaction(b.tenant,db=>carousel.finalize(db,{
-      organizationId:b.tenant,dispatchId:holds[1].id,action:'commit'}));
+    const final=await control.transaction(a.tenant,db=>carousel.finalize(db,{
+      organizationId:a.tenant,dispatchId:holds[1].id,action:'commit'}));
     assert.equal(final,'committed');
-    assert.equal(await control.transaction(b.tenant,db=>carousel.finalize(db,{
-      organizationId:b.tenant,dispatchId:holds[1].id,action:'release'})),'committed');
+    assert.equal(await control.transaction(a.tenant,db=>carousel.finalize(db,{
+      organizationId:a.tenant,dispatchId:holds[1].id,action:'release'})),'committed');
     const {rows:[global]}=await admin.query(
       'SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE $2)::date',
       [number,'Europe/Moscow']);
@@ -222,8 +222,8 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.equal(outbox.state,'pending');
     await assert.rejects(control.transaction(a.tenant,db=>
       db.query('UPDATE physical_caller_day SET held=0 WHERE e164=$1',[number])),/permission denied/);
-    await assert.rejects(control.transaction(a.tenant,db=>carousel.finalize(db,{
-      organizationId:a.tenant,dispatchId:holds[1].id,action:'release'})),/UNKNOWN_DISPATCH/);
+    await assert.rejects(control.transaction(b.tenant,db=>carousel.finalize(db,{
+      organizationId:b.tenant,dispatchId:holds[1].id,action:'release'})),/UNKNOWN_DISPATCH/);
   });
 
   await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {
