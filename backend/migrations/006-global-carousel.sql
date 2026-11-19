@@ -1,0 +1,137 @@
+-- SashaTel v1.1: one physical Caller ID quota across all organizations.
+-- Incremental to v1 routing migration; no PSTN dispatch enabled by schema.
+SET search_path=control,pg_catalog;
+
+CREATE TABLE carousel_numbers (
+  organization_id uuid NOT NULL,
+  e164 text NOT NULL CHECK(e164 ~ '^\+[1-9][0-9]{6,14}$'),
+  trunk_id uuid NOT NULL,
+  provider_approved boolean NOT NULL DEFAULT false,
+  status text NOT NULL DEFAULT 'passive' CHECK(status IN('active','passive')),
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY(organization_id,e164),
+  FOREIGN KEY(organization_id,e164) REFERENCES phone_numbers(organization_id,e164),
+  FOREIGN KEY(organization_id,trunk_id) REFERENCES trunks(organization_id,id)
+);
+CREATE INDEX carousel_active ON carousel_numbers(organization_id,trunk_id,e164)
+ WHERE provider_approved AND status='active';
+
+-- This table MUST NOT be tenant-scoped: one real E.164 number, one daily quota.
+-- It is not directly accessible to control_runtime; only guarded functions mutate it.
+CREATE TABLE physical_caller_day (
+  e164 text NOT NULL,
+  day date NOT NULL,
+  held integer NOT NULL DEFAULT 0 CHECK(held>=0),
+  used integer NOT NULL DEFAULT 0 CHECK(used>=0),
+  CHECK(held+used<=8),
+  PRIMARY KEY(e164,day)
+);
+
+CREATE TABLE carousel_dispatches (
+  organization_id uuid NOT NULL,
+  id uuid NOT NULL,
+  membership_id uuid NOT NULL,
+  request_key text NOT NULL,
+  destination text NOT NULL CHECK(destination ~ '^\+[1-9][0-9]{6,14}$'),
+  caller_id text NOT NULL,
+  trunk_id uuid NOT NULL,
+  budget_day date NOT NULL,
+  state text NOT NULL DEFAULT 'held' CHECK(state IN('held','committed','released','unknown')),
+  expires_at timestamptz NOT NULL DEFAULT (clock_timestamp()+interval '30 seconds'),
+  committed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY(organization_id,id),
+  UNIQUE(organization_id,membership_id,request_key),
+  FOREIGN KEY(organization_id,membership_id) REFERENCES memberships(organization_id,id),
+  FOREIGN KEY(organization_id,caller_id) REFERENCES carousel_numbers(organization_id,e164),
+  FOREIGN KEY(organization_id,trunk_id) REFERENCES trunks(organization_id,id)
+);
+CREATE INDEX carousel_dispatch_expiry ON carousel_dispatches(organization_id,expires_at) WHERE state='held';
+
+DO $$
+DECLARE t text;
+BEGIN
+ FOREACH t IN ARRAY ARRAY['carousel_numbers','carousel_dispatches'] LOOP
+  EXECUTE format('ALTER TABLE control.%I ENABLE ROW LEVEL SECURITY',t);
+  EXECUTE format('ALTER TABLE control.%I FORCE ROW LEVEL SECURITY',t);
+  EXECUTE format('CREATE POLICY tenant ON control.%I USING(organization_id=nullif(current_setting(''control.tenant'',true),'''')::uuid)',t);
+ END LOOP;
+END $$;
+
+-- Hold the physical quota under a PostgreSQL row lock; fail closed at the ninth slot.
+-- The service invokes this in its own transaction after session authorization.
+CREATE FUNCTION hold_physical_caller(tenant uuid, phone text, budget_day date)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=control,pg_catalog AS $$
+DECLARE accepted integer;
+BEGIN
+ IF tenant IS DISTINCT FROM nullif(current_setting('control.tenant',true),'')::uuid THEN
+  RAISE EXCEPTION 'TENANT_SCOPE_MISMATCH';
+ END IF;
+ IF NOT EXISTS (
+  SELECT 1 FROM carousel_numbers n JOIN trunks t
+    ON(t.organization_id,t.id)=(n.organization_id,n.trunk_id)
+   WHERE n.organization_id=tenant AND n.e164=phone AND n.status='active'
+     AND n.provider_approved AND t.active
+ ) THEN
+  RAISE EXCEPTION 'CALLER_NOT_APPROVED';
+ END IF;
+ INSERT INTO physical_caller_day(e164,day,held,used) VALUES(phone,budget_day,1,0)
+ ON CONFLICT(e164,day) DO UPDATE
+   SET held=physical_caller_day.held+1
+   WHERE physical_caller_day.held+physical_caller_day.used<8
+ RETURNING held INTO accepted;
+ RETURN accepted IS NOT NULL;
+END $$;
+
+-- Finalizing a tenant-owned dispatch also finalizes its global quota in one transaction.
+-- Never release a committed attempt, including after uncertain ARI originate.
+CREATE FUNCTION finalize_physical_caller(tenant uuid, dispatch_id uuid, action text)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=control,pg_catalog AS $$
+DECLARE h carousel_dispatches%ROWTYPE;
+DECLARE current_day date;
+BEGIN
+ IF tenant IS DISTINCT FROM nullif(current_setting('control.tenant',true),'')::uuid THEN
+  RAISE EXCEPTION 'TENANT_SCOPE_MISMATCH';
+ END IF;
+ IF action NOT IN('commit','release') THEN RAISE EXCEPTION 'INVALID_FINALIZE_ACTION'; END IF;
+ SELECT * INTO h FROM carousel_dispatches
+  WHERE organization_id=tenant AND id=dispatch_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'UNKNOWN_DISPATCH'; END IF;
+ IF h.state <> 'held' THEN RETURN h.state; END IF;
+ IF action='commit' THEN
+  current_day := (clock_timestamp() AT TIME ZONE 'Europe/Moscow')::date;
+  IF h.expires_at<=clock_timestamp() OR h.budget_day<>current_day THEN
+   RAISE EXCEPTION 'HOLD_EXPIRED_OR_DAY_CHANGED';
+  END IF;
+  IF NOT EXISTS (
+   SELECT 1 FROM carousel_numbers n JOIN trunks t
+     ON (t.organization_id,t.id)=(n.organization_id,n.trunk_id)
+    WHERE n.organization_id=tenant AND n.e164=h.caller_id
+      AND n.trunk_id=h.trunk_id AND n.status='active'
+      AND n.provider_approved AND t.active
+  ) THEN RAISE EXCEPTION 'CALLER_NOT_APPROVED'; END IF;
+  UPDATE physical_caller_day SET held=held-1,used=used+1
+   WHERE e164=h.caller_id AND day=h.budget_day AND held>0;
+  IF NOT FOUND THEN RAISE EXCEPTION 'PHYSICAL_HOLD_MISSING'; END IF;
+  UPDATE carousel_dispatches SET state='committed',committed_at=clock_timestamp()
+    WHERE organization_id=tenant AND id=dispatch_id;
+  RETURN 'committed';
+ END IF;
+ UPDATE physical_caller_day SET held=held-1
+  WHERE e164=h.caller_id AND day=h.budget_day AND held>0;
+ IF NOT FOUND THEN RAISE EXCEPTION 'PHYSICAL_HOLD_MISSING'; END IF;
+ UPDATE carousel_dispatches SET state='released'
+  WHERE organization_id=tenant AND id=dispatch_id;
+ RETURN 'released';
+END $$;
+
+REVOKE ALL ON FUNCTION hold_physical_caller(uuid,text,date) FROM PUBLIC;
+REVOKE ALL ON FUNCTION finalize_physical_caller(uuid,uuid,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION hold_physical_caller(uuid,text,date),
+  finalize_physical_caller(uuid,uuid,text) TO control_runtime;
+GRANT SELECT ON carousel_numbers,carousel_dispatches TO control_runtime;
+GRANT INSERT ON carousel_dispatches TO control_runtime;
+-- Operator approval and active/passive transitions require a separate trusted service.
+-- No direct DML privilege on physical_caller_day for application runtime.
