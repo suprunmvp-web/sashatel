@@ -26,6 +26,7 @@ async function fixture({ limit = 10, balance = 100, role = 'manager', number = '
   await admin.query("INSERT INTO control.wallets VALUES ($1,'minutes',$2,10)", [tenant,balance]);
   await admin.query('INSERT INTO control.trunks VALUES ($1,$2,true)', [tenant,trunk]);
   await admin.query('INSERT INTO control.phone_numbers VALUES ($1,$2,$3,true)', [tenant,number,trunk]);
+  await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",[tenant,number,trunk]);
   const credentials = await control.login(tenant,user,'test-password',device);
   return { tenant, user, member, trunk, token: credentials.token, number };
 }
@@ -121,6 +122,7 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       [a.tenant,secondTrunk]);
     await admin.query('INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES ($1,$2,$3,true)',
       [a.tenant,secondNumber,secondTrunk]);
+    await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true)",[a.tenant,secondNumber,secondTrunk]);
 
     // More than one eligible trunk without a declared route must fail closed.
     await assert.rejects(control.authorize(a.token,'ambiguous',destination),
@@ -274,17 +276,21 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.equal(dispatch.state,'released');
   });
 
-  await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {
-    for (const [index, limits] of [{limit:1,balance:100},{limit:10,balance:10}].entries()) {
-      const a = await fixture({...limits,number:'+7495000101' + index});
-      const first = await Promise.allSettled([
-        control.authorize(a.token,'a',destination),control.authorize(a.token,'b',destination),
-      ]);
-      assert.equal(first.filter(result => result.status === 'fulfilled').length,1);
-      const rejected = first.find(result => result.status === 'rejected');
-      assert(rejected && rejected.status === 'rejected');
-      assert(code(index === 0 ? 'CALL_CONCURRENCY_LIMIT' : 'INSUFFICIENT_BALANCE')(rejected.reason));
-    }
+  await t.test('parallel requests enforce concurrency without wallet gate; duplicate returns same call', async () => {
+    const limited=await fixture({limit:1,balance:0,number:'+74950001010'});
+    const limitedOutcomes=await Promise.allSettled([
+      control.authorize(limited.token,'a',destination),
+      control.authorize(limited.token,'b',destination)]);
+    assert.equal(limitedOutcomes.filter(r=>r.status==='fulfilled').length,1);
+    assert(code('CALL_CONCURRENCY_LIMIT')(
+      limitedOutcomes.find(r=>r.status==='rejected')?.reason));
+    const postpaid=await fixture({limit:10,balance:0,number:'+74950001011'});
+    const [call1,call2]=await Promise.all([
+      control.authorize(postpaid.token,'postpaid-1',destination),
+      control.authorize(postpaid.token,'postpaid-2',destination)]);
+    assert.notEqual(call1.call_id,call2.call_id);
+    assert.equal((await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',
+      [postpaid.tenant])).rows[0].available,'0');
     const a = await fixture({number:'+74950001012'});
     const [one,two] = await Promise.all([
       control.authorize(a.token,'same',destination),control.authorize(a.token,'same',destination),
@@ -437,20 +443,26 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     gateway.timeoutAfterAccept = true;
     await control.processOne(a.tenant,gateway);
     assert.equal((await control.calls(a.token,call.call_id)).state,'reconciling');
-    await admin.query("UPDATE control.outbox SET claimed_at=clock_timestamp()-interval '11 seconds' WHERE call_id=$1",[call.call_id]);
+    await admin.query("UPDATE control.carousel_outbox SET claimed_at=clock_timestamp()-interval '11 seconds' WHERE dispatch_id=$1",[call.call_id]);
     await control.processOne(a.tenant,gateway);
     assert.equal((await control.calls(a.token,call.call_id)).state,'ringing');
     assert.equal(gateway.attempts.size,1);
-    await control.event(a.tenant,call.call_id,{id:'cel-1',state:'ended'});
-    assert.equal((await control.calls(a.token,call.call_id)).state,'ended');
+    const verified={outcome:'human' as const,billableSeconds:60,evidenceId:'classifier-v1:recording-verified'};
     await Promise.all([
-      control.event(a.tenant,call.call_id,{id:'cel-1', state:'ended',charge:3n}),
-      control.event(a.tenant,call.call_id,{id:'cel-1', state:'ended',charge:3n}),
-      control.event(a.tenant,call.call_id,{id:'duplicate-terminal', state:'ended',charge:3n}),
+      control.event(a.tenant,call.call_id,{id:'cel-1',state:'ended',classification:verified}),
+      control.event(a.tenant,call.call_id,{id:'cel-1',state:'ended',classification:verified}),
+      control.event(a.tenant,call.call_id,{id:'duplicate-terminal',state:'ended',classification:verified}),
     ]);
-    const { rows } = await admin.query('SELECT kind,units FROM control.usage_ledger WHERE call_id=$1 ORDER BY kind',[call.call_id]);
-    assert.deepEqual(rows,[{kind:'charge',units:'3'},{kind:'release',units:'7'},{kind:'reserve',units:'10'}]);
-    const { rows: [wallet] } = await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',[a.tenant]);
-    assert.equal(wallet.available,'97');
+    assert.equal((await control.calls(a.token,call.call_id)).state,'ended');
+    const {rows:[charged]}=await admin.query(
+      'SELECT outcome,billable_seconds,amount_kopeks,evidence_id FROM control.postpaid_usage WHERE call_id=$1',
+      [call.call_id]);
+    assert.deepEqual(charged,{
+      outcome:'human',billable_seconds:60,amount_kopeks:'300',evidence_id:verified.evidenceId,
+    });
+    const {rows:legacy}=await admin.query('SELECT * FROM control.usage_ledger WHERE call_id=$1',[call.call_id]);
+    assert.equal(legacy.length,0);
+    const {rows:[wallet]}=await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',[a.tenant]);
+    assert.equal(wallet.available,'100');
   });
 });
