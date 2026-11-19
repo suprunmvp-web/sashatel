@@ -40,7 +40,6 @@ jobs:
       TF_VAR_existing_subnet_id: e9bm2hfyk1kfsoyimttp
       TF_VAR_vm_service_account_id: ajet0imh2qqqtr55h5im
       TF_VAR_zone: ru-central1-a
-      TF_VAR_vm_image_id: ${{ vars.VM_IMAGE_ID }}
       TF_VAR_ssh_public_key: ${{ vars.SSH_PUBLIC_KEY }}
       TF_VAR_ssh_cidrs: '["${{ vars.SSH_ADMIN_CIDR }}"]'
     steps:
@@ -55,8 +54,8 @@ jobs:
           test -n "$AWS_ACCESS_KEY_ID" && test -n "$AWS_SECRET_ACCESS_KEY" || {
             echo "Configure protected S3 state secrets" >&2; exit 1;
           }
-          test -n "$TF_VAR_vm_image_id" && test -n "$TF_VAR_ssh_public_key" && test -n "$TF_VAR_ssh_cidrs" || {
-            echo "Configure staging-infra vars: VM_IMAGE_ID, SSH_PUBLIC_KEY, SSH_ADMIN_CIDR" >&2
+          test -n "$TF_VAR_ssh_public_key" && test -n "$TF_VAR_ssh_cidrs" || {
+            echo "Configure staging-infra vars: SSH_PUBLIC_KEY and SSH_ADMIN_CIDR" >&2
             exit 1
           }
           [[ "$TF_VAR_ssh_public_key" =~ ^ssh-(ed25519|rsa)\  ]] || { echo "Invalid SSH public key" >&2; exit 1; }
