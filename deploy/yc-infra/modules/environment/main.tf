@@ -1,5 +1,7 @@
 locals {
   name = "sashatel-${var.environment}"
+  network_id = var.existing_network_id == null ? yandex_vpc_network.environment[0].id : var.existing_network_id
+  subnet_ids = var.existing_network_id == null ? { for zone, subnet in yandex_vpc_subnet.environment : zone => subnet.id } : var.existing_subnet_ids
   labels = {
     project     = "sashatel"
     environment = var.environment
@@ -8,16 +10,17 @@ locals {
 }
 
 resource "yandex_vpc_network" "environment" {
+  count     = var.existing_network_id == null ? 1 : 0
   folder_id = var.folder_id
   name      = "${local.name}-vpc"
   labels    = local.labels
 }
 
 resource "yandex_vpc_subnet" "environment" {
-  for_each       = var.subnets
+  for_each       = var.existing_network_id == null ? var.subnets : {}
   folder_id      = var.folder_id
   name           = "${local.name}-${each.key}"
-  network_id     = yandex_vpc_network.environment.id
+  network_id     = local.network_id
   zone           = each.value.zone
   v4_cidr_blocks = [each.value.cidr]
 }
@@ -25,7 +28,7 @@ resource "yandex_vpc_subnet" "environment" {
 resource "yandex_vpc_security_group" "api" {
   folder_id  = var.folder_id
   name       = "${local.name}-api"
-  network_id = yandex_vpc_network.environment.id
+  network_id = local.network_id
   labels     = local.labels
 
   dynamic "ingress" {
@@ -49,7 +52,7 @@ resource "yandex_vpc_security_group" "api" {
 resource "yandex_vpc_security_group" "postgres" {
   folder_id  = var.folder_id
   name       = "${local.name}-pg"
-  network_id = yandex_vpc_network.environment.id
+  network_id = local.network_id
   labels     = local.labels
 
   ingress {
@@ -95,7 +98,7 @@ resource "yandex_compute_instance" "api" {
     }
   }
   network_interface {
-    subnet_id          = yandex_vpc_subnet.environment[var.zone].id
+    subnet_id          = local.subnet_ids[var.zone]
     nat                = true
     security_group_ids = [yandex_vpc_security_group.api.id]
   }
@@ -108,8 +111,8 @@ resource "yandex_compute_instance" "api" {
 
   lifecycle {
     precondition {
-      condition = contains(keys(var.subnets), var.zone)
-      error_message = "VM zone must match an existing subnet key."
+      condition = contains(keys(local.subnet_ids), var.zone)
+      error_message = "VM zone must have a configured subnet."
     }
     prevent_destroy = true
   }
@@ -136,7 +139,7 @@ resource "yandex_mdb_postgresql_cluster_v2" "db" {
   hosts = {
     for host_name, subnet_key in var.db_hosts : host_name => {
       zone             = var.subnets[subnet_key].zone
-      subnet_id        = yandex_vpc_subnet.environment[subnet_key].id
+      subnet_id        = local.subnet_ids[subnet_key]
       assign_public_ip = false
     }
   }
