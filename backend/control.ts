@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import type { Pool, PoolClient } from 'pg';
+import { GlobalCarousel } from './global-carousel.ts';
 
 const derive = promisify(scrypt);
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -49,6 +50,7 @@ export interface TelephonyEvent {
 export class ControlPlane {
   private readonly pool: Pool;
   private readonly timezone: string;
+  private readonly carousel = new GlobalCarousel();
   private readonly workerAvailable: (tenant: string) => boolean;
 
   constructor(pool: Pool, timezone = 'Europe/Moscow', workerAvailable = (_tenant: string) => false) {
@@ -242,34 +244,31 @@ export class ControlPlane {
             [tenant,effectiveTrunk]);
         }
       }
-      const { rows: numbers } = await db.query(
-        `SELECT n.e164,n.trunk_id FROM phone_numbers n JOIN trunks t
-           ON (n.organization_id,n.trunk_id)=(t.organization_id,t.id)
-          WHERE n.active AND t.active AND t.id=$1 ORDER BY n.e164`, [effectiveTrunk]);
-      if (!numbers.length) throw new ApiError(409, 'NO_CALLER_ID');
-      const { rows: [wallet] } = await db.query(
-        'UPDATE wallets SET available=available-reserve_per_call WHERE organization_id=$1 AND available>=reserve_per_call RETURNING reserve_per_call',
-        [tenant]);
-      if (!wallet) throw new ApiError(409, 'INSUFFICIENT_BALANCE');
-      for (const number of numbers) {
-        const attempt = await db.query(
-          `INSERT INTO number_attempts VALUES ($1,(clock_timestamp() AT TIME ZONE $2)::date,1)
-           ON CONFLICT (e164,day) DO UPDATE SET used=number_attempts.used+1
-           WHERE number_attempts.used<8 RETURNING used`, [number.e164, this.timezone]);
-        if (!attempt.rowCount) continue;
-        const id = randomUUID();
-        const { rows: [call] } = await db.query(
-          `INSERT INTO calls (organization_id,id,attempt_id,membership_id,session_hash,request_key,
-             destination,caller_id,trunk_id,reserved,state,expires_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'authorized',clock_timestamp()+interval '30 seconds')
-           RETURNING ${visible}`,
-          [tenant,id,randomUUID(),actor.membership_id,hash,key,destination,number.e164,number.trunk_id,wallet.reserve_per_call]);
-        await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'reserve',$3)",
-          [tenant,id,wallet.reserve_per_call]);
-        await db.query("INSERT INTO outbox (organization_id,call_id,command) VALUES ($1,$2,'originate')", [tenant,id]);
-        return call;
+      // One authenticated PostgreSQL transaction owns session approval, trunk
+      // selection, global Caller ID hold and durable call intent. No wallet gate.
+      let reservation;
+      try {
+        reservation=await this.carousel.reserve(db,{
+          organizationId:tenant,membershipId:actor.membership_id,
+          effectiveTrunkId:effectiveTrunk,requestKey:key,destination,
+        });
+      } catch(e){
+        if(e instanceof Error && e.message==='IDEMPOTENCY_CONFLICT')
+          throw new ApiError(409,'IDEMPOTENCY_CONFLICT');
+        if(e instanceof Error && e.message==='NO_CALLER_ID')
+          throw new ApiError(409,'NO_CALLER_ID');
+        if(e instanceof Error && e.message==='NUMBER_LIMIT_REACHED')
+          throw new ApiError(409,'NUMBER_LIMIT_REACHED');
+        throw e;
       }
-      throw new ApiError(409, 'NUMBER_LIMIT_REACHED');
+      const {rows:[call]}=await db.query(
+        `INSERT INTO calls(organization_id,id,attempt_id,membership_id,session_hash,
+          request_key,destination,caller_id,trunk_id,reserved,state,expires_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,0,'authorized',$10)
+         RETURNING ${visible}`,
+        [tenant,reservation.id,reservation.attempt_id,actor.membership_id,hash,key,
+         destination,reservation.caller_id,reservation.trunk_id,reservation.expires_at]);
+      return call;
     });
   }
 
