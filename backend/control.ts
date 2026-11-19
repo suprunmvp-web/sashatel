@@ -227,6 +227,11 @@ export class ControlPlane {
       if (!this.workerAvailable(tenant)) throw new ApiError(503, 'CALL_WORKER_UNAVAILABLE');
       const { rows: [subscription] } = await db.query('SELECT active,telephony FROM subscriptions WHERE organization_id=$1', [tenant]);
       if (!subscription?.active || !subscription.telephony) throw new ApiError(403, 'TELEPHONY_DISABLED');
+      const {rows:[overdue]}=await db.query(
+        "SELECT EXISTS(SELECT 1 FROM billing_obligations "+
+        "WHERE organization_id=$1 AND state='issued' AND due_at<clock_timestamp() "+
+        "AND paid_kopeks<amount_kopeks) AS blocked",[tenant]);
+      if(overdue.blocked)throw new ApiError(403,'PAYMENT_OVERDUE');
       const { rows: [capacity] } = await db.query(
         "SELECT count(*)::int AS used FROM calls WHERE state NOT IN ('ended','failed','expired')");
       if (capacity.used >= actor.maxCalls) throw new ApiError(409, 'CALL_CONCURRENCY_LIMIT');
@@ -400,7 +405,11 @@ export class ControlPlane {
             "JOIN subscriptions s ON s.organization_id=c.organization_id "+
             "JOIN memberships m ON (m.organization_id,m.id)=(c.organization_id,c.membership_id) "+
             "JOIN organizations o ON o.id=c.organization_id WHERE c.id=$1",[held.id]);
-          valid=!!actor.can_call && !!route?.allowed &&
+          const {rows:[arrears]}=await db.query(
+            "SELECT EXISTS(SELECT 1 FROM billing_obligations "+
+            "WHERE organization_id=$1 AND state='issued' AND due_at<clock_timestamp() "+
+            "AND paid_kopeks<amount_kopeks) AS blocked",[tenant]);
+          valid=!!actor.can_call && !!route?.allowed && !arrears.blocked &&
             new Date(held.expires_at).getTime()>Date.now();
         }catch(e){
           if(!(e instanceof ApiError))throw e;
