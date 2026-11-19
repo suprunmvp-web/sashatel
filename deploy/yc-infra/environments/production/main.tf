@@ -14,12 +14,15 @@ provider "yandex" {
 }
 
 variable "folder_id" { type = string }
-variable "primary_zone" { type = string; default = "ru-central1-a" }
-variable "secondary_zone" { type = string; default = "ru-central1-d" }
+variable "primary_zone" { type = string
+  default = "ru-central1-a" }
+variable "secondary_zone" { type = string
+  default = "ru-central1-d" }
 variable "vm_image_id" { type = string }
 variable "ssh_public_key" { type = string }
 variable "ssh_cidrs" { type = list(string) }
-variable "db_resource_preset_id" { type = string; default = "s2.medium" }
+variable "db_resource_preset_id" { type = string
+  default = "s2.medium" }
 
 module "environment" {
   source                = "../../modules/environment"
