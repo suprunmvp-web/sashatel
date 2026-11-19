@@ -36,11 +36,8 @@ export class GlobalCarousel {
     const {rows:[date]}=await db.query(
       "SELECT (clock_timestamp() AT TIME ZONE 'Europe/Moscow')::date AS today");
     const {rows:available}=await db.query(
-      'SELECT n.e164,n.trunk_id FROM carousel_numbers n '+
-      'JOIN trunks t ON (t.organization_id,t.id)=(n.organization_id,n.trunk_id) '+
-      "WHERE n.organization_id=$1 AND n.trunk_id=$2 AND n.status='active' "+
-      'AND n.provider_approved AND t.active ORDER BY n.e164',
-      [tenant,effectiveTrunkId]);
+      'SELECT e164,trunk_id,load FROM available_carousel_numbers($1,$2,$3)',
+      [tenant,effectiveTrunkId,date.today]);
 
     // The guarded SQL function atomically checks global physical E.164
     // capacity across all tenants. Do not double count a failed hold.
@@ -59,6 +56,23 @@ export class GlobalCarousel {
       return reservation;
     }
     throw Error(available.length?'NUMBER_LIMIT_REACHED':'NO_CALLER_ID');
+  }
+
+  /** Reclaim expired, uncommitted holds for this tenant. A committed attempt
+   * is never refunded. Run periodically from an authenticated server worker.
+   * The caller owns the transaction; SKIP LOCKED prevents duplicate expiry.
+   */
+  async expireForTenant(db:PoolClient,organizationId:string,limit=100):Promise<number> {
+    if(!Number.isInteger(limit)||limit<1||limit>500)throw Error('INVALID_EXPIRY_BATCH');
+    await db.query('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[organizationId]);
+    const {rows:expired}=await db.query(
+      "SELECT id FROM carousel_dispatches WHERE organization_id=$1 AND state='held' "+
+      "AND expires_at<=clock_timestamp() ORDER BY expires_at,id LIMIT $2 FOR UPDATE SKIP LOCKED",
+      [organizationId,limit]);
+    for(const hold of expired){
+      await this.finalize(db,{organizationId,dispatchId:hold.id,action:'release'});
+    }
+    return expired.length;
   }
 
   async finalize(db:PoolClient,args:{
