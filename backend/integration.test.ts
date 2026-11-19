@@ -353,6 +353,21 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     }
   });
 
+  await t.test('worker expiry sweep closes abandoned call intents and frees global holds',async()=>{
+    const f=await fixture({number:'+74950003155'});
+    const call=await control.authorize(f.token,'abandoned',destination);
+    await admin.query(
+      "UPDATE control.carousel_dispatches SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [call.call_id]);
+    const gateway=new FakeAri();
+    await control.processOne(f.tenant,gateway);
+    assert.equal(gateway.attempts.size,0);
+    assert.equal((await control.calls(f.token,call.call_id)).state,'expired');
+    const {rows:[quota]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1',[f.number]);
+    assert.deepEqual(quota,{held:0,used:0});
+  });
+
   await t.test('UIS trunk HTTP API scopes access and redacts credentials through retry and deletion', async () => {
     const owner = await fixture({role:'organization_admin'});
     const other = await fixture({role:'organization_admin'});
