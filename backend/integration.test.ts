@@ -191,7 +191,7 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const reserve=(f:typeof a,key:string)=>control.transaction(f.tenant,db=>
       carousel.reserve(db,{organizationId:f.tenant,membershipId:f.member,
         effectiveTrunkId:f.trunk,requestKey:key,destination}));
-    const holds=[];
+    const holds:Array<{id:string}>=[];
     for(let i=0;i<8;i++)holds.push(await reserve(i%2?a:b,'global-'+i));
     assert.equal((await admin.query(
       'SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE $2)::date',
