@@ -1,0 +1,48 @@
+name: Yandex Cloud infrastructure validation
+on:
+  pull_request:
+    paths:
+      - 'deploy/yc-infra/**'
+      - 'deploy/yc-staging/**'
+      - 'deploy/yc-production/**'
+      - '.github/workflows/yc-infra-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  terraform:
+    name: Terraform format and validate (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    defaults:
+      run:
+        working-directory: deploy/yc-infra/environments/${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+      - name: Formatting (module and both roots)
+        run: terraform fmt -check -recursive ../../
+      - name: Initialize providers without remote state
+        run: terraform init -backend=false -input=false
+      - name: Validate infrastructure syntax and provider schema
+        run: terraform validate -no-color
+  safety:
+    name: Non-deployment checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prevent infrastructure apply from this workflow
+        run: |
+          set -eu
+          ! grep -E 'terraform[[:space:]]+apply|tofu[[:space:]]+apply|yc[[:space:]]+compute[[:space:]]+instance[[:space:]]+create' .github/workflows/yc-infra-check.yml
+      - name: Keep deployment gated
+        run: |
+          set -eu
+          grep -q 'LIVE_CALL_DISPATCH: "disabled"' deploy/yc-staging/compose.yaml
+          grep -q '127.0.0.1:' deploy/yc-staging/compose.yaml
+          test -f deploy/yc-infra/environments/production/main.tf
