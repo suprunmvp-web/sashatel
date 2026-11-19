@@ -26,7 +26,7 @@ async function fixture({ limit = 10, balance = 100, role = 'manager', number = '
   await admin.query("INSERT INTO control.wallets VALUES ($1,'minutes',$2,10)", [tenant,balance]);
   await admin.query('INSERT INTO control.trunks VALUES ($1,$2,true)', [tenant,trunk]);
   await admin.query('INSERT INTO control.phone_numbers VALUES ($1,$2,$3,true)', [tenant,number,trunk]);
-  await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING ON CONFLICT DO NOTHING",[tenant,number,trunk]);
+  await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",[tenant,number,trunk]);
   const credentials = await control.login(tenant,user,'test-password',device);
   return { tenant, user, member, trunk, token: credentials.token, number };
 }
