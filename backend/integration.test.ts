@@ -26,7 +26,7 @@ async function fixture({ limit = 10, balance = 100, role = 'manager', number = '
   await admin.query("INSERT INTO control.wallets VALUES ($1,'minutes',$2,10)", [tenant,balance]);
   await admin.query('INSERT INTO control.trunks VALUES ($1,$2,true)', [tenant,trunk]);
   await admin.query('INSERT INTO control.phone_numbers VALUES ($1,$2,$3,true)', [tenant,number,trunk]);
-  await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",[tenant,number,trunk]);
+  await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING ON CONFLICT DO NOTHING",[tenant,number,trunk]);
   const credentials = await control.login(tenant,user,'test-password',device);
   return { tenant, user, member, trunk, token: credentials.token, number };
 }
@@ -122,7 +122,7 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       [a.tenant,secondTrunk]);
     await admin.query('INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES ($1,$2,$3,true)',
       [a.tenant,secondNumber,secondTrunk]);
-    await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true)",[a.tenant,secondNumber,secondTrunk]);
+    await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",[a.tenant,secondNumber,secondTrunk]);
 
     // More than one eligible trunk without a declared route must fail closed.
     await assert.rejects(control.authorize(a.token,'ambiguous',destination),
@@ -186,7 +186,7 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const a=await fixture({number}),b=await fixture({number});
     for(const f of [a,b]) {
       await admin.query(
-        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true)",
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
         [f.tenant,number,f.trunk]);
     }
     const carousel=new GlobalCarousel();
@@ -235,7 +235,7 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       [f.tenant,second,f.trunk]);
     for(const n of [first,second]){
       await admin.query(
-        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true)",
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
         [f.tenant,n,f.trunk]);
     }
     const car=new GlobalCarousel();
