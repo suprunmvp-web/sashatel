@@ -31,7 +31,7 @@ export class CarouselCapacity {
     const {organizationId:org,membershipId,requestKey,destination}=args;
     if(!/^[0-9a-f-]{36}$/.test(org)||!/^[0-9a-f-]{36}$/.test(membershipId)
       || !/^[a-zA-Z0-9_.:-]{1,128}$/.test(requestKey)
-      || !/^\\+[1-9][0-9]{6,14}$/.test(destination)) throw Error('INVALID_RESERVATION');
+      || !/^\+[1-9][0-9]{6,14}$/.test(destination)) throw Error('INVALID_RESERVATION');
     return this.tx(org,async db=>{
       await db.query('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[org]);
       const {rows:[old]}=await db.query(
@@ -84,6 +84,7 @@ export class CarouselCapacity {
    */
   async commit(organizationId:string,id:string) {
     return this.tx(organizationId,async db=>{
+      await db.query('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[organizationId]);
       const {rows:[h]}=await db.query(
         'SELECT * FROM carousel_dispatches WHERE organization_id=$1 AND id=$2 FOR UPDATE',
         [organizationId,id]);
@@ -91,8 +92,7 @@ export class CarouselCapacity {
       if(h.state==='committed'||h.state==='unknown') return h;
       if(h.state!=='held') throw Error('NOT_DISPATCHABLE');
       if(new Date(h.expires_at).getTime()<=Date.now()) throw Error('HOLD_EXPIRED');
-      // Lock the organization to serialize against changes to active/passive.
-      await db.query('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[organizationId]);
+      // Organization was locked before dispatch row to maintain global lock order.
       const {rows:[number]}=await db.query(
         "SELECT 1 FROM carousel_numbers n JOIN trunks t ON (n.organization_id,n.trunk_id)=(t.organization_id,t.id) WHERE n.organization_id=$1 AND n.e164=$2 AND n.trunk_id=$3 AND n.status='active' AND n.provider_approved AND t.active",
         [organizationId,h.caller_id,h.trunk_id]);
@@ -100,9 +100,10 @@ export class CarouselCapacity {
       const {rows:[today]}=await db.query(
         "SELECT (clock_timestamp() AT TIME ZONE $1)::date AS day",[this.timezone]);
       if(String(today.day).slice(0,10)!==String(h.budget_day).slice(0,10)) throw Error('DAY_CHANGED_REAUTHORIZE');
-      await db.query(
+      const count = await db.query(
         'UPDATE carousel_day_capacity SET held=held-1,used=used+1 WHERE organization_id=$1 AND e164=$2 AND day=$3 AND held>0',
         [organizationId,h.caller_id,h.budget_day]);
+      if(count.rowCount!==1) throw Error('RESERVATION_MISSING');
       const {rows:[done]}=await db.query(
         "UPDATE carousel_dispatches SET state='committed',committed_at=clock_timestamp() WHERE organization_id=$1 AND id=$2 RETURNING *",
         [organizationId,id]);
@@ -118,9 +119,10 @@ export class CarouselCapacity {
         [organizationId,id]);
       if(!h) throw Error('UNKNOWN_DISPATCH');
       if(h.state!=='held') return h;
-      await db.query(
+      const count=await db.query(
         'UPDATE carousel_day_capacity SET held=held-1 WHERE organization_id=$1 AND e164=$2 AND day=$3 AND held>0',
         [organizationId,h.caller_id,h.budget_day]);
+      if(count.rowCount!==1) throw Error('RESERVATION_MISSING');
       const {rows:[released]}=await db.query(
         "UPDATE carousel_dispatches SET state='released' WHERE organization_id=$1 AND id=$2 RETURNING *",
         [organizationId,id]);
