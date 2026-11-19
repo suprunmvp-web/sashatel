@@ -11,13 +11,13 @@ export class FakeAri implements TelephonyGateway {
     return 'ringing';
   }
 
-  async hangup(attemptId: string): Promise<'unknown' | { state: 'ended'; charge: bigint }> {
+  async hangup(attemptId: string): Promise<'unknown' | { state: 'ended' }> {
     this.attempts.set(attemptId, 'ended');
-    return { state: 'ended', charge: 0n };
+    return { state: 'ended' };
   }
 
   async inspect(attemptId: string): Promise<GatewayResult> {
     const state = this.attempts.get(attemptId) ?? 'unknown';
-    return state === 'ended' ? { state, charge: 0n } : state;
+    return state === 'ended' ? { state } : state;
   }
 }
