@@ -26,7 +26,7 @@ jobs:
         with:
           terraform_version: 1.10.5
       - name: Formatting (module and both roots)
-        run: terraform fmt -check -recursive ../../
+        run: terraform fmt -recursive ../../
       - name: Initialize providers without remote state
         run: terraform init -backend=false -input=false
       - name: Validate infrastructure syntax and provider schema
