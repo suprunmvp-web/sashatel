@@ -351,69 +351,128 @@ export class ControlPlane {
     });
   }
 
-  async processOne(tenant: string, gateway: TelephonyGateway) {
-    const job = await this.transaction(tenant, async db => {
-      await this.#organization(db, tenant);
+  async processOne(tenant:string,gateway:TelephonyGateway){
+    const job=await this.transaction(tenant,async db=>{
+      await this.#organization(db,tenant);
+      // A revocation of an existing conversation requires a real hangup.
       await db.query(
-        `WITH stopped AS (
-          UPDATE calls c SET state='terminating'
-          FROM memberships m JOIN users u ON u.id=m.user_id
-          JOIN organizations o ON o.id=m.organization_id
-          WHERE (c.organization_id,c.membership_id)=(m.organization_id,m.id)
-            AND c.state IN ('dispatching','reconciling','ringing','connected')
-            AND (NOT m.active OR NOT u.active OR NOT o.active)
-          RETURNING c.id
-        )
-        INSERT INTO outbox (organization_id,call_id,command)
-        SELECT $1,id,'hangup' FROM stopped ON CONFLICT DO NOTHING`, [tenant]);
-      const { rows: [call] } = await db.query(
-        `SELECT c.*, o.command, o.claimed_at, c.expires_at <= clock_timestamp() AS expired
-           FROM calls c JOIN outbox o ON (c.organization_id,c.id)=(o.organization_id,o.call_id)
-          WHERE o.completed_at IS NULL AND (o.claimed_at IS NULL OR o.claimed_at < clock_timestamp()-interval '10 seconds')
-          ORDER BY (o.command='hangup') DESC,o.claimed_at NULLS FIRST,c.created_at LIMIT 1`);
-      if (!call) return;
-      if (call.command === 'originate' && !call.claimed_at) {
-        try {
-          const actor = await this.#session(db, tenant, call.session_hash);
-          const { rows: [route] } = await db.query(
-            `SELECT n.active AND t.active AND s.active AND s.telephony AS allowed
-               FROM phone_numbers n JOIN trunks t ON (n.organization_id,n.trunk_id)=(t.organization_id,t.id)
-               JOIN subscriptions s ON s.organization_id=n.organization_id
-              WHERE n.e164=$1 AND t.id=$2`, [call.caller_id,call.trunk_id]);
-          if (!actor.can_call || !route?.allowed || call.expired) throw new ApiError(403, 'GRANT_INVALID');
-        } catch (error) {
-          if (!(error instanceof ApiError)) throw error;
-          await this.#settle(db, tenant, call, call.expired ? 'expired' : 'failed', 0n);
-          return;
-        }
-        await db.query("UPDATE calls SET state='dispatching' WHERE id=$1", [call.id]);
+        "WITH stopped AS ("+
+        " UPDATE calls c SET state='terminating' "+
+        " FROM memberships m JOIN users u ON u.id=m.user_id "+
+        " JOIN organizations o ON o.id=m.organization_id "+
+        " WHERE (c.organization_id,c.membership_id)=(m.organization_id,m.id) "+
+        " AND c.state IN('dispatching','reconciling','ringing','connected') "+
+        " AND (NOT m.active OR NOT u.active OR NOT o.active) RETURNING c.id) "+
+        " INSERT INTO outbox(organization_id,call_id,command) "+
+        " SELECT $1,id,'hangup' FROM stopped ON CONFLICT DO NOTHING",[tenant]);
+
+      const {rows:[hang]}=await db.query(
+        "SELECT c.*,o.claimed_at FROM calls c JOIN outbox o "+
+        "ON (c.organization_id,c.id)=(o.organization_id,o.call_id) "+
+        "WHERE o.command='hangup' AND o.completed_at IS NULL "+
+        "AND (o.claimed_at IS NULL OR o.claimed_at<clock_timestamp()-interval '10 seconds') "+
+        "ORDER BY o.claimed_at NULLS FIRST,c.created_at LIMIT 1 FOR UPDATE OF o SKIP LOCKED");
+      if(hang){
+        await db.query(
+          "UPDATE outbox SET claimed_at=clock_timestamp() WHERE call_id=$1 AND command='hangup'",
+          [hang.id]);
+        return {kind:'hangup' as const,call:hang};
       }
-      await db.query('UPDATE outbox SET claimed_at=clock_timestamp() WHERE call_id=$1 AND command=$2', [call.id,call.command]);
-      return call;
+
+      // Authorize immediately before the *first* durable outbound command.
+      const {rows:[held]}=await db.query(
+        "SELECT c.* FROM calls c JOIN carousel_dispatches d "+
+        "ON (c.organization_id,c.id)=(d.organization_id,d.id) "+
+        "WHERE c.state='authorized' AND d.state='held' "+
+        "ORDER BY c.created_at LIMIT 1 FOR UPDATE OF c,d SKIP LOCKED");
+      if(held){
+        let valid=true;
+        try{
+          const actor=await this.#session(db,tenant,held.session_hash);
+          const {rows:[route]}=await db.query(
+            "SELECT n.active AND n.provider_approved AND n.status='active' "+
+            "AND t.active AND s.active AND s.telephony "+
+            "AND COALESCE(m.trunk_override_id,o.default_trunk_id)=c.trunk_id AS allowed "+
+            "FROM calls c JOIN carousel_numbers n ON "+
+            "(c.organization_id,c.caller_id)=(n.organization_id,n.e164) "+
+            "JOIN trunks t ON (t.organization_id,t.id)=(c.organization_id,c.trunk_id) "+
+            "JOIN subscriptions s ON s.organization_id=c.organization_id "+
+            "JOIN memberships m ON (m.organization_id,m.id)=(c.organization_id,c.membership_id) "+
+            "JOIN organizations o ON o.id=c.organization_id WHERE c.id=$1",[held.id]);
+          valid=!!actor.can_call && !!route?.allowed &&
+            new Date(held.expires_at).getTime()>Date.now();
+        }catch(e){
+          if(!(e instanceof ApiError))throw e;
+          valid=false;
+        }
+        if(!valid){
+          await this.carousel.finalize(db,{organizationId:tenant,dispatchId:held.id,action:'release'});
+          await db.query("UPDATE calls SET state=$2 WHERE id=$1",
+            [held.id,new Date(held.expires_at).getTime()<=Date.now()?'expired':'failed']);
+          return null;
+        }
+        await this.carousel.finalize(db,{organizationId:tenant,dispatchId:held.id,action:'commit'});
+        await db.query("UPDATE calls SET state='dispatching' WHERE id=$1",[held.id]);
+      }
+
+      const {rows:[next]}=await db.query(
+        "SELECT c.*,o.state AS queue_state FROM carousel_outbox o "+
+        "JOIN calls c ON(c.organization_id,c.id)=(o.organization_id,o.dispatch_id) "+
+        "WHERE o.state='pending' OR "+
+        "(o.state IN('claimed','unknown') AND o.claimed_at<clock_timestamp()-interval '10 seconds') "+
+        "ORDER BY c.created_at LIMIT 1 FOR UPDATE OF o SKIP LOCKED");
+      if(!next)return null;
+      const originate=next.queue_state==='pending';
+      await db.query("UPDATE carousel_outbox SET state=$2,claimed_at=clock_timestamp() WHERE dispatch_id=$1",
+        [next.id,originate?'claimed':'unknown']);
+      return {kind:originate?'originate' as const:'inspect' as const,call:next};
     });
-    if (!job) return;
-    let state: GatewayResult;
-    try {
-      if (job.command === 'hangup') state = await gateway.hangup(job.attempt_id);
-      else if (job.claimed_at) state = await gateway.inspect(job.attempt_id);
-      else state = await gateway.originate({
-        attemptId: job.attempt_id, destination: job.destination, callerId: job.caller_id, trunkId: job.trunk_id,
+    if(!job)return;
+
+    let result:GatewayResult;
+    try{
+      if(job.kind==='hangup')result=await gateway.hangup(job.call.attempt_id);
+      else if(job.kind==='inspect')result=await gateway.inspect(job.call.attempt_id);
+      else result=await gateway.originate({
+        attemptId:job.call.attempt_id,destination:job.call.destination,
+        callerId:job.call.caller_id,trunkId:job.call.trunk_id,
       });
-    } catch {
-      state = 'unknown';
-    }
-    if (typeof state === 'object') {
-      await this.event(tenant, job.id, { id: 'settled:' + job.attempt_id, ...state });
+    }catch{result='unknown';}
+
+    if(result==='unknown'){
+      await this.transaction(tenant,async db=>{
+        if(job.kind==='hangup')return;
+        await db.query("UPDATE calls SET state='reconciling' WHERE id=$1 AND state='dispatching'",
+          [job.call.id]);
+        await db.query(
+          "UPDATE carousel_outbox SET state='unknown',claimed_at=clock_timestamp() "+
+          "WHERE dispatch_id=$1 AND state<>'completed'",[job.call.id]);
+      });
       return;
     }
-    await this.transaction(tenant, async db => {
-      await this.#organization(db, tenant);
-      if (state === 'unknown') {
-        await db.query("UPDATE calls SET state='reconciling' WHERE id=$1 AND state='dispatching'", [job.id]);
-        return;
+    if(typeof result==='object'){
+      await this.event(tenant,job.call.id,{
+        id:'gateway-terminal:'+job.call.attempt_id,
+        state:'ended',classification:result.classification,
+      });
+    } else {
+      await this.transaction(tenant,async db=>{
+        await db.query(
+          "UPDATE calls SET state=$2 WHERE id=$1 AND state IN('dispatching','reconciling')",
+          [job.call.id,result]);
+      });
+    }
+    await this.transaction(tenant,async db=>{
+      if(job.kind==='hangup'){
+        await db.query(
+          "UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND command='hangup'",
+          [job.call.id]);
+      }else{
+        await db.query(
+          "UPDATE carousel_outbox SET state='completed',completed_at=clock_timestamp() "+
+          "WHERE dispatch_id=$1 AND state<>'completed'",[job.call.id]);
       }
-      await db.query("UPDATE calls SET state=$2 WHERE id=$1 AND state IN ('dispatching','reconciling')", [job.id,state]);
-      await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND command=$2', [job.id,job.command]);
     });
   }
+
 }
