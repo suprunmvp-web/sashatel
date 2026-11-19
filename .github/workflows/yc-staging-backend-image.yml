@@ -58,7 +58,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      YC_SERVICE_ACCOUNT_ID: ajeja1u2timegoko4v
+      YC_SERVICE_ACCOUNT_ID: ajeja1u2timegoko4vn9
       YC_REGISTRY_ID: crpjs1v75pobqqd0ij5t
       OIDC_AUDIENCE: https://github.com/suprunmvp-web
       IMAGE_REPOSITORY: sashatel-backend
