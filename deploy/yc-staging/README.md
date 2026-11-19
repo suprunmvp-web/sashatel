@@ -13,15 +13,15 @@ Compose is restricted to host `127.0.0.1`; expose it only through an authenticat
 - Yandex Cloud catalog ID for `sashatel-staging`, chosen availability zone and budget alert.
 - Staging-only Compute Cloud VM with Docker/Compose and carefully scoped access; no inbound public port 8080. Use SSH via protected administration path.
 - Managed PostgreSQL 17 in staging, separate schema migration owner and non-owner `control_runtime`, private database access, CA certificate, backup policy.
-- Private secret files: `database-url`, `database-ca.pem`, `auth-key` (64 hex characters). Place outside repo under `/etc/sashatel/staging/`, owner-only access with appropriate read access for UID 1000 in the container. Never commit passwords, tokens, SQL connections, state files or key material.
+- Private secret files: `database-url`, `migration-database-url`, `database-ca.pem`, `auth-key` (64 hex characters). Runtime and migration credentials MUST belong to distinct identities. Place outside repo under `/etc/sashatel/staging/`, owner-only access with appropriate read access for UID 1000 in the container. Never commit passwords, tokens, SQL connections, state files or key material.
 - Authorized domain/origin. Replace the example `WEB_ORIGIN` with the exact staging frontend origin.
 
 ## Manual pre-deployment validation
 
 1. Run `npm ci --ignore-scripts && npm run typecheck && npm test` in `backend/` against a **disposable** PostgreSQL 17 instance; never run the test suite with production credentials.
 2. Run the checksum-based `backend/migrate.ts` **once from a migration job** using `MIGRATION_DATABASE_URL_FILE` and the migration-owner URL, not from the public API container. Verify migration digests and schema before each rollout.
-3. Validate Compose: `docker compose --env-file /secure/path/staging.env -f deploy/yc-staging/compose.yaml config -q`.
-4. Build and run from repository root: `docker compose --env-file /secure/path/staging.env -f deploy/yc-staging/compose.yaml up --build -d`.
+3. Export a reviewed immutable BACKEND_IMAGE digest (from the successful GitHub Actions push) and validate Compose: `docker compose --env-file /secure/path/staging.env -f deploy/yc-staging/compose.yaml config -q`.
+4. Pull only the tested immutable `BACKEND_IMAGE` via short-lived registry credentials; do not build on the VM. After database backup/restore check, run the one-shot job: `docker compose --env-file /secure/path/staging.env -f deploy/yc-staging/compose.yaml --profile migration run --rm migrate`. Verify migration history and non-owner grants. Only then run `docker compose --env-file /secure/path/staging.env -f deploy/yc-staging/compose.yaml up -d api`. Never run the migration profile automatically during a normal deployment.
 5. Check `curl -fsS http://127.0.0.1:8080/ready`, owner role, RLS, application logs and rollback feasibility. Keep inbound network exposure closed until TLS, authentication and real end-to-end paths are verified.
 
 ## Safe rollback
@@ -37,3 +37,13 @@ Prefer GitHub Actions OIDC → Yandex Cloud Workload Identity Federation bound t
 Do not turn on live dispatch until there is a verified two-leg ARI worker, real SIP/PSTN reachability, provider-approved CLI, durable events, billing classification and tested rollback. Do not assume that empty folders mean a VM, database, VPC or service account already exists.
 
 Source contracts: `docs/product/PROJECT-HANDOFF-RU.md` and `docs/product/sashatel-spec-v1.0.md`. Deployment is additive to integration PR #32.
+
+## Existing SashaTel staging identifiers
+
+- Folder: `b1gi9a6gkr55k6csn9s`
+- VPC: `enpthm9vaqno3a8ogprk`
+- `ru-central1-a` subnet: `e9bm2hfyk1kfsoyimttp` (10.128.0.0/24)
+- Container Registry: `crpjs1v75pobqqd0ij5t`
+- Last successful image publication: `cr.yandex/crpjs1v75pobqqd0ij5t/sashatel-backend@sha256:fc298ec73e651c8862edd15ed9902a3380aef95c15171c1e56bbc4e7d155fd91`
+
+Identifiers are from user-provided screenshots / successful GitHub job; they are not credentials. Before apply, validate their zone, ownership, absence of overlap, and Yandex Cloud quotas via a read-only Terraform plan. The registry-push service account is NOT an infrastructure provisioning identity. No Terraform apply or staging VM/DB is performed by this PR.
