@@ -70,3 +70,10 @@ variable "existing_subnet_ids" {
     error_message = "Use real subnet IDs, not subnet names."
   }
 }
+
+# Pull-only identity attached to staging VM; no static registry password.
+variable "vm_service_account_id" {
+  type = string
+  default = null
+  nullable = true
+}
