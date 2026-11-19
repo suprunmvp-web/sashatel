@@ -48,7 +48,17 @@ compose_run() {
 }
 tmp="$(mktemp -p /tmp sashatel-staging-release.XXXXXXXX.env)"
 chmod 600 "$tmp"
-trap 'rm -f "$tmp"' EXIT
+docker_auth="$(mktemp -d -p /tmp sashatel-docker-auth.XXXXXXXX)"
+chmod 700 "$docker_auth"
+trap 'rm -f "$tmp"; rm -rf "$docker_auth"' EXIT
+# The VM has a dedicated read-only Container Registry service account.
+# Metadata token is short lived and never goes into GitHub, Terraform or logs.
+metadata='http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token'
+iam_token="$(curl --fail --silent --show-error --max-time 5 \
+  -H 'Metadata-Flavor: Google' "$metadata" | jq -er '.access_token')"
+export DOCKER_CONFIG="$docker_auth"
+printf '%s' "$iam_token" | docker login --username iam --password-stdin cr.yandex >/dev/null
+unset iam_token
 printf 'BACKEND_IMAGE=%s\n' "$image" > "$tmp"
 
 echo "Verifying staging Compose and pulling immutable backend image"
