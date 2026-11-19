@@ -476,6 +476,31 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.deepEqual(stored,{state:'ended',available:'100'});
   });
 
+  await t.test('machine outcome cannot create human billable seconds',async()=>{
+    const a=await fixture({balance:0,number:'+74950004101'});
+    const call=await control.authorize(a.token,'machine',destination);
+    const gateway=new FakeAri();
+    await control.processOne(a.tenant,gateway);
+    assert.equal((await control.calls(a.token,call.call_id)).state,'ringing');
+    await assert.rejects(control.event(a.tenant,call.call_id,{
+      id:'invalid-machine',state:'ended',
+      classification:{outcome:'machine',billableSeconds:60},
+    }),/NON_HUMAN_CANNOT_BE_BILLED/);
+    await assert.rejects(control.event(a.tenant,call.call_id,{
+      id:'unverified-human',state:'ended',
+      classification:{outcome:'human',billableSeconds:60},
+    }),/UNVERIFIED_HUMAN_BILLING/);
+    await control.event(a.tenant,call.call_id,{
+      id:'machine-confirmed',state:'ended',classification:{outcome:'machine'},
+    });
+    const {rows:[ledger]}=await admin.query(
+      'SELECT outcome,billable_seconds,amount_kopeks FROM control.postpaid_usage WHERE call_id=$1',
+      [call.call_id]);
+    assert.deepEqual(ledger,{outcome:'machine',billable_seconds:0,amount_kopeks:'0'});
+    assert.equal((await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',
+      [a.tenant])).rows[0].available,'0');
+  });
+
   await t.test('ambiguous originate reconciles without redial and terminal delivery charges once', async () => {
     const a = await fixture({number:'+74950001040'});
     const call = await control.authorize(a.token,'timeout',destination);
