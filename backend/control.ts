@@ -237,7 +237,7 @@ export class ControlPlane {
       if(!sub?.active||!sub.telephony)throw new ApiError(403,'TELEPHONY_DISABLED');
       const {rows:[concurrency]}=await db.query(
         "SELECT COUNT(*)::int AS used FROM carousel_dispatches WHERE organization_id=$1 "+
-        "AND state IN ('committed','unknown')",[tenant]);
+        "AND state IN ('held','committed','unknown')",[tenant]);
       if(concurrency.used>=actor.maxCalls)throw new ApiError(409,'CALL_CONCURRENCY_LIMIT');
       const {rows:[route]}=await db.query(
         'SELECT o.default_trunk_id,m.trunk_override_id FROM organizations o '+
