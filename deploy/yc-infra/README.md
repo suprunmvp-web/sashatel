@@ -27,3 +27,13 @@ Official Yandex Cloud docs:
 - https://yandex.cloud/en/docs/terraform/resources/mdb_postgresql_cluster_v2
 - https://yandex.cloud/en/docs/terraform/resources/compute_instance
 - https://yandex.cloud/ru/docs/iam/operations/wlif/setup-wlif
+
+## Staging service identities (least-privilege roles)
+
+Three different identities are intentional and do not require storing personal credentials in GitHub:
+
+- `sashatel-staging-deploy` (existing, GitHub branch-bound OIDC): publishes immutable images to the staging registry; no Compute or PostgreSQL administration.
+- `sashatel-staging-infra` (to create): used by a manually approved protected infrastructure runner for staging Terraform plan/apply. Scope only to the staging catalog and relevant resource types; do **not** grant org-wide editor or production roles. Never use this identity as application runtime.
+- `sashatel-staging-pull` (to create): attached directly to the staging Compute VM using `vm_service_account_id`; grant `container-registry.images.puller` **only on registry `crpjs1v75pobqqd0ij5t`**. The VM reads a short-lived IAM token from Yandex's metadata service for `docker login`. No static registry password is placed in user-data, source control, Terraform state or on a GitHub runner.
+
+**Provisioning is not yet authorized or executed.** Finish protected remote state/locking, provider role scope, budget approval and VM image validation before apply. Check that metadata-token access is limited to the trusted VM administrator/runtime, and do not put user-controlled code on the host. Documentation: https://yandex.cloud/en/docs/compute/operations/vm-connect/auth-inside-vm and https://yandex.cloud/en/docs/container-registry/operations/authentication.
