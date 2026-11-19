@@ -51,6 +51,11 @@ jobs:
           docker compose --env-file deploy/yc-staging/staging.env.example \
             -f deploy/yc-staging/compose.yaml --profile migration config -q
           grep -Eq 'BACKEND_IMAGE=.*@sha256:[0-9a-f]{64}' deploy/yc-staging/staging.env.example
+      - name: Validate one-command staging release shell
+        run: |
+          bash -n deploy/yc-staging/release.sh
+          grep -q 'LIVE_CALL_DISPATCH=disabled' deploy/yc-staging/release.sh
+          grep -q 'sha256:' deploy/yc-staging/release.sh
       - name: Keep deployment gated
         run: |
           set -eu
