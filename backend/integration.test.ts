@@ -26,7 +26,7 @@ async function fixture({ limit = 10, balance = 100, role = 'manager', number = '
   await admin.query('INSERT INTO control.trunks VALUES ($1,$2,true)', [tenant,trunk]);
   await admin.query('INSERT INTO control.phone_numbers VALUES ($1,$2,$3,true)', [tenant,number,trunk]);
   const credentials = await control.login(tenant,user,'test-password',device);
-  return { tenant, user, member, token: credentials.token, number };
+  return { tenant, user, member, trunk, token: credentials.token, number };
 }
 
 function code(expected: string) {
@@ -103,6 +103,79 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const {rows:[row]} = await admin.query(
       'SELECT available,(SELECT count(*) FROM control.outbox WHERE organization_id=$1) AS pending FROM control.wallets WHERE organization_id=$1',[a.tenant]);
     assert.deepEqual(row,{available:'100',pending:'0'});
+  });
+
+  await t.test('default trunk is inherited and member override selects only assigned carrier', async () => {
+    const a = await fixture({number:'+74950002001'});
+    const [adminUser,adminMember,adminDevice]=Array.from({length:3},()=>randomUUID());
+    await admin.query('INSERT INTO control.users(id,login,password_hash) VALUES($1,$1::uuid::text,$2)',
+      [adminUser,await hashPassword('test-password')]);
+    await admin.query("INSERT INTO control.memberships VALUES($1,$2,$3,'organization_admin',true)",
+      [a.tenant,adminMember,adminUser]);
+    const supervisor=await control.login(a.tenant,adminUser,'test-password',adminDevice);
+    await assert.rejects(control.setDefaultTrunk(a.token,a.trunk),code('TRUNK_PERMISSION_REQUIRED'));
+    const secondTrunk=randomUUID();
+    const secondNumber='+74950002002';
+    await admin.query('INSERT INTO control.trunks(organization_id,id,active) VALUES ($1,$2,true)',
+      [a.tenant,secondTrunk]);
+    await admin.query('INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES ($1,$2,$3,true)',
+      [a.tenant,secondNumber,secondTrunk]);
+
+    // More than one eligible trunk without a declared route must fail closed.
+    await assert.rejects(control.authorize(a.token,'ambiguous',destination),
+      code('TRUNK_ASSIGNMENT_REQUIRED'));
+    const {rows:[noDispatch]}=await admin.query(
+      'SELECT count(*)::int AS n FROM control.calls WHERE organization_id=$1',[a.tenant]);
+    assert.equal(noDispatch.n,0);
+
+    const {rows:[first]}=await admin.query(
+      'SELECT id FROM control.trunks WHERE organization_id=$1 AND id<>$2',
+      [a.tenant,secondTrunk]);
+    const otherTenant = await fixture({number:'+74950002003'});
+    await assert.rejects(control.setDefaultTrunk(supervisor.token,otherTenant.trunk),
+      code('TRUNK_NOT_READY'));
+    await assert.rejects(control.setEmployeeTrunk(supervisor.token,otherTenant.member,secondTrunk),
+      code('EMPLOYEE_NOT_FOUND'));
+    await control.setDefaultTrunk(supervisor.token,first.id);
+    const defaultCall=await control.authorize(a.token,'default-trunk',destination);
+    let {rows:[saved]}=await admin.query('SELECT trunk_id,caller_id FROM control.calls WHERE id=$1',
+      [defaultCall.call_id]);
+    assert.deepEqual(saved,{trunk_id:first.id,caller_id:a.number});
+
+    await control.setEmployeeTrunk(supervisor.token,a.member,secondTrunk);
+    const overridden=await control.authorize(a.token,'override-trunk',destination);
+    ({rows:[saved]}=await admin.query('SELECT trunk_id,caller_id FROM control.calls WHERE id=$1',
+      [overridden.call_id]));
+    assert.deepEqual(saved,{trunk_id:secondTrunk,caller_id:secondNumber});
+
+    // REST contract enforces privileged routing updates and validated bodies.
+    const api=createApi(control,()=>pool.query('SELECT 1'));
+    api.listen(0,'127.0.0.1');
+    await once(api,'listening');
+    try {
+      const address=api.address();
+      assert(address&&typeof address!=='string');
+      const origin='http://127.0.0.1:'+address.port;
+      const headers={authorization:'Bearer '+supervisor.token,'content-type':'application/json'};
+      const reset=await fetch(origin+'/v1/trunk-routing/members/'+a.member,
+        {method:'PUT',headers,body:JSON.stringify({trunk_id:null})});
+      assert.equal(reset.status,200);
+      assert.equal((await reset.json()).trunk_override_id,null);
+      const assign=await fetch(origin+'/v1/trunk-routing/members/'+a.member,
+        {method:'PUT',headers,body:JSON.stringify({trunk_id:secondTrunk})});
+      assert.equal(assign.status,200);
+      const forbidden=await fetch(origin+'/v1/trunk-routing/default',
+        {method:'PUT',headers:{...headers,authorization:'Bearer '+a.token},
+          body:JSON.stringify({trunk_id:secondTrunk})});
+      assert.equal(forbidden.status,403);
+    } finally {
+      await new Promise<void>(resolve=>api.close(()=>resolve()));
+    }
+
+    // No silent failover when the employee's explicitly assigned trunk goes down.
+    await admin.query('UPDATE control.trunks SET active=false WHERE id=$1',[secondTrunk]);
+    await assert.rejects(control.authorize(a.token,'no-failover',destination),
+      code('NO_CALLER_ID'));
   });
 
   await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {

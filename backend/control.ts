@@ -159,6 +159,42 @@ export class ControlPlane {
     });
   }
 
+  async setDefaultTrunk(bearer: string, trunkId: string) {
+    if (!uuid.test(trunkId)) throw new ApiError(400, 'INVALID_TRUNK');
+    return this.manageTrunks(bearer, async (db,actor) => {
+      const {rows:[target]}=await db.query(
+        'SELECT id FROM trunks WHERE organization_id=$1 AND id=$2 AND active',
+        [actor.tenant,trunkId]);
+      if(!target) throw new ApiError(409,'TRUNK_NOT_READY');
+      await db.query('UPDATE organizations SET default_trunk_id=$2 WHERE id=$1',
+        [actor.tenant,trunkId]);
+      await db.query('INSERT INTO audit_log(organization_id,actor_id,action) VALUES($1,$2,$3)',
+        [actor.tenant,actor.userId,'trunk.default:' + trunkId]);
+      return {default_trunk_id:trunkId};
+    });
+  }
+
+  async setEmployeeTrunk(bearer: string, membershipId: string, trunkId: string | null) {
+    if(!uuid.test(membershipId)||(trunkId!==null&&!uuid.test(trunkId))) {
+      throw new ApiError(400,'INVALID_TRUNK_ASSIGNMENT');
+    }
+    return this.manageTrunks(bearer,async (db,actor)=>{
+      if(trunkId!==null){
+        const {rows:[target]}=await db.query(
+          'SELECT id FROM trunks WHERE organization_id=$1 AND id=$2 AND active',
+          [actor.tenant,trunkId]);
+        if(!target) throw new ApiError(409,'TRUNK_NOT_READY');
+      }
+      const changed=await db.query(
+        'UPDATE memberships SET trunk_override_id=$3 WHERE organization_id=$1 AND id=$2 AND active RETURNING id',
+        [actor.tenant,membershipId,trunkId]);
+      if(!changed.rowCount)throw new ApiError(404,'EMPLOYEE_NOT_FOUND');
+      await db.query('INSERT INTO audit_log(organization_id,actor_id,action) VALUES($1,$2,$3)',
+        [actor.tenant,actor.userId,'trunk.assignment:' + membershipId + ':' + (trunkId??'inherit')]);
+      return {membership_id:membershipId,trunk_override_id:trunkId};
+    });
+  }
+
   async logout(bearer: string) {
     const { tenant, hash } = this.#credentials(bearer);
     await this.transaction(tenant, async db => {
@@ -188,10 +224,28 @@ export class ControlPlane {
       const { rows: [capacity] } = await db.query(
         "SELECT count(*)::int AS used FROM calls WHERE state NOT IN ('ended','failed','expired')");
       if (capacity.used >= actor.maxCalls) throw new ApiError(409, 'CALL_CONCURRENCY_LIMIT');
+      // Resolve the route on the server. A Desktop request cannot specify a trunk.
+      const { rows: [route] } = await db.query(
+        `SELECT o.default_trunk_id,m.trunk_override_id
+           FROM organizations o JOIN memberships m ON m.organization_id=o.id
+          WHERE o.id=$1 AND m.id=$2`, [tenant,actor.membership_id]);
+      let effectiveTrunk: string | undefined = route?.trunk_override_id ?? route?.default_trunk_id ?? undefined;
+      if (!effectiveTrunk) {
+        // Backfill legacy single-trunk organizations without silently routing
+        // a multi-trunk organization to an arbitrary provider.
+        const { rows: activeTrunks } = await db.query(
+          'SELECT id FROM trunks WHERE organization_id=$1 AND active ORDER BY id LIMIT 2', [tenant]);
+        if (activeTrunks.length !== 1) throw new ApiError(409, 'TRUNK_ASSIGNMENT_REQUIRED');
+        effectiveTrunk = activeTrunks[0].id;
+        if (!route?.default_trunk_id) {
+          await db.query('UPDATE organizations SET default_trunk_id=$2 WHERE id=$1 AND default_trunk_id IS NULL',
+            [tenant,effectiveTrunk]);
+        }
+      }
       const { rows: numbers } = await db.query(
         `SELECT n.e164,n.trunk_id FROM phone_numbers n JOIN trunks t
            ON (n.organization_id,n.trunk_id)=(t.organization_id,t.id)
-          WHERE n.active AND t.active ORDER BY n.e164`);
+          WHERE n.active AND t.active AND t.id=$1 ORDER BY n.e164`, [effectiveTrunk]);
       if (!numbers.length) throw new ApiError(409, 'NO_CALLER_ID');
       const { rows: [wallet] } = await db.query(
         'UPDATE wallets SET available=available-reserve_per_call WHERE organization_id=$1 AND available>=reserve_per_call RETURNING reserve_per_call',

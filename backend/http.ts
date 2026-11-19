@@ -72,6 +72,19 @@ export function createApi(control: ControlPlane, ready: () => Promise<unknown>, 
       if (req.method === 'GET' && path === '/v1/operator/telephony') {
         return send(200,await control.operatorTelephony(bearer));
       }
+      if (req.method === 'PUT' && path === '/v1/trunk-routing/default') {
+        const data=await body(req);
+        if(Object.keys(data).length!==1)throw new ApiError(400,'INVALID_FIELD');
+        return send(200,await control.setDefaultTrunk(bearer,field(data.trunk_id,36)));
+      }
+      const assignment=path.match(/^\/v1\/trunk-routing\/members\/([^/]+)$/);
+      if(req.method==='PUT'&&assignment){
+        const data=await body(req);
+        if(Object.keys(data).length!==1||!Object.hasOwn(data,'trunk_id'))
+          throw new ApiError(400,'INVALID_FIELD');
+        const trunkId=data.trunk_id===null?null:field(data.trunk_id,36);
+        return send(200,await control.setEmployeeTrunk(bearer,assignment[1],trunkId));
+      }
       const trunkRoute = path.match(/^\/v1\/trunks(?:\/([^/]+))?$/);
       if (trunkRoute) {
         if (!trunks) throw new ApiError(503,'TRUNK_SERVICE_UNAVAILABLE');
