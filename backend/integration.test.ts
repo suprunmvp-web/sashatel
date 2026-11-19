@@ -219,6 +219,33 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       code('NO_CALLER_ID'));
   });
 
+  await t.test('commercial admission uses authenticated route, not prepaid balance or old attempts',async()=>{
+    const a=await fixture({balance:0,limit:1,number:'+74950003990'});
+    const b=await fixture({balance:0,number:'+74950003991'});
+    const prepared=await control.prepareCommercialCall(a.token,'commercial-1',destination);
+    assert.equal(prepared.state,'held');
+    assert.equal(prepared.caller_id,a.number);
+    assert.equal(prepared.trunk_id,a.trunk);
+    assert.deepEqual(await control.prepareCommercialCall(a.token,'commercial-1',destination),prepared);
+    await assert.rejects(control.prepareCommercialCall(a.token,'commercial-1','+79269990000'),
+      code('IDEMPOTENCY_CONFLICT'));
+    await assert.rejects(control.prepareCommercialCall(a.token,'commercial-2',destination),
+      code('CALL_CONCURRENCY_LIMIT'));
+    const {rows:[wallet]}=await admin.query(
+      'SELECT available FROM control.wallets WHERE organization_id=$1',[a.tenant]);
+    assert.equal(wallet.available,'0');
+    const {rows:[oldCounter]}=await admin.query(
+      'SELECT count(*)::int AS count FROM control.number_attempts WHERE e164=$1',[a.number]);
+    assert.equal(oldCounter.count,0);
+    const {rows:[foreign]}=await control.transaction(b.tenant,db=>
+      db.query('SELECT id FROM carousel_dispatches WHERE id=$1',[prepared.call_id]));
+    assert.equal(foreign,undefined);
+    await control.transaction(a.tenant,db=>new GlobalCarousel().finalize(db,{
+      organizationId:a.tenant,dispatchId:prepared.call_id,action:'release'}));
+    const retried=await control.prepareCommercialCall(a.token,'commercial-2',destination);
+    assert.equal(retried.state,'held');
+  });
+
   await t.test('physical Caller ID quota is shared globally across tenants',async()=>{
     const number='+74950003999';
     const a=await fixture({number}),b=await fixture({number});
