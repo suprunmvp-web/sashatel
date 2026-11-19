@@ -33,18 +33,22 @@ export interface Originate {
   trunkId: string;
 }
 export type GatewayState = 'ringing' | 'connected' | 'ended' | 'unknown';
-export type GatewayResult = Exclude<GatewayState, 'ended'> | { state: 'ended'; charge: bigint };
+export interface CallClassification {
+  outcome:'human'|'machine'|'no_answer'|'rejected'|'error'|'unknown';
+  billableSeconds?:number;
+  evidenceId?:string;
+}
+export type GatewayResult = Exclude<GatewayState,'ended'> |
+  {state:'ended';classification?:CallClassification};
 export interface TelephonyGateway {
   originate(command: Originate): Promise<'ringing'>;
-  // Cancel by durable ID even when originate is ambiguous. A definitive result fences late originate.
-  hangup(attemptId: string): Promise<'unknown' | { state: 'ended'; charge: bigint }>;
+  hangup(attemptId: string): Promise<'unknown'|{state:'ended';classification?:CallClassification}>;
   inspect(attemptId: string): Promise<GatewayResult>;
 }
 export interface TelephonyEvent {
-  id: string;
-  state: Exclude<GatewayState, 'unknown'>;
-  // Trusted adapter supplies authoritative usage in wallet units.
-  charge?: bigint;
+  id:string;
+  state:Exclude<GatewayState,'unknown'>;
+  classification?:CallClassification;
 }
 
 export class ControlPlane {
@@ -294,7 +298,9 @@ export class ControlPlane {
       const { rows: [call] } = await db.query('SELECT * FROM calls WHERE id=$1 AND membership_id=$2', [id, actor.membership_id]);
       if (!call) throw new ApiError(404, 'CALL_NOT_FOUND');
       if (call.state === 'authorized') {
-        await this.#settle(db, tenant, call, 'ended', 0n);
+        // No physical attempt was committed: release quota, no billable usage.
+        await this.carousel.finalize(db,{organizationId:tenant,dispatchId:id,action:'release'});
+        await db.query("UPDATE calls SET state='ended' WHERE id=$1",[id]);
       } else if (!terminal.has(call.state)) {
         await db.query("UPDATE calls SET state='terminating' WHERE id=$1", [id]);
         await db.query("INSERT INTO outbox (organization_id,call_id,command) VALUES ($1,$2,'hangup') ON CONFLICT DO NOTHING", [tenant,id]);
@@ -303,39 +309,44 @@ export class ControlPlane {
     });
   }
 
-  async #settle(db: PoolClient, tenant: string, call: { id: string; reserved: string }, state: string, charge: bigint) {
-    const reserved = BigInt(call.reserved);
-    if (charge < 0n || charge > reserved) throw new Error('Usage outside reserved bounds');
-    await db.query('UPDATE calls SET state=$2 WHERE id=$1', [call.id,state]);
-    const chargeRow = await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'charge',$3) ON CONFLICT DO NOTHING", [tenant,call.id,charge.toString()]);
-    if (!chargeRow.rowCount) return;
-    await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'release',$3)",
-      [tenant,call.id,(reserved-charge).toString()]);
-    await db.query('UPDATE wallets SET available=available+$2 WHERE organization_id=$1', [tenant,(reserved-charge).toString()]);
-    await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL', [call.id]);
+  async #settle(db:PoolClient,tenant:string,call:{id:string},
+                state:string,classification?:CallClassification){
+    const outcome=classification?.outcome??'unknown';
+    const seconds=outcome==='human'?classification?.billableSeconds:0;
+    const evidence=outcome==='human'?classification?.evidenceId:null;
+    if(outcome==='human' && (!Number.isInteger(seconds)||seconds===undefined
+       ||seconds<0||seconds>86400||typeof evidence!=='string'
+       ||!evidence.length||evidence.length>512)){
+      throw new Error('UNVERIFIED_HUMAN_BILLING');
+    }
+    if(outcome!=='human' && (classification?.billableSeconds||classification?.evidenceId)){
+      throw new Error('NON_HUMAN_CANNOT_BE_BILLED');
+    }
+    await db.query('UPDATE calls SET state=$2 WHERE id=$1',[call.id,state]);
+    await db.query(
+      'INSERT INTO postpaid_usage(organization_id,call_id,outcome,billable_seconds,amount_kopeks,evidence_id) '+
+      'VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING',
+      [tenant,call.id,outcome,seconds??0, (seconds??0)*5,evidence]);
+    await db.query(
+      "UPDATE carousel_outbox SET state='completed',completed_at=clock_timestamp() "+
+      "WHERE dispatch_id=$1 AND state<>'completed'",[call.id]);
+    await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL',[call.id]);
   }
 
-  async event(tenant: string, id: string, event: TelephonyEvent) {
-    return this.transaction(tenant, async db => {
-      await this.#organization(db, tenant);
-      const { rows: [call] } = await db.query('SELECT * FROM calls WHERE id=$1', [id]);
-      if (!call || ['authorized','expired','failed'].includes(call.state)) return;
-      if (call.state === 'ended' && (event.state !== 'ended' || event.charge === undefined)) return;
-      if (call.state === 'ended' && (await db.query("SELECT 1 FROM usage_ledger WHERE call_id=$1 AND kind='charge'", [id])).rowCount) return;
-      const inserted = await db.query(
-        'INSERT INTO call_events (organization_id,call_id,event_id,state) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+  async event(tenant:string,id:string,event:TelephonyEvent){
+    return this.transaction(tenant,async db=>{
+      await this.#organization(db,tenant);
+      const {rows:[call]}=await db.query('SELECT * FROM calls WHERE id=$1 FOR UPDATE',[id]);
+      if(!call||['authorized','expired','failed'].includes(call.state))return;
+      if(call.state==='ended')return;
+      const inserted=await db.query(
+        'INSERT INTO call_events(organization_id,call_id,event_id,state) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',
         [tenant,id,event.id,event.state]);
-      if (event.state === 'ended') {
-        if (event.charge !== undefined) {
-          await this.#settle(db, tenant, call, 'ended', event.charge);
-        } else if (inserted.rowCount) {
-          await db.query("UPDATE calls SET state='ended' WHERE id=$1", [id]);
-          await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL', [id]);
-        }
-      } else if (!inserted.rowCount) {
-        return;
-      } else if (['dispatching','reconciling','ringing'].includes(call.state)) {
-        await db.query('UPDATE calls SET state=$2 WHERE id=$1', [id,event.state]);
+      if(!inserted.rowCount)return;
+      if(event.state==='ended'){
+        await this.#settle(db,tenant,call,'ended',event.classification);
+      } else if(['dispatching','reconciling','ringing'].includes(call.state)){
+        await db.query('UPDATE calls SET state=$2 WHERE id=$1',[id,event.state]);
       }
     });
   }
