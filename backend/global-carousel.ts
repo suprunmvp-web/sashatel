@@ -64,15 +64,9 @@ export class GlobalCarousel {
    */
   async expireForTenant(db:PoolClient,organizationId:string,limit=100):Promise<number> {
     if(!Number.isInteger(limit)||limit<1||limit>500)throw Error('INVALID_EXPIRY_BATCH');
-    await db.query('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[organizationId]);
-    const {rows:expired}=await db.query(
-      "SELECT id FROM carousel_dispatches WHERE organization_id=$1 AND state='held' "+
-      "AND expires_at<=clock_timestamp() ORDER BY expires_at,id LIMIT $2 FOR UPDATE SKIP LOCKED",
-      [organizationId,limit]);
-    for(const hold of expired){
-      await this.finalize(db,{organizationId,dispatchId:hold.id,action:'release'});
-    }
-    return expired.length;
+    const {rows:[r]}=await db.query(
+      'SELECT expire_physical_holds($1,$2) AS released',[organizationId,limit]);
+    return r.released;
   }
 
   async finalize(db:PoolClient,args:{
