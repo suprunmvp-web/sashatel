@@ -122,7 +122,7 @@ resource "yandex_mdb_postgresql_cluster_v2" "db" {
   folder_id         = var.folder_id
   name              = "${local.name}-postgresql-17"
   environment       = "PRODUCTION"
-  network_id        = yandex_vpc_network.environment.id
+  network_id        = local.network_id
   security_group_ids = [yandex_vpc_security_group.postgres.id]
   deletion_protection = true
   labels              = local.labels
