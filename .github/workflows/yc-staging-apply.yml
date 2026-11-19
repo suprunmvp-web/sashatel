@@ -145,3 +145,4 @@ jobs:
             "PostgreSQL cluster: " + .postgres_cluster_id.value,
             "Private API IP: " + .api_private_ip.value
           ' >> "$GITHUB_STEP_SUMMARY"
+# Retry staging VM provisioning after IAM role update
