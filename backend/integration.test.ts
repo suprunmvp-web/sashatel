@@ -26,7 +26,7 @@ async function fixture({ limit = 10, balance = 100, role = 'manager', number = '
   await admin.query('INSERT INTO control.trunks VALUES ($1,$2,true)', [tenant,trunk]);
   await admin.query('INSERT INTO control.phone_numbers VALUES ($1,$2,$3,true)', [tenant,number,trunk]);
   const credentials = await control.login(tenant,user,'test-password',device);
-  return { tenant, user, member, token: credentials.token, number };
+  return { tenant, user, member, trunk, token: credentials.token, number };
 }
 
 function code(expected: string) {
@@ -103,6 +103,45 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const {rows:[row]} = await admin.query(
       'SELECT available,(SELECT count(*) FROM control.outbox WHERE organization_id=$1) AS pending FROM control.wallets WHERE organization_id=$1',[a.tenant]);
     assert.deepEqual(row,{available:'100',pending:'0'});
+  });
+
+  await t.test('default trunk is inherited and member override selects only assigned carrier', async () => {
+    const a = await fixture({number:'+74950002001'});
+    const secondTrunk=randomUUID();
+    const secondNumber='+74950002002';
+    await admin.query('INSERT INTO control.trunks(organization_id,id,active) VALUES ($1,$2,true)',
+      [a.tenant,secondTrunk]);
+    await admin.query('INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES ($1,$2,$3,true)',
+      [a.tenant,secondNumber,secondTrunk]);
+
+    // More than one eligible trunk without a declared route must fail closed.
+    await assert.rejects(control.authorize(a.token,'ambiguous',destination),
+      code('TRUNK_ASSIGNMENT_REQUIRED'));
+    const {rows:[noDispatch]}=await admin.query(
+      'SELECT count(*)::int AS n FROM control.calls WHERE organization_id=$1',[a.tenant]);
+    assert.equal(noDispatch.n,0);
+
+    const {rows:[first]}=await admin.query(
+      'SELECT id FROM control.trunks WHERE organization_id=$1 AND id<>$2',
+      [a.tenant,secondTrunk]);
+    await admin.query('UPDATE control.organizations SET default_trunk_id=$2 WHERE id=$1',
+      [a.tenant,first.id]);
+    const defaultCall=await control.authorize(a.token,'default-trunk',destination);
+    let {rows:[saved]}=await admin.query('SELECT trunk_id,caller_id FROM control.calls WHERE id=$1',
+      [defaultCall.call_id]);
+    assert.deepEqual(saved,{trunk_id:first.id,caller_id:a.number});
+
+    await admin.query('UPDATE control.memberships SET trunk_override_id=$2 WHERE organization_id=$1 AND id=$3',
+      [a.tenant,secondTrunk,a.member]);
+    const overridden=await control.authorize(a.token,'override-trunk',destination);
+    ({rows:[saved]}=await admin.query('SELECT trunk_id,caller_id FROM control.calls WHERE id=$1',
+      [overridden.call_id]));
+    assert.deepEqual(saved,{trunk_id:secondTrunk,caller_id:secondNumber});
+
+    // No silent failover when the employee's explicitly assigned trunk goes down.
+    await admin.query('UPDATE control.trunks SET active=false WHERE id=$1',[secondTrunk]);
+    await assert.rejects(control.authorize(a.token,'no-failover',destination),
+      code('NO_CALLER_ID'));
   });
 
   await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {
