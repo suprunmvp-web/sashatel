@@ -4,13 +4,13 @@
 
 ## Provisioned by a manually approved Terraform apply (not yet applied)
 
-Each environment owns its VPC and subnets, API VM, restricted security groups, and privately reachable Managed PostgreSQL 17 cluster. Staging has one DB host; production is planned with two hosts in separate availability zones and deletion protection. In both environments the API VM is a single instance until the in-memory refresh single-flight behavior is replaced. This is a **provisioning template**, not an assertion of production readiness or regional SLA.
+Production owns its VPC and subnets. Staging reuses the existing VPC and matching-zone subnet found in `sashatel-staging` (1 VPC, 5 subnets on 19 Nov 2026); the staging root requires explicit existing VPC/subnet IDs and must never create a duplicate. Each environment owns an API VM, restricted security groups, and privately reachable Managed PostgreSQL 17 cluster. Staging has one DB host; production is planned with two hosts in separate availability zones and deletion protection. In both environments the API VM is a single instance until the in-memory refresh single-flight behavior is replaced. This is a **provisioning template**, not an assertion of production readiness or regional SLA.
 
 **No direct inbound API port or PostgreSQL port.** VM has a public IP for bounded outbound connectivity and restricted SSH only from explicitly provided admin CIDRs. Internet access and host hardening, WireGuard/private access to Asterisk, TLS reverse proxy, image rollout, observability, database users, backups and domain DNS are separate deploy gates. The Yandex Cloud PostgreSQL v2 service uses private TCP port 6432. Do not open this to the internet.
 
 ## Before applying
 
-1. In Yandex Cloud console collect the actual catalog IDs for staging/production, a supported zone, a reviewed Ubuntu image ID, an SSH **public** key and the admin IP/32. Folder *names* are not Terraform IDs.
+1. In Yandex Cloud console collect the actual catalog IDs for staging/production, existing staging VPC network ID and subnet ID in the chosen zone, a reviewed Ubuntu image ID, an SSH **public** key and the admin IP/32. Check routing/CIDR overlap and preexisting security groups before planning. Folder *names* are not Terraform IDs.
 2. Pin the validated provider dependency lock and select an encrypted remote state backend with per-environment access policies. The `.gitignore` excludes local state; **never run apply with uncontrolled local state**. Do not put DB passwords/tokens in Terraform variables or outputs.
 3. Configure Yandex Cloud Workload Identity Federation (GitHub OIDC; exact repository/environment subject), separate staging/prod deployment service accounts and limited catalog roles. No global `editor`, no production credentials in staging.
 4. Run `terraform init -backend=false && terraform fmt -check -recursive && terraform validate` inside each environment root. Run `terraform plan` only using a protected remote state and real catalog IDs, inspect all costs, provider grants, VM image, multi-zone availability and replication configuration. CI below only performs static checks.
