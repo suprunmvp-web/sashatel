@@ -232,6 +232,7 @@ GRANT EXECUTE ON FUNCTION expire_physical_holds(uuid,integer),
   hold_physical_caller(uuid,text,date),
   finalize_physical_caller(uuid,uuid,text) TO control_runtime;
 GRANT SELECT ON carousel_numbers,carousel_dispatches,carousel_outbox TO control_runtime;
+GRANT UPDATE (state,claimed_at,completed_at) ON carousel_outbox TO control_runtime;
 GRANT INSERT ON carousel_dispatches TO control_runtime;
 -- Operator approval and active/passive transitions require a separate trusted service.
 -- No direct DML privilege on physical_caller_day for application runtime.
