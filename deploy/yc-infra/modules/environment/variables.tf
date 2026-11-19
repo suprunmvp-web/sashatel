@@ -50,3 +50,23 @@ variable "db_hosts" {
   type = map(string)
   description = "Map host name to subnet key; production must have at least two hosts."
 }
+
+# Reuse a known Yandex Cloud VPC and subnet(s) without creating a duplicate.
+# These are IDs, not names. Both inputs are required together.
+variable "existing_network_id" {
+  type = string
+  default = null
+  nullable = true
+  validation {
+    condition = var.existing_network_id == null || length(trimspace(var.existing_network_id)) > 5
+    error_message = "Existing VPC must be specified by its real network ID."
+  }
+}
+variable "existing_subnet_ids" {
+  type = map(string)
+  default = {}
+  validation {
+    condition = alltrue([for id in values(var.existing_subnet_ids) : length(trimspace(id)) > 5])
+    error_message = "Use real subnet IDs, not subnet names."
+  }
+}
