@@ -240,6 +240,8 @@ BEGIN
    IF NOT FOUND THEN RAISE EXCEPTION 'PHYSICAL_HOLD_MISSING'; END IF;
    UPDATE carousel_dispatches SET state='released'
      WHERE organization_id=tenant AND id=h.id;
+   UPDATE calls SET state='expired'
+     WHERE organization_id=tenant AND id=h.id AND state='authorized';
    released:=released+1;
  END LOOP;
  RETURN released;
