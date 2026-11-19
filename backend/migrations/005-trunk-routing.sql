@@ -16,5 +16,11 @@ ALTER TABLE memberships ADD CONSTRAINT memberships_trunk_override_fk
 GRANT UPDATE (default_trunk_id) ON organizations TO control_runtime;
 GRANT UPDATE (trunk_override_id) ON memberships TO control_runtime;
 
+INSERT INTO role_permissions(role_id,permission) VALUES
+  ('owner','trunks.manage'), ('admin','trunks.manage'),
+  ('owner','cabinet'), ('admin','cabinet'),
+  ('employee','call'), ('employee','operator.read')
+  ON CONFLICT DO NOTHING;
+
 -- No cross-tenant override can be stored due to composite foreign keys.
 -- This migration does not enable live dispatch or alter provider credentials.
