@@ -246,6 +246,29 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.equal(retried.state,'held');
   });
 
+  await t.test('expired uncommitted reservation releases physical quota without dispatch',async()=>{
+    const a=await fixture({number:'+74950003992'});
+    const carousel=new GlobalCarousel();
+    const args={organizationId:a.tenant,membershipId:a.member,
+      effectiveTrunkId:a.trunk,requestKey:'expires',destination};
+    const first=await control.transaction(a.tenant,db=>carousel.reserve(db,args));
+    await admin.query(
+      "UPDATE control.carousel_dispatches SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [first.id]);
+    const second=await control.transaction(a.tenant,db=>carousel.reserve(db,{
+      ...args,requestKey:'fresh'}));
+    assert.equal(second.state,'held');
+    assert.equal((await admin.query(
+      'SELECT state FROM control.carousel_dispatches WHERE id=$1',[first.id])).rows[0].state,'released');
+    const {rows:[quota]}=await admin.query(
+      "SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE 'Europe/Moscow')::date",
+      [a.number]);
+    assert.deepEqual(quota,{held:1,used:0});
+    assert.equal((await admin.query(
+      'SELECT COUNT(*)::int AS count FROM control.carousel_outbox WHERE organization_id=$1',
+      [a.tenant])).rows[0].count,0);
+  });
+
   await t.test('physical Caller ID quota is shared globally across tenants',async()=>{
     const number='+74950003999';
     const a=await fixture({number}),b=await fixture({number});
