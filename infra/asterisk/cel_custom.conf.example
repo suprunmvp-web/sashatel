@@ -1,0 +1,3 @@
+[Master.csv]
+format=dsv
+fields=EventTime,EventType,ChanName,UniqueID,LinkedID,EventExtra
