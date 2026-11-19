@@ -2,7 +2,6 @@ import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'no
 import { promisify } from 'node:util';
 import type { Pool, PoolClient } from 'pg';
 import { GlobalCarousel } from './global-carousel.ts';
-import { GlobalCarousel } from './global-carousel.ts';
 
 const derive = promisify(scrypt);
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -256,7 +255,7 @@ export class ControlPlane {
       try {
         const held=await carousel.reserve(db,{
           organizationId:tenant,membershipId:actor.membership_id,
-          effectiveTrunkId:trunkId,requestKey:key,destination});
+          effectiveTrunkId:trunkId!,requestKey:key,destination});
         return {call_id:held.id,state:held.state,destination:held.destination,
           caller_id:held.caller_id,trunk_id:held.trunk_id};
       } catch(error){
