@@ -83,6 +83,7 @@ resource "yandex_compute_instance" "api" {
   name        = "${local.name}-api-1"
   hostname    = "${local.name}-api-1"
   platform_id = "standard-v3"
+  service_account_id = var.vm_service_account_id
   zone        = var.zone
   labels      = local.labels
 
