@@ -30,6 +30,7 @@ CREATE TABLE physical_caller_day (
 CREATE TABLE carousel_dispatches (
   organization_id uuid NOT NULL,
   id uuid NOT NULL,
+  attempt_id uuid NOT NULL UNIQUE,
   membership_id uuid NOT NULL,
   request_key text NOT NULL,
   destination text NOT NULL CHECK(destination ~ '^\+[1-9][0-9]{6,14}$'),
@@ -48,10 +49,24 @@ CREATE TABLE carousel_dispatches (
 );
 CREATE INDEX carousel_dispatch_expiry ON carousel_dispatches(organization_id,expires_at) WHERE state='held';
 
+CREATE TABLE carousel_outbox (
+ organization_id uuid NOT NULL,
+ dispatch_id uuid NOT NULL,
+ attempt_id uuid NOT NULL,
+ state text NOT NULL DEFAULT 'pending'
+   CHECK(state IN('pending','claimed','unknown','completed')),
+ claimed_at timestamptz,
+ completed_at timestamptz,
+ PRIMARY KEY(organization_id,dispatch_id),
+ UNIQUE(attempt_id),
+ FOREIGN KEY(organization_id,dispatch_id)
+   REFERENCES carousel_dispatches(organization_id,id)
+);
+
 DO $$
 DECLARE t text;
 BEGIN
- FOREACH t IN ARRAY ARRAY['carousel_numbers','carousel_dispatches'] LOOP
+ FOREACH t IN ARRAY ARRAY['carousel_numbers','carousel_dispatches','carousel_outbox'] LOOP
   EXECUTE format('ALTER TABLE control.%I ENABLE ROW LEVEL SECURITY',t);
   EXECUTE format('ALTER TABLE control.%I FORCE ROW LEVEL SECURITY',t);
   EXECUTE format('CREATE POLICY tenant ON control.%I USING(organization_id=nullif(current_setting(''control.tenant'',true),'''')::uuid)',t);
@@ -117,6 +132,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'PHYSICAL_HOLD_MISSING'; END IF;
   UPDATE carousel_dispatches SET state='committed',committed_at=clock_timestamp()
     WHERE organization_id=tenant AND id=dispatch_id;
+  -- Persist the one-shot command together with the quota commit.
+  INSERT INTO carousel_outbox(organization_id,dispatch_id,attempt_id)
+    VALUES(tenant,dispatch_id,h.attempt_id);
   RETURN 'committed';
  END IF;
  UPDATE physical_caller_day SET held=held-1
@@ -131,7 +149,7 @@ REVOKE ALL ON FUNCTION hold_physical_caller(uuid,text,date) FROM PUBLIC;
 REVOKE ALL ON FUNCTION finalize_physical_caller(uuid,uuid,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION hold_physical_caller(uuid,text,date),
   finalize_physical_caller(uuid,uuid,text) TO control_runtime;
-GRANT SELECT ON carousel_numbers,carousel_dispatches TO control_runtime;
+GRANT SELECT ON carousel_numbers,carousel_dispatches,carousel_outbox TO control_runtime;
 GRANT INSERT ON carousel_dispatches TO control_runtime;
 -- Operator approval and active/passive transitions require a separate trusted service.
 -- No direct DML privilege on physical_caller_day for application runtime.
