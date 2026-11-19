@@ -22,6 +22,16 @@ ALTER TABLE calls DROP CONSTRAINT calls_reserved_check;
 ALTER TABLE calls ADD CONSTRAINT calls_reserved_nonnegative CHECK(reserved>=0);
 ALTER TABLE calls ALTER COLUMN reserved SET DEFAULT 0;
 
+-- Revoke write access to the superseded prepaid admission and legacy
+-- admission counter. Historical records remain readable and preserved.
+REVOKE UPDATE(available) ON wallets FROM control_runtime;
+REVOKE INSERT ON number_attempts FROM control_runtime;
+REVOKE UPDATE(used) ON number_attempts FROM control_runtime;
+REVOKE INSERT ON usage_ledger FROM control_runtime;
+COMMENT ON COLUMN calls.reserved IS
+ 'Legacy prepaid reservation retained for historical rows; all v1.1 postpaid calls store zero';
+
+
 -- Postpaid evidence in exact kopecks: 3 RUB per 60 human seconds = 5 kopecks/s.
 -- Each business call settles once; corrections require a separately audited
 -- adjustment workflow, not an overwrite of monetary evidence.
