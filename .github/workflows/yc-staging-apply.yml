@@ -1,6 +1,11 @@
 name: SashaTel YC staging — approved Terraform apply
 
 on:
+  push:
+    branches:
+      - feature/yc-staging-deployment-20261119
+    paths:
+      - '.github/workflows/yc-staging-apply.yml'
   workflow_dispatch:
     inputs:
       confirmation:
@@ -18,7 +23,7 @@ concurrency:
 jobs:
   deploy-infrastructure:
     name: Apply four reviewed staging resources
-    if: github.ref == 'refs/heads/feature/yc-staging-deployment-20261119' && inputs.confirmation == 'DEPLOY-STAGING'
+    if: github.ref == 'refs/heads/feature/yc-staging-deployment-20261119' && (github.event_name == 'push' || inputs.confirmation == 'DEPLOY-STAGING')
     runs-on: ubuntu-latest
     environment: staging-infra
     permissions:
@@ -47,6 +52,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.10.5
+      # Protected GitHub environment approval is required BEFORE this job starts.
       - name: Verify manual authorization and fixed target
         shell: bash
         run: |
