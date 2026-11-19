@@ -159,6 +159,42 @@ export class ControlPlane {
     });
   }
 
+  async setDefaultTrunk(bearer: string, trunkId: string) {
+    if (!uuid.test(trunkId)) throw new ApiError(400, 'INVALID_TRUNK');
+    return this.manageTrunks(bearer, async (db,actor) => {
+      const {rows:[target]}=await db.query(
+        'SELECT id FROM trunks WHERE organization_id=$1 AND id=$2 AND active',
+        [actor.tenant,trunkId]);
+      if(!target) throw new ApiError(409,'TRUNK_NOT_READY');
+      await db.query('UPDATE organizations SET default_trunk_id=$2 WHERE id=$1',
+        [actor.tenant,trunkId]);
+      await db.query('INSERT INTO audit_log(organization_id,actor_id,action) VALUES($1,$2,$3)',
+        [actor.tenant,actor.userId,'trunk.default:' + trunkId]);
+      return {default_trunk_id:trunkId};
+    });
+  }
+
+  async setEmployeeTrunk(bearer: string, membershipId: string, trunkId: string | null) {
+    if(!uuid.test(membershipId)||(trunkId!==null&&!uuid.test(trunkId))) {
+      throw new ApiError(400,'INVALID_TRUNK_ASSIGNMENT');
+    }
+    return this.manageTrunks(bearer,async (db,actor)=>{
+      if(trunkId!==null){
+        const {rows:[target]}=await db.query(
+          'SELECT id FROM trunks WHERE organization_id=$1 AND id=$2 AND active',
+          [actor.tenant,trunkId]);
+        if(!target) throw new ApiError(409,'TRUNK_NOT_READY');
+      }
+      const changed=await db.query(
+        'UPDATE memberships SET trunk_override_id=$3 WHERE organization_id=$1 AND id=$2 AND active RETURNING id',
+        [actor.tenant,membershipId,trunkId]);
+      if(!changed.rowCount)throw new ApiError(404,'EMPLOYEE_NOT_FOUND');
+      await db.query('INSERT INTO audit_log(organization_id,actor_id,action) VALUES($1,$2,$3)',
+        [actor.tenant,actor.userId,'trunk.assignment:' + membershipId + ':' + (trunkId??'inherit')]);
+      return {membership_id:membershipId,trunk_override_id:trunkId};
+    });
+  }
+
   async logout(bearer: string) {
     const { tenant, hash } = this.#credentials(bearer);
     await this.transaction(tenant, async db => {
