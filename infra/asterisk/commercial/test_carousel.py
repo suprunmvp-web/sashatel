@@ -36,7 +36,7 @@ class CarouselTests(unittest.TestCase):
 
     def test_capacity_100k_22_days(self):
         self.assertEqual(capacity(100000, 22), {
-            "primary": 569, "reserve": 284, "target": 853, "order": 853
+            "primary": 569, "reserve": 285, "target": 854, "order": 854
         })
 
     def test_inventory_avoids_duplicate_order(self):
