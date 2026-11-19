@@ -103,7 +103,8 @@ resource "yandex_compute_instance" "api" {
     security_group_ids = [yandex_vpc_security_group.api.id]
   }
   metadata = {
-    ssh-keys = "ubuntu:${var.ssh_public_key}"
+    ssh-keys  = "ubuntu:${var.ssh_public_key}"
+    user-data = file("${path.module}/cloud-init.yaml")
   }
   scheduling_policy {
     preemptible = false
