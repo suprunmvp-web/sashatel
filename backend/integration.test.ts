@@ -107,6 +107,19 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.deepEqual(row,{available:'100',pending:'0'});
   });
 
+  await t.test('runtime cannot modify superseded prepaid wallet or legacy admission counter',async()=>{
+    const a=await fixture({balance:100,number:'+74950002401'});
+    await assert.rejects(control.transaction(a.tenant,db=>db.query(
+      'UPDATE wallets SET available=0 WHERE organization_id=$1',[a.tenant])),
+      /permission denied/);
+    await assert.rejects(control.transaction(a.tenant,db=>db.query(
+      'INSERT INTO number_attempts(e164,day,used) VALUES($1,CURRENT_DATE,1)',
+      [a.number])),/permission denied/);
+    await assert.rejects(control.transaction(a.tenant,db=>db.query(
+      "INSERT INTO usage_ledger(organization_id,call_id,kind,units) VALUES($1,$2,'charge',3)",
+      [a.tenant,randomUUID()])),/permission denied/);
+  });
+
   await t.test('overdue postpaid invoices block only new calls and accept confirmed settlement',async()=>{
     const a=await fixture({balance:0,number:'+74950002400'});
     const invoice=randomUUID();
