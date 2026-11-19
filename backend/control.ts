@@ -248,6 +248,7 @@ export class ControlPlane {
             [tenant,effectiveTrunk]);
         }
       }
+      if (!effectiveTrunk) throw new ApiError(409, 'TRUNK_ASSIGNMENT_REQUIRED');
       // One authenticated PostgreSQL transaction owns session approval, trunk
       // selection, global Caller ID hold and durable call intent. No wallet gate.
       let reservation;
