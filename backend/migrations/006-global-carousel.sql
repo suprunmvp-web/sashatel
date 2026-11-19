@@ -78,7 +78,7 @@ END $$;
 -- while other eligible numbers remain unused.
 CREATE FUNCTION available_carousel_numbers(tenant uuid, effective_trunk uuid, budget_day date)
 RETURNS TABLE(e164 text,trunk_id uuid,load integer)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=control,pg_catalog AS $
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=control,pg_catalog AS $$
 BEGIN
  IF tenant IS DISTINCT FROM nullif(current_setting('control.tenant',true),'')::uuid THEN
   RAISE EXCEPTION 'TENANT_SCOPE_MISMATCH';
@@ -91,7 +91,7 @@ BEGIN
  WHERE n.organization_id=tenant AND n.trunk_id=effective_trunk
    AND n.status='active' AND n.provider_approved AND t.active
  ORDER BY COALESCE(c.held+c.used,0),n.e164;
-END $;
+END $$;
 
 -- Hold the physical quota under a PostgreSQL row lock; fail closed at the ninth slot.
 -- The service invokes this in its own transaction after session authorization.
