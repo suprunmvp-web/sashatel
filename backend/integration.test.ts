@@ -6,6 +6,7 @@ import pg from 'pg';
 import { ApiError, ControlPlane, hashPassword } from './control.ts';
 import { FakeAri } from './fake-ari.ts';
 import { TrunkService } from './trunks.ts';
+import { GlobalCarousel } from './global-carousel.ts';
 import { createApi } from './http.ts';
 
 const runtimeUrl = process.env.DATABASE_URL;
@@ -176,6 +177,53 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     await admin.query('UPDATE control.trunks SET active=false WHERE id=$1',[secondTrunk]);
     await assert.rejects(control.authorize(a.token,'no-failover',destination),
       code('NO_CALLER_ID'));
+  });
+
+  await t.test('physical Caller ID quota is shared globally across tenants',async()=>{
+    const number='+74950003999';
+    const a=await fixture({number}),b=await fixture({number});
+    for(const f of [a,b]) {
+      await admin.query(
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true)",
+        [f.tenant,number,f.trunk]);
+    }
+    const carousel=new GlobalCarousel();
+    const reserve=(f:typeof a,key:string)=>control.transaction(f.tenant,db=>
+      carousel.reserve(db,{organizationId:f.tenant,membershipId:f.member,
+        effectiveTrunkId:f.trunk,requestKey:key,destination}));
+    const holds=[];
+    for(let i=0;i<8;i++)holds.push(await reserve(i%2?a:b,'global-'+i));
+    assert.equal((await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE $2)::date',
+      [number,'Europe/Moscow'])).rows[0].held,8);
+    await assert.rejects(reserve(a,'global-ninth'),/NUMBER_LIMIT_REACHED/);
+
+    // Two concurrent ninth-slot contenders: one and only one can win.
+    await control.transaction(a.tenant,db=>carousel.finalize(db,{
+      organizationId:a.tenant,dispatchId:holds[0].id,action:'release'}));
+    const results=await Promise.allSettled([reserve(a,'race-a'),reserve(b,'race-b')]);
+    assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
+    assert.equal(results.filter(x=>x.status==='rejected').length,1);
+    const final=await control.transaction(b.tenant,db=>carousel.finalize(db,{
+      organizationId:b.tenant,dispatchId:holds[1].id,action:'commit'}));
+    assert.equal(final,'committed');
+    assert.equal(await control.transaction(b.tenant,db=>carousel.finalize(db,{
+      organizationId:b.tenant,dispatchId:holds[1].id,action:'release'})),'committed');
+    const {rows:[global]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE $2)::date',
+      [number,'Europe/Moscow']);
+    assert.equal(Number(global.held)+Number(global.used),8);
+    assert.equal(global.used,1);
+    const {rows:[dispatch]}=await admin.query(
+      'SELECT attempt_id FROM control.carousel_dispatches WHERE id=$1',[holds[1].id]);
+    const {rows:[outbox]}=await admin.query(
+      'SELECT attempt_id,state FROM control.carousel_outbox WHERE dispatch_id=$1',[holds[1].id]);
+    assert.equal(outbox.attempt_id,dispatch.attempt_id);
+    assert.equal(outbox.state,'pending');
+    await assert.rejects(control.transaction(a.tenant,db=>
+      db.query('UPDATE physical_caller_day SET held=0 WHERE e164=$1',[number])),/permission denied/);
+    await assert.rejects(control.transaction(a.tenant,db=>carousel.finalize(db,{
+      organizationId:a.tenant,dispatchId:holds[1].id,action:'release'})),/UNKNOWN_DISPATCH/);
   });
 
   await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {
