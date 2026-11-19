@@ -12,6 +12,21 @@ export type CarouselReservation = {
  * Does NOT open its own transaction or originate PSTN.
  */
 export class GlobalCarousel {
+  /** Reclaim expired, uncommitted capacity. Never release committed/unknown. */
+  async reapExpired(db:PoolClient,organizationId:string,limit=64):Promise<number>{
+    if(!Number.isInteger(limit)||limit<1||limit>256)throw Error('INVALID_REAP_LIMIT');
+    const {rows:expired}=await db.query(
+      "SELECT id FROM carousel_dispatches WHERE organization_id=$1 "+
+      "AND state='held' AND expires_at<=clock_timestamp() "+
+      "ORDER BY caller_id,id LIMIT $2 FOR UPDATE",
+      [organizationId,limit]);
+    for(const h of expired){
+      await db.query('SELECT finalize_physical_caller($1,$2,$3)',
+        [organizationId,h.id,'release']);
+    }
+    return expired.length;
+  }
+
   async reserve(db:PoolClient,args:{
     organizationId:string;membershipId:string;effectiveTrunkId:string;
     requestKey:string;destination:string;
@@ -25,6 +40,7 @@ export class GlobalCarousel {
     // The caller MUST already have verified membership, subscription,
     // concurrency, overdue policy and effective trunk in this transaction.
     await db.query('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[tenant]);
+    await this.reapExpired(db,tenant);
     const {rows:[old]}=await db.query(
       'SELECT * FROM carousel_dispatches WHERE organization_id=$1 AND membership_id=$2 AND request_key=$3',
       [tenant,membershipId,requestKey]);
