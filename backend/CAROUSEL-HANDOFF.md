@@ -27,3 +27,15 @@ Scope: source code and schema prepared, **NOT integrated with the current Contro
 - Actual PSTN end-to-end, multiworker locking, auth integration and billing correctness are *not tested* by the current unit tests.
 
 Related: https://github.com/suprunmvp-web/sashatel/pull/28
+
+## SashaTel v1.1 — canonical compatibility requirements (2026-11-19)
+
+Source of truth: [product spec v1.1](https://github.com/suprunmvp-web/sashatel/blob/docs/product-spec-v1-20261117/docs/product/sashatel-spec-v1.0.md) and [decision history](https://github.com/suprunmvp-web/sashatel/blob/docs/product-spec-v1-20261117/docs/product/PROJECT-HANDOFF-RU.md). The historical labels «На удаление» are superseded by **«Активные» / «Пассивные»** in UI and APIs (internal `active/passive`). Passive excludes **all new** dispatch immediately; deletion from operator inventory is a separate job. All +50% purchased extra numbers may be active in rotation. Retiring must not interrupt an existing call; pending uncommitted holds revalidate status.
+
+An organization has a default trunk (first working trunk by default). A new employee inherits it; administrator may set a per-employee trunk override and bulk-assign. Effective trunk is server-resolved; no Desktop per-call selection and **no automatic provider failover**. Every call/event/CDR/history/statistics/CSV retains actual `trunk_id` and supports trunk filter. Only carrier-approved CLI under that trunk may be used. A real physical CLI's global quota is at most eight initiation commits per Europe/Moscow calendar day across concurrent users and organizations; legacy per-tenant or per-trunk counters alone do not satisfy this.
+
+Public call result labels: **«Дозвон»** (verified human), **«Автоответчик»** (verified machine), **«Недозвон»** (no answer), **«Отклонено»** (rejection signal; not proof the recipient deliberately pressed decline), **«Ошибка»** (technical failure), **«Не распознано»** (answer occurred but responder type unverified). Do **not** merge unrecognized into machine, or mark human based only on SIP 200. Agent cancellation before answer is a separate reason; hangup actor after answer is evidence metadata, not a new result.
+
+SashaTel bills **only verified human conversation minutes** at 3 RUB/min, postpaid, with voluntary partial advance payments credited only upon confirmed receipt, no balance-gated prepay/credit limit. Past due after five working days blocks **new** calls without dropping existing calls. Carrier charges are separate. Human detection quality, rounding policy, invoice/tax workflows require release validation, never silent fallback to charging all SIP-answered minutes.
+
+Backend is authoritative; one private ARI worker, versioned trunk provisioning, durable dispatch, event dedupe and recovery, PBX instance ID. One initial Asterisk instance, multi-PBX-ready schema. Unified technical trunk statuses with documentation, no AI diagnostic suggestions. **Do not claim v1.1 behavior implemented merely because this note exists.**
