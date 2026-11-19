@@ -73,6 +73,26 @@ BEGIN
  END LOOP;
 END $$;
 
+-- Read only the tenant's operator-approved numbers and their *global* load.
+-- Using the physical counter for ordering prevents burning through one number
+-- while other eligible numbers remain unused.
+CREATE FUNCTION available_carousel_numbers(tenant uuid, effective_trunk uuid, budget_day date)
+RETURNS TABLE(e164 text,trunk_id uuid,load integer)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=control,pg_catalog AS $
+BEGIN
+ IF tenant IS DISTINCT FROM nullif(current_setting('control.tenant',true),'')::uuid THEN
+  RAISE EXCEPTION 'TENANT_SCOPE_MISMATCH';
+ END IF;
+ RETURN QUERY
+ SELECT n.e164,n.trunk_id,COALESCE(c.held+c.used,0)::integer
+ FROM carousel_numbers n
+ JOIN trunks t ON(t.organization_id,t.id)=(n.organization_id,n.trunk_id)
+ LEFT JOIN physical_caller_day c ON c.e164=n.e164 AND c.day=budget_day
+ WHERE n.organization_id=tenant AND n.trunk_id=effective_trunk
+   AND n.status='active' AND n.provider_approved AND t.active
+ ORDER BY COALESCE(c.held+c.used,0),n.e164;
+END $;
+
 -- Hold the physical quota under a PostgreSQL row lock; fail closed at the ninth slot.
 -- The service invokes this in its own transaction after session authorization.
 CREATE FUNCTION hold_physical_caller(tenant uuid, phone text, budget_day date)
@@ -145,9 +165,11 @@ BEGIN
  RETURN 'released';
 END $$;
 
+REVOKE ALL ON FUNCTION available_carousel_numbers(uuid,uuid,date) FROM PUBLIC;
 REVOKE ALL ON FUNCTION hold_physical_caller(uuid,text,date) FROM PUBLIC;
 REVOKE ALL ON FUNCTION finalize_physical_caller(uuid,uuid,text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION hold_physical_caller(uuid,text,date),
+GRANT EXECUTE ON FUNCTION available_carousel_numbers(uuid,uuid,date),
+  hold_physical_caller(uuid,text,date),
   finalize_physical_caller(uuid,uuid,text) TO control_runtime;
 GRANT SELECT ON carousel_numbers,carousel_dispatches,carousel_outbox TO control_runtime;
 GRANT INSERT ON carousel_dispatches TO control_runtime;
