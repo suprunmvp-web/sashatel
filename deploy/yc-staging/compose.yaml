@@ -1,10 +1,8 @@
 # Staging only. Not a production or PSTN deployment.
 services:
   api:
-    build:
-      context: ../../backend
-      dockerfile: Dockerfile
-    image: sashatel-backend:staging
+    # Deploy the exact CI-tested digest, never build an unreviewed image on the VM.
+    image: "${BACKEND_IMAGE:?immutable cr.yandex backend image digest required}"
     restart: unless-stopped
     init: true
     user: "1000:1000"
@@ -56,3 +54,33 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # Explicit, one-off migration job: same immutable image, different DB identity.
+  # Never run alongside the API automatically. Run only after snapshot/plan review:
+  # docker compose --profile migration run --rm migrate
+  migrate:
+    profiles: ["migration"]
+    image: "${BACKEND_IMAGE:?immutable cr.yandex backend image digest required}"
+    restart: "no"
+    user: "1000:1000"
+    read_only: true
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    command: ["node","migrate.ts"]
+    environment:
+      MIGRATION_DATABASE_URL_FILE: "/run/secrets/migration_database_url"
+      DATABASE_CA_FILE: "/run/secrets/database_ca"
+    volumes:
+      - type: bind
+        source: "${STAGING_SECRETS_DIR:?secrets directory required}/migration-database-url"
+        target: /run/secrets/migration_database_url
+        read_only: true
+      - type: bind
+        source: "${STAGING_SECRETS_DIR:?secrets directory required}/database-ca.pem"
+        target: /run/secrets/database_ca
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000
