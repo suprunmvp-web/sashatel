@@ -20,9 +20,11 @@ const e164 = /^\+[1-9][0-9]{6,14}$/;
 export class PrivateAriClient {
   private readonly base: URL;
   private readonly authorization: string;
+  private readonly http: AriHttp;
 
   constructor(baseUrl: string, username: string, password: string,
-              private readonly http: AriHttp = fetch) {
+              http: AriHttp = fetch) {
+    this.http=http;
     const base=new URL(baseUrl);
     if(base.username||base.password||base.search||base.hash||base.pathname!=='/ari/') {
       throw new Error('ARI_BASE_INVALID');
