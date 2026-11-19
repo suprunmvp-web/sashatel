@@ -42,7 +42,7 @@ jobs:
       TF_VAR_zone: ru-central1-a
       TF_VAR_vm_image_id: ${{ vars.VM_IMAGE_ID }}
       TF_VAR_ssh_public_key: ${{ vars.SSH_PUBLIC_KEY }}
-      TF_VAR_ssh_cidrs: ["${{ vars.SSH_ADMIN_CIDR }}"]
+      TF_VAR_ssh_cidrs: '["${{ vars.SSH_ADMIN_CIDR }}"]'
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
