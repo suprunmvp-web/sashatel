@@ -1,0 +1,71 @@
+name: SashaTel staging infra — OIDC identity verification
+
+on:
+  push:
+    branches:
+      - feature/yc-staging-deployment-20261119
+    paths:
+      - '.github/workflows/yc-staging-infra-oidc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-identity:
+    name: Verify protected environment and YC infrastructure identity (read only)
+    if: github.ref == 'refs/heads/feature/yc-staging-deployment-20261119'
+    runs-on: ubuntu-latest
+    environment: staging-infra
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      YC_INFRA_SA_ID: aje639c2l6mhktjq4lpp
+      OIDC_AUDIENCE: https://github.com/suprunmvp-web
+      EXPECTED_SUBJECT: repo:suprunmvp-web@284134266/sashatel@1428882855:environment:staging-infra
+    steps:
+      - name: Verify GitHub OIDC context and exchange to Yandex Cloud IAM
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          response="$(curl --fail --silent --show-error --get \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --data-urlencode "audience=$OIDC_AUDIENCE" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL")"
+          github_jwt="$(jq -er '.value' <<< "$response")"
+          unset response
+          JWT_PAYLOAD="$github_jwt" node -e '
+            const payload=JSON.parse(Buffer.from(process.env.JWT_PAYLOAD.split(".")[1],"base64url"));
+            if(payload.sub!==process.env.EXPECTED_SUBJECT) {
+              console.error("Unexpected OIDC subject:",payload.sub);
+              process.exit(1);
+            }
+            if(payload.aud!==process.env.OIDC_AUDIENCE) {
+              console.error("Unexpected OIDC audience");
+              process.exit(1);
+            }
+            console.log("Subject verified:",payload.sub);
+          '
+          status="$(curl --silent --show-error \
+            --output "$RUNNER_TEMP/yc-oidc-exchange.json" \
+            --write-out '%{http_code}' \
+            -X POST https://auth.yandex.cloud/oauth/token \
+            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+            --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' \
+            --data-urlencode "audience=$YC_INFRA_SA_ID" \
+            --data-urlencode "subject_token=$github_jwt" \
+            --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          unset github_jwt
+          if [[ "$status" != 200 ]]; then
+            echo "YC IAM token exchange failed: HTTP $status" >&2
+            jq -r '[.error // "", .error_description // "", .message // ""] | join(" | ")' "$RUNNER_TEMP/yc-oidc-exchange.json" >&2
+            exit 1
+          fi
+          token="$(jq -er '.access_token' "$RUNNER_TEMP/yc-oidc-exchange.json")"
+          echo "::add-mask::$token"
+          rm -f "$RUNNER_TEMP/yc-oidc-exchange.json"
+          echo "YC OIDC exchange verified for staging-infra account."
+          echo "No Terraform apply, plan, resource mutations or credentials exported."
+          echo "Staging infra OIDC: validated (no resources created)" >> "$GITHUB_STEP_SUMMARY"
+          unset token
