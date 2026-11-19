@@ -12,8 +12,9 @@ terraform {
     skip_region_validation      = true
     skip_requesting_account_id  = true
     skip_s3_checksum            = true
-    # Native lockfile requires compatible S3 conditional writes.
-    # Validate on YC before enabling; CI concurrency prevents overlapping authorized runs.
+    # Object Storage supports conditional PutObject; lock is additionally
+    # serialized by GitHub environment protection and workflow concurrency.
+    use_lockfile                = true
   }
   required_version = ">= 1.6.0"
   required_providers {
