@@ -131,6 +131,11 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const {rows:[first]}=await admin.query(
       'SELECT id FROM control.trunks WHERE organization_id=$1 AND id<>$2',
       [a.tenant,secondTrunk]);
+    const otherTenant = await fixture({number:'+74950002003'});
+    await assert.rejects(control.setDefaultTrunk(supervisor.token,otherTenant.trunk),
+      code('TRUNK_NOT_READY'));
+    await assert.rejects(control.setEmployeeTrunk(supervisor.token,otherTenant.member,secondTrunk),
+      code('EMPLOYEE_NOT_FOUND'));
     await control.setDefaultTrunk(supervisor.token,first.id);
     const defaultCall=await control.authorize(a.token,'default-trunk',destination);
     let {rows:[saved]}=await admin.query('SELECT trunk_id,caller_id FROM control.calls WHERE id=$1',
