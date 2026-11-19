@@ -40,6 +40,17 @@ jobs:
         run: |
           set -eu
           ! grep -E 'terraform[[:space:]]+apply|tofu[[:space:]]+apply|yc[[:space:]]+compute[[:space:]]+instance[[:space:]]+create' .github/workflows/yc-infra-check.yml
+      - name: Validate immutable staging Compose deployment
+        env:
+          WEB_ORIGIN: https://staging.example.invalid
+          STAGING_SECRETS_DIR: /etc/sashatel/staging
+        run: |
+          set -eu
+          docker compose --env-file deploy/yc-staging/staging.env.example \
+            -f deploy/yc-staging/compose.yaml config -q
+          docker compose --env-file deploy/yc-staging/staging.env.example \
+            -f deploy/yc-staging/compose.yaml --profile migration config -q
+          grep -Eq 'BACKEND_IMAGE=.*@sha256:[0-9a-f]{64}' deploy/yc-staging/staging.env.example
       - name: Keep deployment gated
         run: |
           set -eu
