@@ -80,7 +80,7 @@ def capacity(monthly_initiations: int, calling_days: int, *, active_provisioned:
     if min(active_provisioned, ordered_pending) < 0:
         raise ValueError("invalid inventory")
     main = ceil(monthly_initiations / (DAILY_LIMIT * calling_days))
-    target = ceil(monthly_initiations / (DAILY_LIMIT * calling_days) * RESERVE_FACTOR)
+    target = ceil(main * RESERVE_FACTOR)
     return {
         "primary": main,
         "reserve": target - main,
