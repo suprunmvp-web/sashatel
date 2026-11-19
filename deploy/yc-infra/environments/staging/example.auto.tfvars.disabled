@@ -1,11 +1,11 @@
 # Rename only on your authorized runner; never commit any real values.
 # folder_id is the ID (not the name) of sashatel-staging.
-folder_id      = "INSERT_STAGING_FOLDER_ID"
+folder_id      = "b1gi9a6gkr55k6csn9s"
 vm_image_id    = "INSERT_REVIEWED_UBUNTU_IMAGE_ID"
 ssh_public_key = "ssh-ed25519 INSERT_REAL_PUBLIC_KEY"
 ssh_cidrs      = ["INSERT_TRUSTED_IP/32"]
 
 # Existing Yandex Cloud VPC/subnet from sashatel-staging, NOT network names.
 # Confirm the subnet zone matches the zone selected above.
-existing_network_id = "INSERT_EXISTING_VPC_NETWORK_ID"
-existing_subnet_id  = "INSERT_EXISTING_ZONE_SUBNET_ID"
+existing_network_id = "enpthm9vaqno3a8ogprk"
+existing_subnet_id  = "e9bm2hfyk1kfsoyimttp"
