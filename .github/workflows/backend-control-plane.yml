@@ -1,0 +1,41 @@
+name: Backend Control Plane
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-control-plane.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: disposable-ci-admin
+          POSTGRES_DB: control
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d control"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TEST_ADMIN_URL: postgresql://postgres:disposable-ci-admin@127.0.0.1:5432/control
+      DATABASE_URL: postgresql://control_runtime:disposable-ci-runtime@127.0.0.1:5432/control
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Prepare PostgreSQL
+        run: |
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE control_runtime LOGIN PASSWORD 'disposable-ci-runtime' NOSUPERUSER NOBYPASSRLS"
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql -f migrations/002-uis.sql -f migrations/003-operator.sql -f migrations/004-web.sql
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
