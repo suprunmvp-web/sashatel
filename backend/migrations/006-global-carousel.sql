@@ -47,6 +47,28 @@ CREATE POLICY tenant ON postpaid_usage
  USING(organization_id=nullif(current_setting('control.tenant',true),'')::uuid);
 GRANT SELECT,INSERT ON postpaid_usage TO control_runtime;
 
+-- Billing owns this register, the call API can only read it. Amounts include
+-- confirmed allocations of optional advances; unverified transfers must not
+-- change paid_kopeks. The invoice issuer computes the contractual due_at,
+-- including working-day/holiday rules and applicable legal requirements.
+CREATE TABLE billing_obligations (
+ organization_id uuid NOT NULL REFERENCES organizations(id),
+ id uuid NOT NULL,
+ issued_at timestamptz NOT NULL,
+ due_at timestamptz NOT NULL,
+ amount_kopeks bigint NOT NULL CHECK(amount_kopeks>0),
+ paid_kopeks bigint NOT NULL DEFAULT 0 CHECK(paid_kopeks>=0),
+ state text NOT NULL CHECK(state IN('issued','void')),
+ PRIMARY KEY(organization_id,id),
+ CHECK(due_at>issued_at),
+ CHECK(paid_kopeks<=amount_kopeks)
+);
+ALTER TABLE billing_obligations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE billing_obligations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant ON billing_obligations
+ USING(organization_id=nullif(current_setting('control.tenant',true),'')::uuid);
+GRANT SELECT ON billing_obligations TO control_runtime;
+
 -- This table MUST NOT be tenant-scoped: one real E.164 number, one daily quota.
 -- It is not directly accessible to control_runtime; only guarded functions mutate it.
 CREATE TABLE physical_caller_day (
