@@ -1,0 +1,106 @@
+name: SashaTel Backend — staging image
+
+on:
+  push:
+    branches:
+      - feature/backend-integration-v11-20261119
+    paths:
+      - '.github/workflows/yc-staging-backend-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sashatel-staging-image
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify backend on PostgreSQL 17
+    if: github.ref == 'refs/heads/feature/backend-integration-v11-20261119'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: disposable-ci-admin
+          POSTGRES_DB: control
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d control"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TEST_ADMIN_URL: postgresql://postgres:disposable-ci-admin@127.0.0.1:5432/control
+      DATABASE_URL: postgresql://control_runtime:disposable-ci-runtime@127.0.0.1:5432/control
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Initialize disposable PostgreSQL schema
+        run: |
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE control_runtime LOGIN PASSWORD 'disposable-ci-runtime' NOSUPERUSER NOBYPASSRLS"
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql -f migrations/002-uis.sql -f migrations/003-operator.sql -f migrations/004-web.sql -f migrations/005-trunk-routing.sql -f migrations/006-global-carousel.sql
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+
+  publish:
+    name: Push immutable staging image (NO deploy)
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      YC_SERVICE_ACCOUNT_ID: ajeja1u2timegoko4vn9
+      YC_REGISTRY_ID: crpjs1v75pobqqd0ij5t
+      OIDC_AUDIENCE: https://github.com/suprunmvp-web
+      IMAGE_REPOSITORY: sashatel-backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exchange GitHub OIDC for short-lived Yandex IAM token
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --get \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --data-urlencode "audience=$OIDC_AUDIENCE" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL")"
+          github_jwt="$(jq -er '.value' <<< "$response")"
+          unset response
+          JWT_PAYLOAD="$github_jwt" node -e "const p=JSON.parse(Buffer.from(process.env.JWT_PAYLOAD.split('.')[1],'base64url')); console.log('OIDC subject:',p.sub,'audience:',p.aud)"
+          status="$(curl --silent --show-error \
+            --output "$RUNNER_TEMP/yc-exchange.json" --write-out '%{http_code}' \
+            -X POST 'https://auth.yandex.cloud/oauth/token' \
+            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+            --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' \
+            --data-urlencode "audience=$YC_SERVICE_ACCOUNT_ID" \
+            --data-urlencode "subject_token=$github_jwt" \
+            --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          unset github_jwt
+          if [[ "$status" != 200 ]]; then
+            echo "Yandex OIDC exchange failed: HTTP $status"
+            jq -r '[.error // "", .error_description // "", .message // ""] | join(" | ")' "$RUNNER_TEMP/yc-exchange.json"
+            exit 1
+          fi
+          iam_token="$(jq -er '.access_token' "$RUNNER_TEMP/yc-exchange.json")"
+          rm -f "$RUNNER_TEMP/yc-exchange.json"
+          echo "::add-mask::$iam_token"
+          printf '%s' "$iam_token" | docker login --username iam --password-stdin cr.yandex
+          unset iam_token
+      - name: Build and publish SHA-tagged backend image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="cr.yandex/$YC_REGISTRY_ID/$IMAGE_REPOSITORY:$GITHUB_SHA"
+          docker build --pull --file backend/Dockerfile --tag "$image" backend
+          docker push "$image"
+          docker image inspect "$image" --format 'Published digest(s): {{join .RepoDigests ", "}}'
+          echo "Image: $image" >> "$GITHUB_STEP_SUMMARY"
+          echo "Publication only: no staging deployment, database migration or PSTN calls." >> "$GITHUB_STEP_SUMMARY"

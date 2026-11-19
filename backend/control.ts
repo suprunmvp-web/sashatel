@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import type { Pool, PoolClient } from 'pg';
+import { GlobalCarousel } from './global-carousel.ts';
 
 const derive = promisify(scrypt);
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -32,23 +33,28 @@ export interface Originate {
   trunkId: string;
 }
 export type GatewayState = 'ringing' | 'connected' | 'ended' | 'unknown';
-export type GatewayResult = Exclude<GatewayState, 'ended'> | { state: 'ended'; charge: bigint };
+export interface CallClassification {
+  outcome:'human'|'machine'|'no_answer'|'rejected'|'error'|'unknown';
+  billableSeconds?:number;
+  evidenceId?:string;
+}
+export type GatewayResult = Exclude<GatewayState,'ended'> |
+  {state:'ended';classification?:CallClassification};
 export interface TelephonyGateway {
   originate(command: Originate): Promise<'ringing'>;
-  // Cancel by durable ID even when originate is ambiguous. A definitive result fences late originate.
-  hangup(attemptId: string): Promise<'unknown' | { state: 'ended'; charge: bigint }>;
+  hangup(attemptId: string): Promise<'unknown'|{state:'ended';classification?:CallClassification}>;
   inspect(attemptId: string): Promise<GatewayResult>;
 }
 export interface TelephonyEvent {
-  id: string;
-  state: Exclude<GatewayState, 'unknown'>;
-  // Trusted adapter supplies authoritative usage in wallet units.
-  charge?: bigint;
+  id:string;
+  state:Exclude<GatewayState,'unknown'>;
+  classification?:CallClassification;
 }
 
 export class ControlPlane {
   private readonly pool: Pool;
   private readonly timezone: string;
+  private readonly carousel = new GlobalCarousel();
   private readonly workerAvailable: (tenant: string) => boolean;
 
   constructor(pool: Pool, timezone = 'Europe/Moscow', workerAvailable = (_tenant: string) => false) {
@@ -203,6 +209,65 @@ export class ControlPlane {
     });
   }
 
+  /**
+   * Commercial v1.1 admission, integrated with the physical-number carousel.
+   * Deliberately NOT mounted on the public /v1/calls route until the legacy
+   * wallet-based outbox has been replaced with the one-shot ARI worker.
+   */
+  async prepareCommercialCall(bearer:string,key:string,destination:string) {
+    if (!e164.test(destination)||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(key))
+      throw new ApiError(400,'INVALID_CALL_REQUEST');
+    const {tenant,hash}=this.#credentials(bearer);
+    return this.transaction(tenant,async db=>{
+      const actor=await this.#session(db,tenant,hash);
+      if(!actor.can_call)throw new ApiError(403,'CALL_PERMISSION_REQUIRED');
+      // Idempotency must win over temporary availability changes.
+      const {rows:[old]}=await db.query(
+        'SELECT id AS call_id,state,destination,caller_id,trunk_id FROM carousel_dispatches '+
+        'WHERE organization_id=$1 AND membership_id=$2 AND request_key=$3',
+        [tenant,actor.membership_id,key]);
+      if(old){
+        if(old.destination!==destination)throw new ApiError(409,'IDEMPOTENCY_CONFLICT');
+        return old;
+      }
+      if(!this.workerAvailable(tenant))throw new ApiError(503,'CALL_WORKER_UNAVAILABLE');
+      const {rows:[sub]}=await db.query(
+        'SELECT active,telephony FROM subscriptions WHERE organization_id=$1',[tenant]);
+      if(!sub?.active||!sub.telephony)throw new ApiError(403,'TELEPHONY_DISABLED');
+      const {rows:[concurrency]}=await db.query(
+        "SELECT COUNT(*)::int AS used FROM carousel_dispatches WHERE organization_id=$1 "+
+        "AND state IN ('held','committed','unknown')",[tenant]);
+      if(concurrency.used>=actor.maxCalls)throw new ApiError(409,'CALL_CONCURRENCY_LIMIT');
+      const {rows:[route]}=await db.query(
+        'SELECT o.default_trunk_id,m.trunk_override_id FROM organizations o '+
+        'JOIN memberships m ON m.organization_id=o.id WHERE o.id=$1 AND m.id=$2',
+        [tenant,actor.membership_id]);
+      let trunkId:string|undefined=route?.trunk_override_id??route?.default_trunk_id??undefined;
+      if(!trunkId){
+        const {rows:active}=await db.query(
+          'SELECT id FROM trunks WHERE organization_id=$1 AND active ORDER BY id LIMIT 2',[tenant]);
+        if(active.length!==1)throw new ApiError(409,'TRUNK_ASSIGNMENT_REQUIRED');
+        trunkId=active[0].id;
+        await db.query('UPDATE organizations SET default_trunk_id=$2 '+
+          'WHERE id=$1 AND default_trunk_id IS NULL',[tenant,trunkId]);
+      }
+      const carousel=new GlobalCarousel();
+      try {
+        const held=await carousel.reserve(db,{
+          organizationId:tenant,membershipId:actor.membership_id,
+          effectiveTrunkId:trunkId!,requestKey:key,destination});
+        return {call_id:held.id,state:held.state,destination:held.destination,
+          caller_id:held.caller_id,trunk_id:held.trunk_id};
+      } catch(error){
+        const code=error instanceof Error?error.message:'';
+        if(code==='NO_CALLER_ID'||code==='NUMBER_LIMIT_REACHED')
+          throw new ApiError(409,code);
+        if(code==='IDEMPOTENCY_CONFLICT')throw new ApiError(409,code);
+        throw error;
+      }
+    });
+  }
+
   async authorize(bearer: string, key: string, destination: string) {
     if (!e164.test(destination) || !/^[a-zA-Z0-9_.:-]{1,128}$/.test(key)) {
       throw new ApiError(400, 'INVALID_CALL_REQUEST');
@@ -221,6 +286,11 @@ export class ControlPlane {
       if (!this.workerAvailable(tenant)) throw new ApiError(503, 'CALL_WORKER_UNAVAILABLE');
       const { rows: [subscription] } = await db.query('SELECT active,telephony FROM subscriptions WHERE organization_id=$1', [tenant]);
       if (!subscription?.active || !subscription.telephony) throw new ApiError(403, 'TELEPHONY_DISABLED');
+      const {rows:[overdue]}=await db.query(
+        "SELECT EXISTS(SELECT 1 FROM billing_obligations "+
+        "WHERE organization_id=$1 AND state='issued' AND due_at<clock_timestamp() "+
+        "AND paid_kopeks<amount_kopeks) AS blocked",[tenant]);
+      if(overdue.blocked)throw new ApiError(403,'PAYMENT_OVERDUE');
       const { rows: [capacity] } = await db.query(
         "SELECT count(*)::int AS used FROM calls WHERE state NOT IN ('ended','failed','expired')");
       if (capacity.used >= actor.maxCalls) throw new ApiError(409, 'CALL_CONCURRENCY_LIMIT');
@@ -242,34 +312,32 @@ export class ControlPlane {
             [tenant,effectiveTrunk]);
         }
       }
-      const { rows: numbers } = await db.query(
-        `SELECT n.e164,n.trunk_id FROM phone_numbers n JOIN trunks t
-           ON (n.organization_id,n.trunk_id)=(t.organization_id,t.id)
-          WHERE n.active AND t.active AND t.id=$1 ORDER BY n.e164`, [effectiveTrunk]);
-      if (!numbers.length) throw new ApiError(409, 'NO_CALLER_ID');
-      const { rows: [wallet] } = await db.query(
-        'UPDATE wallets SET available=available-reserve_per_call WHERE organization_id=$1 AND available>=reserve_per_call RETURNING reserve_per_call',
-        [tenant]);
-      if (!wallet) throw new ApiError(409, 'INSUFFICIENT_BALANCE');
-      for (const number of numbers) {
-        const attempt = await db.query(
-          `INSERT INTO number_attempts VALUES ($1,(clock_timestamp() AT TIME ZONE $2)::date,1)
-           ON CONFLICT (e164,day) DO UPDATE SET used=number_attempts.used+1
-           WHERE number_attempts.used<8 RETURNING used`, [number.e164, this.timezone]);
-        if (!attempt.rowCount) continue;
-        const id = randomUUID();
-        const { rows: [call] } = await db.query(
-          `INSERT INTO calls (organization_id,id,attempt_id,membership_id,session_hash,request_key,
-             destination,caller_id,trunk_id,reserved,state,expires_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'authorized',clock_timestamp()+interval '30 seconds')
-           RETURNING ${visible}`,
-          [tenant,id,randomUUID(),actor.membership_id,hash,key,destination,number.e164,number.trunk_id,wallet.reserve_per_call]);
-        await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'reserve',$3)",
-          [tenant,id,wallet.reserve_per_call]);
-        await db.query("INSERT INTO outbox (organization_id,call_id,command) VALUES ($1,$2,'originate')", [tenant,id]);
-        return call;
+      if (!effectiveTrunk) throw new ApiError(409, 'TRUNK_ASSIGNMENT_REQUIRED');
+      // One authenticated PostgreSQL transaction owns session approval, trunk
+      // selection, global Caller ID hold and durable call intent. No wallet gate.
+      let reservation;
+      try {
+        reservation=await this.carousel.reserve(db,{
+          organizationId:tenant,membershipId:actor.membership_id,
+          effectiveTrunkId:effectiveTrunk,requestKey:key,destination,
+        });
+      } catch(e){
+        if(e instanceof Error && e.message==='IDEMPOTENCY_CONFLICT')
+          throw new ApiError(409,'IDEMPOTENCY_CONFLICT');
+        if(e instanceof Error && e.message==='NO_CALLER_ID')
+          throw new ApiError(409,'NO_CALLER_ID');
+        if(e instanceof Error && e.message==='NUMBER_LIMIT_REACHED')
+          throw new ApiError(409,'NUMBER_LIMIT_REACHED');
+        throw e;
       }
-      throw new ApiError(409, 'NUMBER_LIMIT_REACHED');
+      const {rows:[call]}=await db.query(
+        `INSERT INTO calls(organization_id,id,attempt_id,membership_id,session_hash,
+          request_key,destination,caller_id,trunk_id,reserved,state,expires_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,0,'authorized',$10)
+         RETURNING ${visible}`,
+        [tenant,reservation.id,reservation.attempt_id,actor.membership_id,hash,key,
+         destination,reservation.caller_id,reservation.trunk_id,reservation.expires_at]);
+      return call;
     });
   }
 
@@ -295,7 +363,9 @@ export class ControlPlane {
       const { rows: [call] } = await db.query('SELECT * FROM calls WHERE id=$1 AND membership_id=$2', [id, actor.membership_id]);
       if (!call) throw new ApiError(404, 'CALL_NOT_FOUND');
       if (call.state === 'authorized') {
-        await this.#settle(db, tenant, call, 'ended', 0n);
+        // No physical attempt was committed: release quota, no billable usage.
+        await this.carousel.finalize(db,{organizationId:tenant,dispatchId:id,action:'release'});
+        await db.query("UPDATE calls SET state='ended' WHERE id=$1",[id]);
       } else if (!terminal.has(call.state)) {
         await db.query("UPDATE calls SET state='terminating' WHERE id=$1", [id]);
         await db.query("INSERT INTO outbox (organization_id,call_id,command) VALUES ($1,$2,'hangup') ON CONFLICT DO NOTHING", [tenant,id]);
@@ -304,106 +374,178 @@ export class ControlPlane {
     });
   }
 
-  async #settle(db: PoolClient, tenant: string, call: { id: string; reserved: string }, state: string, charge: bigint) {
-    const reserved = BigInt(call.reserved);
-    if (charge < 0n || charge > reserved) throw new Error('Usage outside reserved bounds');
-    await db.query('UPDATE calls SET state=$2 WHERE id=$1', [call.id,state]);
-    const chargeRow = await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'charge',$3) ON CONFLICT DO NOTHING", [tenant,call.id,charge.toString()]);
-    if (!chargeRow.rowCount) return;
-    await db.query("INSERT INTO usage_ledger (organization_id,call_id,kind,units) VALUES ($1,$2,'release',$3)",
-      [tenant,call.id,(reserved-charge).toString()]);
-    await db.query('UPDATE wallets SET available=available+$2 WHERE organization_id=$1', [tenant,(reserved-charge).toString()]);
-    await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL', [call.id]);
-  }
-
-  async event(tenant: string, id: string, event: TelephonyEvent) {
-    return this.transaction(tenant, async db => {
-      await this.#organization(db, tenant);
-      const { rows: [call] } = await db.query('SELECT * FROM calls WHERE id=$1', [id]);
-      if (!call || ['authorized','expired','failed'].includes(call.state)) return;
-      if (call.state === 'ended' && (event.state !== 'ended' || event.charge === undefined)) return;
-      if (call.state === 'ended' && (await db.query("SELECT 1 FROM usage_ledger WHERE call_id=$1 AND kind='charge'", [id])).rowCount) return;
-      const inserted = await db.query(
-        'INSERT INTO call_events (organization_id,call_id,event_id,state) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
-        [tenant,id,event.id,event.state]);
-      if (event.state === 'ended') {
-        if (event.charge !== undefined) {
-          await this.#settle(db, tenant, call, 'ended', event.charge);
-        } else if (inserted.rowCount) {
-          await db.query("UPDATE calls SET state='ended' WHERE id=$1", [id]);
-          await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL', [id]);
-        }
-      } else if (!inserted.rowCount) {
-        return;
-      } else if (['dispatching','reconciling','ringing'].includes(call.state)) {
-        await db.query('UPDATE calls SET state=$2 WHERE id=$1', [id,event.state]);
-      }
-    });
-  }
-
-  async processOne(tenant: string, gateway: TelephonyGateway) {
-    const job = await this.transaction(tenant, async db => {
-      await this.#organization(db, tenant);
-      await db.query(
-        `WITH stopped AS (
-          UPDATE calls c SET state='terminating'
-          FROM memberships m JOIN users u ON u.id=m.user_id
-          JOIN organizations o ON o.id=m.organization_id
-          WHERE (c.organization_id,c.membership_id)=(m.organization_id,m.id)
-            AND c.state IN ('dispatching','reconciling','ringing','connected')
-            AND (NOT m.active OR NOT u.active OR NOT o.active)
-          RETURNING c.id
-        )
-        INSERT INTO outbox (organization_id,call_id,command)
-        SELECT $1,id,'hangup' FROM stopped ON CONFLICT DO NOTHING`, [tenant]);
-      const { rows: [call] } = await db.query(
-        `SELECT c.*, o.command, o.claimed_at, c.expires_at <= clock_timestamp() AS expired
-           FROM calls c JOIN outbox o ON (c.organization_id,c.id)=(o.organization_id,o.call_id)
-          WHERE o.completed_at IS NULL AND (o.claimed_at IS NULL OR o.claimed_at < clock_timestamp()-interval '10 seconds')
-          ORDER BY (o.command='hangup') DESC,o.claimed_at NULLS FIRST,c.created_at LIMIT 1`);
-      if (!call) return;
-      if (call.command === 'originate' && !call.claimed_at) {
-        try {
-          const actor = await this.#session(db, tenant, call.session_hash);
-          const { rows: [route] } = await db.query(
-            `SELECT n.active AND t.active AND s.active AND s.telephony AS allowed
-               FROM phone_numbers n JOIN trunks t ON (n.organization_id,n.trunk_id)=(t.organization_id,t.id)
-               JOIN subscriptions s ON s.organization_id=n.organization_id
-              WHERE n.e164=$1 AND t.id=$2`, [call.caller_id,call.trunk_id]);
-          if (!actor.can_call || !route?.allowed || call.expired) throw new ApiError(403, 'GRANT_INVALID');
-        } catch (error) {
-          if (!(error instanceof ApiError)) throw error;
-          await this.#settle(db, tenant, call, call.expired ? 'expired' : 'failed', 0n);
-          return;
-        }
-        await db.query("UPDATE calls SET state='dispatching' WHERE id=$1", [call.id]);
-      }
-      await db.query('UPDATE outbox SET claimed_at=clock_timestamp() WHERE call_id=$1 AND command=$2', [call.id,call.command]);
-      return call;
-    });
-    if (!job) return;
-    let state: GatewayResult;
-    try {
-      if (job.command === 'hangup') state = await gateway.hangup(job.attempt_id);
-      else if (job.claimed_at) state = await gateway.inspect(job.attempt_id);
-      else state = await gateway.originate({
-        attemptId: job.attempt_id, destination: job.destination, callerId: job.caller_id, trunkId: job.trunk_id,
-      });
-    } catch {
-      state = 'unknown';
+  async #settle(db:PoolClient,tenant:string,call:{id:string},
+                state:string,classification?:CallClassification){
+    const outcome=classification?.outcome??'unknown';
+    const seconds=outcome==='human'?classification?.billableSeconds:0;
+    const evidence=outcome==='human'?classification?.evidenceId:null;
+    if(outcome==='human' && (!Number.isInteger(seconds)||seconds===undefined
+       ||seconds<0||seconds>86400||typeof evidence!=='string'
+       ||!evidence.length||evidence.length>512)){
+      throw new Error('UNVERIFIED_HUMAN_BILLING');
     }
-    if (typeof state === 'object') {
-      await this.event(tenant, job.id, { id: 'settled:' + job.attempt_id, ...state });
+    if(outcome!=='human' && (classification?.billableSeconds||classification?.evidenceId)){
+      throw new Error('NON_HUMAN_CANNOT_BE_BILLED');
+    }
+    await db.query('UPDATE calls SET state=$2 WHERE id=$1',[call.id,state]);
+    await db.query(
+      'INSERT INTO postpaid_usage(organization_id,call_id,outcome,billable_seconds,amount_kopeks,evidence_id) '+
+      'VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING',
+      [tenant,call.id,outcome,seconds??0, (seconds??0)*5,evidence]);
+    await db.query(
+      "UPDATE carousel_outbox SET state='completed',completed_at=clock_timestamp() "+
+      "WHERE dispatch_id=$1 AND state<>'completed'",[call.id]);
+    await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND completed_at IS NULL',[call.id]);
+  }
+
+  async event(tenant:string,id:string,event:TelephonyEvent){
+    return this.transaction(tenant,async db=>{
+      await this.#organization(db,tenant);
+      const {rows:[call]}=await db.query('SELECT * FROM calls WHERE id=$1 FOR UPDATE',[id]);
+      if(!call||['authorized','expired','failed'].includes(call.state))return;
+      if(call.state==='ended')return;
+      const inserted=await db.query(
+        'INSERT INTO call_events(organization_id,call_id,event_id,state) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+        [tenant,id,event.id,event.state]);
+      if(!inserted.rowCount)return;
+      if(event.state==='ended'){
+        await this.#settle(db,tenant,call,'ended',event.classification);
+      } else if(['dispatching','reconciling','ringing'].includes(call.state)){
+        await db.query('UPDATE calls SET state=$2 WHERE id=$1',[id,event.state]);
+      }
+    });
+  }
+
+  async processOne(tenant:string,gateway:TelephonyGateway){
+    const job=await this.transaction(tenant,async db=>{
+      await this.#organization(db,tenant);
+      // Reclaim abandoned uncommitted slots before dispatching more calls.
+      // The global quota remains safe if this worker is offline: only capacity
+      // is temporarily unavailable, never silently oversubscribed.
+      await this.carousel.expireForTenant(db,tenant,100);
+      // A revocation of an existing conversation requires a real hangup.
+      await db.query(
+        "WITH stopped AS ("+
+        " UPDATE calls c SET state='terminating' "+
+        " FROM memberships m JOIN users u ON u.id=m.user_id "+
+        " JOIN organizations o ON o.id=m.organization_id "+
+        " WHERE (c.organization_id,c.membership_id)=(m.organization_id,m.id) "+
+        " AND c.state IN('dispatching','reconciling','ringing','connected') "+
+        " AND (NOT m.active OR NOT u.active OR NOT o.active) RETURNING c.id) "+
+        " INSERT INTO outbox(organization_id,call_id,command) "+
+        " SELECT $1,id,'hangup' FROM stopped ON CONFLICT DO NOTHING",[tenant]);
+
+      const {rows:[hang]}=await db.query(
+        "SELECT c.*,o.claimed_at FROM calls c JOIN outbox o "+
+        "ON (c.organization_id,c.id)=(o.organization_id,o.call_id) "+
+        "WHERE o.command='hangup' AND o.completed_at IS NULL "+
+        "AND (o.claimed_at IS NULL OR o.claimed_at<clock_timestamp()-interval '10 seconds') "+
+        "ORDER BY o.claimed_at NULLS FIRST,c.created_at LIMIT 1 FOR UPDATE OF o SKIP LOCKED");
+      if(hang){
+        await db.query(
+          "UPDATE outbox SET claimed_at=clock_timestamp() WHERE call_id=$1 AND command='hangup'",
+          [hang.id]);
+        return {kind:'hangup' as const,call:hang};
+      }
+
+      // Authorize immediately before the *first* durable outbound command.
+      const {rows:[held]}=await db.query(
+        "SELECT c.* FROM calls c JOIN carousel_dispatches d "+
+        "ON (c.organization_id,c.id)=(d.organization_id,d.id) "+
+        "WHERE c.state='authorized' AND d.state='held' "+
+        "ORDER BY c.created_at LIMIT 1 FOR UPDATE OF c SKIP LOCKED");
+      if(held){
+        let valid=true;
+        try{
+          const actor=await this.#session(db,tenant,held.session_hash);
+          const {rows:[route]}=await db.query(
+            "SELECT n.provider_approved AND n.status='active' "+
+            "AND t.active AND s.active AND s.telephony "+
+            "AND COALESCE(m.trunk_override_id,o.default_trunk_id)=c.trunk_id AS allowed "+
+            "FROM calls c JOIN carousel_numbers n ON "+
+            "(c.organization_id,c.caller_id)=(n.organization_id,n.e164) "+
+            "JOIN trunks t ON (t.organization_id,t.id)=(c.organization_id,c.trunk_id) "+
+            "JOIN subscriptions s ON s.organization_id=c.organization_id "+
+            "JOIN memberships m ON (m.organization_id,m.id)=(c.organization_id,c.membership_id) "+
+            "JOIN organizations o ON o.id=c.organization_id WHERE c.id=$1",[held.id]);
+          const {rows:[arrears]}=await db.query(
+            "SELECT EXISTS(SELECT 1 FROM billing_obligations "+
+            "WHERE organization_id=$1 AND state='issued' AND due_at<clock_timestamp() "+
+            "AND paid_kopeks<amount_kopeks) AS blocked",[tenant]);
+          valid=!!actor.can_call && !!route?.allowed && !arrears.blocked &&
+            new Date(held.expires_at).getTime()>Date.now();
+        }catch(e){
+          if(!(e instanceof ApiError))throw e;
+          valid=false;
+        }
+        if(!valid){
+          await this.carousel.finalize(db,{organizationId:tenant,dispatchId:held.id,action:'release'});
+          await db.query("UPDATE calls SET state=$2 WHERE id=$1",
+            [held.id,new Date(held.expires_at).getTime()<=Date.now()?'expired':'failed']);
+          return null;
+        }
+        await this.carousel.finalize(db,{organizationId:tenant,dispatchId:held.id,action:'commit'});
+        await db.query("UPDATE calls SET state='dispatching' WHERE id=$1",[held.id]);
+      }
+
+      const {rows:[next]}=await db.query(
+        "SELECT c.*,o.state AS queue_state FROM carousel_outbox o "+
+        "JOIN calls c ON(c.organization_id,c.id)=(o.organization_id,o.dispatch_id) "+
+        "WHERE o.state='pending' OR "+
+        "(o.state IN('claimed','unknown') AND o.claimed_at<clock_timestamp()-interval '10 seconds') "+
+        "ORDER BY c.created_at LIMIT 1 FOR UPDATE OF o SKIP LOCKED");
+      if(!next)return null;
+      const originate=next.queue_state==='pending';
+      await db.query("UPDATE carousel_outbox SET state=$2,claimed_at=clock_timestamp() WHERE dispatch_id=$1",
+        [next.id,originate?'claimed':'unknown']);
+      return {kind:originate?'originate' as const:'inspect' as const,call:next};
+    });
+    if(!job)return;
+
+    let result:GatewayResult;
+    try{
+      if(job.kind==='hangup')result=await gateway.hangup(job.call.attempt_id);
+      else if(job.kind==='inspect')result=await gateway.inspect(job.call.attempt_id);
+      else result=await gateway.originate({
+        attemptId:job.call.attempt_id,destination:job.call.destination,
+        callerId:job.call.caller_id,trunkId:job.call.trunk_id,
+      });
+    }catch{result='unknown';}
+
+    if(result==='unknown'){
+      await this.transaction(tenant,async db=>{
+        if(job.kind==='hangup')return;
+        await db.query("UPDATE calls SET state='reconciling' WHERE id=$1 AND state='dispatching'",
+          [job.call.id]);
+        await db.query(
+          "UPDATE carousel_outbox SET state='unknown',claimed_at=clock_timestamp() "+
+          "WHERE dispatch_id=$1 AND state<>'completed'",[job.call.id]);
+      });
       return;
     }
-    await this.transaction(tenant, async db => {
-      await this.#organization(db, tenant);
-      if (state === 'unknown') {
-        await db.query("UPDATE calls SET state='reconciling' WHERE id=$1 AND state='dispatching'", [job.id]);
-        return;
+    if(typeof result==='object'){
+      await this.event(tenant,job.call.id,{
+        id:'gateway-terminal:'+job.call.attempt_id,
+        state:'ended',classification:result.classification,
+      });
+    } else {
+      await this.transaction(tenant,async db=>{
+        await db.query(
+          "UPDATE calls SET state=$2 WHERE id=$1 AND state IN('dispatching','reconciling')",
+          [job.call.id,result]);
+      });
+    }
+    await this.transaction(tenant,async db=>{
+      if(job.kind==='hangup'){
+        await db.query(
+          "UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND command='hangup'",
+          [job.call.id]);
+      }else{
+        await db.query(
+          "UPDATE carousel_outbox SET state='completed',completed_at=clock_timestamp() "+
+          "WHERE dispatch_id=$1 AND state<>'completed'",[job.call.id]);
       }
-      await db.query("UPDATE calls SET state=$2 WHERE id=$1 AND state IN ('dispatching','reconciling')", [job.id,state]);
-      await db.query('UPDATE outbox SET completed_at=clock_timestamp() WHERE call_id=$1 AND command=$2', [job.id,job.command]);
     });
   }
+
 }

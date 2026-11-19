@@ -6,7 +6,7 @@ const {MIGRATION_DATABASE_URL_FILE,DATABASE_CA_FILE,ADOPT_PILOT_SCHEMA} = proces
 if (!MIGRATION_DATABASE_URL_FILE) throw new Error('MIGRATION_DATABASE_URL_FILE required');
 const pool = await databasePool(MIGRATION_DATABASE_URL_FILE,DATABASE_CA_FILE);
 const db = await pool.connect();
-const files = ['001.sql','runtime.sql','002-uis.sql','003-operator.sql','004-web.sql','005-trunk-routing.sql'];
+const files = ['001.sql','runtime.sql','002-uis.sql','003-operator.sql','004-web.sql','005-trunk-routing.sql','006-global-carousel.sql'];
 try {
   await db.query("SELECT pg_advisory_lock(1935766117)");
   await db.query('CREATE TABLE IF NOT EXISTS public.sashatel_migrations (name text PRIMARY KEY,digest text NOT NULL,applied_at timestamptz NOT NULL DEFAULT clock_timestamp())');

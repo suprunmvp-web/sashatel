@@ -6,6 +6,7 @@ import pg from 'pg';
 import { ApiError, ControlPlane, hashPassword } from './control.ts';
 import { FakeAri } from './fake-ari.ts';
 import { TrunkService } from './trunks.ts';
+import { GlobalCarousel } from './global-carousel.ts';
 import { createApi } from './http.ts';
 
 const runtimeUrl = process.env.DATABASE_URL;
@@ -25,6 +26,7 @@ async function fixture({ limit = 10, balance = 100, role = 'manager', number = '
   await admin.query("INSERT INTO control.wallets VALUES ($1,'minutes',$2,10)", [tenant,balance]);
   await admin.query('INSERT INTO control.trunks VALUES ($1,$2,true)', [tenant,trunk]);
   await admin.query('INSERT INTO control.phone_numbers VALUES ($1,$2,$3,true)', [tenant,number,trunk]);
+  await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",[tenant,number,trunk]);
   const credentials = await control.login(tenant,user,'test-password',device);
   return { tenant, user, member, trunk, token: credentials.token, number };
 }
@@ -105,6 +107,44 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.deepEqual(row,{available:'100',pending:'0'});
   });
 
+  await t.test('runtime cannot modify superseded prepaid wallet or legacy admission counter',async()=>{
+    const a=await fixture({balance:100,number:'+74950002401'});
+    await assert.rejects(control.transaction(a.tenant,db=>db.query(
+      'UPDATE wallets SET available=0 WHERE organization_id=$1',[a.tenant])),
+      /permission denied/);
+    await assert.rejects(control.transaction(a.tenant,db=>db.query(
+      'INSERT INTO number_attempts(e164,day,used) VALUES($1,CURRENT_DATE,1)',
+      [a.number])),/permission denied/);
+    await assert.rejects(control.transaction(a.tenant,db=>db.query(
+      "INSERT INTO usage_ledger(organization_id,call_id,kind,units) VALUES($1,$2,'charge',3)",
+      [a.tenant,randomUUID()])),/permission denied/);
+  });
+
+  await t.test('overdue postpaid invoices block only new calls and accept confirmed settlement',async()=>{
+    const a=await fixture({balance:0,number:'+74950002400'});
+    const invoice=randomUUID();
+    await admin.query(
+      "INSERT INTO control.billing_obligations(organization_id,id,issued_at,due_at,amount_kopeks,paid_kopeks,state) "+
+      "VALUES($1,$2,clock_timestamp()-interval '14 days',clock_timestamp()-interval '1 day',500,0,'issued')",
+      [a.tenant,invoice]);
+    await assert.rejects(control.authorize(a.token,'unpaid',destination),code('PAYMENT_OVERDUE'));
+    await admin.query('UPDATE control.billing_obligations SET paid_kopeks=250 WHERE id=$1',[invoice]);
+    await assert.rejects(control.authorize(a.token,'partial',destination),code('PAYMENT_OVERDUE'));
+    await admin.query('UPDATE control.billing_obligations SET paid_kopeks=500 WHERE id=$1',[invoice]);
+    const accepted=await control.authorize(a.token,'settled',destination);
+    // Becoming overdue after reservation invalidates a not-yet-committed
+    // dispatch without disrupting any already connected conversation.
+    await admin.query('UPDATE control.billing_obligations SET paid_kopeks=0 WHERE id=$1',[invoice]);
+    const gateway=new FakeAri();
+    await control.processOne(a.tenant,gateway);
+    assert.equal(gateway.attempts.size,0);
+    assert.equal((await control.calls(a.token,accepted.call_id)).state,'failed');
+    const {rows:[quota]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1',
+      [a.number]);
+    assert.deepEqual(quota,{held:0,used:0});
+  });
+
   await t.test('default trunk is inherited and member override selects only assigned carrier', async () => {
     const a = await fixture({number:'+74950002001'});
     const [adminUser,adminMember,adminDevice]=Array.from({length:3},()=>randomUUID());
@@ -120,6 +160,7 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       [a.tenant,secondTrunk]);
     await admin.query('INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES ($1,$2,$3,true)',
       [a.tenant,secondNumber,secondTrunk]);
+    await admin.query("INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",[a.tenant,secondNumber,secondTrunk]);
 
     // More than one eligible trunk without a declared route must fail closed.
     await assert.rejects(control.authorize(a.token,'ambiguous',destination),
@@ -178,17 +219,166 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       code('NO_CALLER_ID'));
   });
 
-  await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {
-    for (const [index, limits] of [{limit:1,balance:100},{limit:10,balance:10}].entries()) {
-      const a = await fixture({...limits,number:'+7495000101' + index});
-      const first = await Promise.allSettled([
-        control.authorize(a.token,'a',destination),control.authorize(a.token,'b',destination),
-      ]);
-      assert.equal(first.filter(result => result.status === 'fulfilled').length,1);
-      const rejected = first.find(result => result.status === 'rejected');
-      assert(rejected && rejected.status === 'rejected');
-      assert(code(index === 0 ? 'CALL_CONCURRENCY_LIMIT' : 'INSUFFICIENT_BALANCE')(rejected.reason));
+  await t.test('commercial admission uses authenticated route, not prepaid balance or old attempts',async()=>{
+    const a=await fixture({balance:0,limit:1,number:'+74950003990'});
+    const b=await fixture({balance:0,number:'+74950003991'});
+    const prepared=await control.prepareCommercialCall(a.token,'commercial-1',destination);
+    assert.equal(prepared.state,'held');
+    assert.equal(prepared.caller_id,a.number);
+    assert.equal(prepared.trunk_id,a.trunk);
+    assert.deepEqual(await control.prepareCommercialCall(a.token,'commercial-1',destination),prepared);
+    await assert.rejects(control.prepareCommercialCall(a.token,'commercial-1','+79269990000'),
+      code('IDEMPOTENCY_CONFLICT'));
+    await assert.rejects(control.prepareCommercialCall(a.token,'commercial-2',destination),
+      code('CALL_CONCURRENCY_LIMIT'));
+    const {rows:[wallet]}=await admin.query(
+      'SELECT available FROM control.wallets WHERE organization_id=$1',[a.tenant]);
+    assert.equal(wallet.available,'0');
+    const {rows:[oldCounter]}=await admin.query(
+      'SELECT count(*)::int AS count FROM control.number_attempts WHERE e164=$1',[a.number]);
+    assert.equal(oldCounter.count,0);
+    const {rows:[foreign]}=await control.transaction(b.tenant,db=>
+      db.query('SELECT id FROM carousel_dispatches WHERE id=$1',[prepared.call_id]));
+    assert.equal(foreign,undefined);
+    await control.transaction(a.tenant,db=>new GlobalCarousel().finalize(db,{
+      organizationId:a.tenant,dispatchId:prepared.call_id,action:'release'}));
+    const retried=await control.prepareCommercialCall(a.token,'commercial-2',destination);
+    assert.equal(retried.state,'held');
+  });
+
+  await t.test('expired uncommitted reservation releases physical quota without dispatch',async()=>{
+    const a=await fixture({number:'+74950003992'});
+    const carousel=new GlobalCarousel();
+    const args={organizationId:a.tenant,membershipId:a.member,
+      effectiveTrunkId:a.trunk,requestKey:'expires',destination};
+    const first=await control.transaction(a.tenant,db=>carousel.reserve(db,args));
+    await admin.query(
+      "UPDATE control.carousel_dispatches SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [first.id]);
+    const second=await control.transaction(a.tenant,db=>carousel.reserve(db,{
+      ...args,requestKey:'fresh'}));
+    assert.equal(second.state,'held');
+    assert.equal((await admin.query(
+      'SELECT state FROM control.carousel_dispatches WHERE id=$1',[first.id])).rows[0].state,'released');
+    const {rows:[quota]}=await admin.query(
+      "SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE 'Europe/Moscow')::date",
+      [a.number]);
+    assert.deepEqual(quota,{held:1,used:0});
+    assert.equal((await admin.query(
+      'SELECT COUNT(*)::int AS count FROM control.carousel_outbox WHERE organization_id=$1',
+      [a.tenant])).rows[0].count,0);
+  });
+
+  await t.test('physical Caller ID quota is shared globally across tenants',async()=>{
+    const number='+74950003999';
+    const a=await fixture({number}),b=await fixture({number});
+    for(const f of [a,b]) {
+      await admin.query(
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+        [f.tenant,number,f.trunk]);
     }
+    const carousel=new GlobalCarousel();
+    const reserve=(f:typeof a,key:string)=>control.transaction(f.tenant,db=>
+      carousel.reserve(db,{organizationId:f.tenant,membershipId:f.member,
+        effectiveTrunkId:f.trunk,requestKey:key,destination}));
+    const holds:Array<{id:string}>=[];
+    for(let i=0;i<8;i++)holds.push(await reserve(i%2?a:b,'global-'+i));
+    assert.equal((await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE $2)::date',
+      [number,'Europe/Moscow'])).rows[0].held,8);
+    await assert.rejects(reserve(a,'global-ninth'),/NUMBER_LIMIT_REACHED/);
+
+    // Two concurrent ninth-slot contenders: one and only one can win.
+    await control.transaction(b.tenant,db=>carousel.finalize(db,{
+      organizationId:b.tenant,dispatchId:holds[0].id,action:'release'}));
+    const results=await Promise.allSettled([reserve(a,'race-a'),reserve(b,'race-b')]);
+    assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
+    assert.equal(results.filter(x=>x.status==='rejected').length,1);
+    const final=await control.transaction(a.tenant,db=>carousel.finalize(db,{
+      organizationId:a.tenant,dispatchId:holds[1].id,action:'commit'}));
+    assert.equal(final,'committed');
+    assert.equal(await control.transaction(a.tenant,db=>carousel.finalize(db,{
+      organizationId:a.tenant,dispatchId:holds[1].id,action:'release'})),'committed');
+    const {rows:[global]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1 AND day=(clock_timestamp() AT TIME ZONE $2)::date',
+      [number,'Europe/Moscow']);
+    assert.equal(Number(global.held)+Number(global.used),8);
+    assert.equal(global.used,1);
+    const {rows:[dispatch]}=await admin.query(
+      'SELECT attempt_id FROM control.carousel_dispatches WHERE id=$1',[holds[1].id]);
+    const {rows:[outbox]}=await admin.query(
+      'SELECT attempt_id,state FROM control.carousel_outbox WHERE dispatch_id=$1',[holds[1].id]);
+    assert.equal(outbox.attempt_id,dispatch.attempt_id);
+    assert.equal(outbox.state,'pending');
+    await assert.rejects(control.transaction(a.tenant,db=>
+      db.query('UPDATE physical_caller_day SET held=0 WHERE e164=$1',[number])),/permission denied/);
+    await assert.rejects(control.transaction(b.tenant,db=>carousel.finalize(db,{
+      organizationId:b.tenant,dispatchId:holds[1].id,action:'release'})),/UNKNOWN_DISPATCH/);
+  });
+
+  await t.test('fair global rotation, passive fencing and expired holds',async()=>{
+    const first='+74950004001',second='+74950004002';
+    const f=await fixture({number:first});
+    await admin.query('INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES($1,$2,$3,true)',
+      [f.tenant,second,f.trunk]);
+    for(const n of [first,second]){
+      await admin.query(
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+        [f.tenant,n,f.trunk]);
+    }
+    const car=new GlobalCarousel();
+    const alloc=(key:string)=>control.transaction(f.tenant,db=>car.reserve(db,{
+      organizationId:f.tenant,membershipId:f.member,effectiveTrunkId:f.trunk,
+      requestKey:key,destination,
+    }));
+    const a=await alloc('round-1');
+    const b=await alloc('round-2');
+    assert.equal(a.caller_id,first);
+    assert.equal(b.caller_id,second);
+    assert.equal((await alloc('round-1')).id,a.id);
+    const {rows:[before]}=await admin.query(
+      'SELECT count(*)::int AS n FROM control.physical_caller_day WHERE e164=$1',
+      [first]);
+    assert.equal(before.n,1);
+
+    // A number deactivated before committed dispatch must not be originated.
+    await admin.query(
+      "UPDATE control.carousel_numbers SET status='passive' WHERE organization_id=$1 AND e164=$2",
+      [f.tenant,first]);
+    await assert.rejects(control.transaction(f.tenant,db=>car.finalize(db,{
+      organizationId:f.tenant,dispatchId:a.id,action:'commit'})),/CALLER_NOT_APPROVED/);
+    assert.equal(await control.transaction(f.tenant,db=>car.finalize(db,{
+      organizationId:f.tenant,dispatchId:a.id,action:'release'})),'released');
+    const {rows:[freed]}=await admin.query('SELECT held,used FROM control.physical_caller_day WHERE e164=$1',[first]);
+    assert.deepEqual(freed,{held:0,used:0});
+
+    // Uncommitted abandoned reservation is eventually reclaimed, not billed.
+    await admin.query(
+      "UPDATE control.carousel_dispatches SET expires_at=clock_timestamp()-interval '1 minute' WHERE id=$1",
+      [b.id]);
+    assert.equal(await control.transaction(f.tenant,db=>car.expireForTenant(db,f.tenant)),1);
+    assert.equal(await control.transaction(f.tenant,db=>car.expireForTenant(db,f.tenant)),0);
+    const {rows:[clean]}=await admin.query('SELECT held,used FROM control.physical_caller_day WHERE e164=$1',[second]);
+    assert.deepEqual(clean,{held:0,used:0});
+    const {rows:[dispatch]}=await admin.query('SELECT state FROM control.carousel_dispatches WHERE id=$1',[b.id]);
+    assert.equal(dispatch.state,'released');
+  });
+
+  await t.test('parallel requests enforce concurrency without wallet gate; duplicate returns same call', async () => {
+    const limited=await fixture({limit:1,balance:0,number:'+74950001010'});
+    const limitedOutcomes=await Promise.allSettled([
+      control.authorize(limited.token,'a',destination),
+      control.authorize(limited.token,'b',destination)]);
+    assert.equal(limitedOutcomes.filter(r=>r.status==='fulfilled').length,1);
+    assert(code('CALL_CONCURRENCY_LIMIT')(
+      limitedOutcomes.find(r=>r.status==='rejected')?.reason));
+    const postpaid=await fixture({limit:10,balance:0,number:'+74950001011'});
+    const [call1,call2]=await Promise.all([
+      control.authorize(postpaid.token,'postpaid-1',destination),
+      control.authorize(postpaid.token,'postpaid-2',destination)]);
+    assert.notEqual(call1.call_id,call2.call_id);
+    assert.equal((await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',
+      [postpaid.tenant])).rows[0].available,'0');
     const a = await fixture({number:'+74950001012'});
     const [one,two] = await Promise.all([
       control.authorize(a.token,'same',destination),control.authorize(a.token,'same',destination),
@@ -224,6 +414,21 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
         'SELECT c.state,w.available FROM control.calls c JOIN control.wallets w USING(organization_id) WHERE c.id=$1',[call.call_id]);
       assert.deepEqual(stored,{ state:expired ? 'expired' : 'failed', available:'100' });
     }
+  });
+
+  await t.test('worker expiry sweep closes abandoned call intents and frees global holds',async()=>{
+    const f=await fixture({number:'+74950003155'});
+    const call=await control.authorize(f.token,'abandoned',destination);
+    await admin.query(
+      "UPDATE control.carousel_dispatches SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [call.call_id]);
+    const gateway=new FakeAri();
+    await control.processOne(f.tenant,gateway);
+    assert.equal(gateway.attempts.size,0);
+    assert.equal((await control.calls(f.token,call.call_id)).state,'expired');
+    const {rows:[quota]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1',[f.number]);
+    assert.deepEqual(quota,{held:0,used:0});
   });
 
   await t.test('UIS trunk HTTP API scopes access and redacts credentials through retry and deletion', async () => {
@@ -334,6 +539,31 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.deepEqual(stored,{state:'ended',available:'100'});
   });
 
+  await t.test('machine outcome cannot create human billable seconds',async()=>{
+    const a=await fixture({balance:0,number:'+74950004101'});
+    const call=await control.authorize(a.token,'machine',destination);
+    const gateway=new FakeAri();
+    await control.processOne(a.tenant,gateway);
+    assert.equal((await control.calls(a.token,call.call_id)).state,'ringing');
+    await assert.rejects(control.event(a.tenant,call.call_id,{
+      id:'invalid-machine',state:'ended',
+      classification:{outcome:'machine',billableSeconds:60},
+    }),/NON_HUMAN_CANNOT_BE_BILLED/);
+    await assert.rejects(control.event(a.tenant,call.call_id,{
+      id:'unverified-human',state:'ended',
+      classification:{outcome:'human',billableSeconds:60},
+    }),/UNVERIFIED_HUMAN_BILLING/);
+    await control.event(a.tenant,call.call_id,{
+      id:'machine-confirmed',state:'ended',classification:{outcome:'machine'},
+    });
+    const {rows:[ledger]}=await admin.query(
+      'SELECT outcome,billable_seconds,amount_kopeks FROM control.postpaid_usage WHERE call_id=$1',
+      [call.call_id]);
+    assert.deepEqual(ledger,{outcome:'machine',billable_seconds:0,amount_kopeks:'0'});
+    assert.equal((await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',
+      [a.tenant])).rows[0].available,'0');
+  });
+
   await t.test('ambiguous originate reconciles without redial and terminal delivery charges once', async () => {
     const a = await fixture({number:'+74950001040'});
     const call = await control.authorize(a.token,'timeout',destination);
@@ -341,20 +571,26 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     gateway.timeoutAfterAccept = true;
     await control.processOne(a.tenant,gateway);
     assert.equal((await control.calls(a.token,call.call_id)).state,'reconciling');
-    await admin.query("UPDATE control.outbox SET claimed_at=clock_timestamp()-interval '11 seconds' WHERE call_id=$1",[call.call_id]);
+    await admin.query("UPDATE control.carousel_outbox SET claimed_at=clock_timestamp()-interval '11 seconds' WHERE dispatch_id=$1",[call.call_id]);
     await control.processOne(a.tenant,gateway);
     assert.equal((await control.calls(a.token,call.call_id)).state,'ringing');
     assert.equal(gateway.attempts.size,1);
-    await control.event(a.tenant,call.call_id,{id:'cel-1',state:'ended'});
-    assert.equal((await control.calls(a.token,call.call_id)).state,'ended');
+    const verified={outcome:'human' as const,billableSeconds:60,evidenceId:'classifier-v1:recording-verified'};
     await Promise.all([
-      control.event(a.tenant,call.call_id,{id:'cel-1', state:'ended',charge:3n}),
-      control.event(a.tenant,call.call_id,{id:'cel-1', state:'ended',charge:3n}),
-      control.event(a.tenant,call.call_id,{id:'duplicate-terminal', state:'ended',charge:3n}),
+      control.event(a.tenant,call.call_id,{id:'cel-1',state:'ended',classification:verified}),
+      control.event(a.tenant,call.call_id,{id:'cel-1',state:'ended',classification:verified}),
+      control.event(a.tenant,call.call_id,{id:'duplicate-terminal',state:'ended',classification:verified}),
     ]);
-    const { rows } = await admin.query('SELECT kind,units FROM control.usage_ledger WHERE call_id=$1 ORDER BY kind',[call.call_id]);
-    assert.deepEqual(rows,[{kind:'charge',units:'3'},{kind:'release',units:'7'},{kind:'reserve',units:'10'}]);
-    const { rows: [wallet] } = await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',[a.tenant]);
-    assert.equal(wallet.available,'97');
+    assert.equal((await control.calls(a.token,call.call_id)).state,'ended');
+    const {rows:[charged]}=await admin.query(
+      'SELECT outcome,billable_seconds,amount_kopeks,evidence_id FROM control.postpaid_usage WHERE call_id=$1',
+      [call.call_id]);
+    assert.deepEqual(charged,{
+      outcome:'human',billable_seconds:60,amount_kopeks:'300',evidence_id:verified.evidenceId,
+    });
+    const {rows:legacy}=await admin.query('SELECT * FROM control.usage_ledger WHERE call_id=$1',[call.call_id]);
+    assert.equal(legacy.length,0);
+    const {rows:[wallet]}=await admin.query('SELECT available FROM control.wallets WHERE organization_id=$1',[a.tenant]);
+    assert.equal(wallet.available,'100');
   });
 });
