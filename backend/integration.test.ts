@@ -107,6 +107,13 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
 
   await t.test('default trunk is inherited and member override selects only assigned carrier', async () => {
     const a = await fixture({number:'+74950002001'});
+    const [adminUser,adminMember,adminDevice]=Array.from({length:3},()=>randomUUID());
+    await admin.query('INSERT INTO control.users(id,login,password_hash) VALUES($1,$1::uuid::text,$2)',
+      [adminUser,await hashPassword('test-password')]);
+    await admin.query("INSERT INTO control.memberships VALUES($1,$2,$3,'organization_admin',true)",
+      [a.tenant,adminMember,adminUser]);
+    const supervisor=await control.login(a.tenant,adminUser,'test-password',adminDevice);
+    await assert.rejects(control.setDefaultTrunk(a.token,a.trunk),code('TRUNK_PERMISSION_REQUIRED'));
     const secondTrunk=randomUUID();
     const secondNumber='+74950002002';
     await admin.query('INSERT INTO control.trunks(organization_id,id,active) VALUES ($1,$2,true)',
@@ -124,19 +131,41 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const {rows:[first]}=await admin.query(
       'SELECT id FROM control.trunks WHERE organization_id=$1 AND id<>$2',
       [a.tenant,secondTrunk]);
-    await admin.query('UPDATE control.organizations SET default_trunk_id=$2 WHERE id=$1',
-      [a.tenant,first.id]);
+    await control.setDefaultTrunk(supervisor.token,first.id);
     const defaultCall=await control.authorize(a.token,'default-trunk',destination);
     let {rows:[saved]}=await admin.query('SELECT trunk_id,caller_id FROM control.calls WHERE id=$1',
       [defaultCall.call_id]);
     assert.deepEqual(saved,{trunk_id:first.id,caller_id:a.number});
 
-    await admin.query('UPDATE control.memberships SET trunk_override_id=$2 WHERE organization_id=$1 AND id=$3',
-      [a.tenant,secondTrunk,a.member]);
+    await control.setEmployeeTrunk(supervisor.token,a.member,secondTrunk);
     const overridden=await control.authorize(a.token,'override-trunk',destination);
     ({rows:[saved]}=await admin.query('SELECT trunk_id,caller_id FROM control.calls WHERE id=$1',
       [overridden.call_id]));
     assert.deepEqual(saved,{trunk_id:secondTrunk,caller_id:secondNumber});
+
+    // REST contract enforces privileged routing updates and validated bodies.
+    const api=createApi(control,()=>pool.query('SELECT 1'));
+    api.listen(0,'127.0.0.1');
+    await once(api,'listening');
+    try {
+      const address=api.address();
+      assert(address&&typeof address!=='string');
+      const origin='http://127.0.0.1:'+address.port;
+      const headers={authorization:'Bearer '+supervisor.token,'content-type':'application/json'};
+      const reset=await fetch(origin+'/v1/trunk-routing/members/'+a.member,
+        {method:'PUT',headers,body:JSON.stringify({trunk_id:null})});
+      assert.equal(reset.status,200);
+      assert.equal((await reset.json()).trunk_override_id,null);
+      const assign=await fetch(origin+'/v1/trunk-routing/members/'+a.member,
+        {method:'PUT',headers,body:JSON.stringify({trunk_id:secondTrunk})});
+      assert.equal(assign.status,200);
+      const forbidden=await fetch(origin+'/v1/trunk-routing/default',
+        {method:'PUT',headers:{...headers,authorization:'Bearer '+a.token},
+          body:JSON.stringify({trunk_id:secondTrunk})});
+      assert.equal(forbidden.status,403);
+    } finally {
+      await new Promise<void>(resolve=>api.close(()=>resolve()));
+    }
 
     // No silent failover when the employee's explicitly assigned trunk goes down.
     await admin.query('UPDATE control.trunks SET active=false WHERE id=$1',[secondTrunk]);
