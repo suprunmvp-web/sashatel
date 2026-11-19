@@ -1,4 +1,20 @@
 terraform {
+  # S3-compatible remote state in a private, versioned Yandex Object Storage bucket.
+  # All credentials come from protected GitHub environment secrets.
+  backend "s3" {
+    bucket = "sashatel-staging-tfstate-677"
+    key    = "terraform/staging/terraform.tfstate"
+    region = "ru-central1"
+    endpoints = {
+      s3 = "https://storage.yandexcloud.net"
+    }
+    skip_credentials_validation = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    skip_s3_checksum            = true
+    # Native lockfile requires compatible S3 conditional writes.
+    # Validate on YC before enabling; CI concurrency prevents overlapping authorized runs.
+  }
   required_version = ">= 1.6.0"
   required_providers {
     yandex = {
