@@ -226,6 +226,54 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       organizationId:b.tenant,dispatchId:holds[1].id,action:'release'})),/UNKNOWN_DISPATCH/);
   });
 
+  await t.test('fair global rotation, passive fencing and expired holds',async()=>{
+    const first='+74950004001',second='+74950004002';
+    const f=await fixture({number:first});
+    await admin.query('INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES($1,$2,$3,true)',
+      [f.tenant,second,f.trunk]);
+    for(const n of [first,second]){
+      await admin.query(
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true)",
+        [f.tenant,n,f.trunk]);
+    }
+    const car=new GlobalCarousel();
+    const alloc=(key:string)=>control.transaction(f.tenant,db=>car.reserve(db,{
+      organizationId:f.tenant,membershipId:f.member,effectiveTrunkId:f.trunk,
+      requestKey:key,destination,
+    }));
+    const a=await alloc('round-1');
+    const b=await alloc('round-2');
+    assert.equal(a.caller_id,first);
+    assert.equal(b.caller_id,second);
+    assert.equal((await alloc('round-1')).id,a.id);
+    const {rows:[before]}=await admin.query(
+      'SELECT count(*)::int AS n FROM control.physical_caller_day WHERE e164=$1',
+      [first]);
+    assert.equal(before.n,1);
+
+    // A number deactivated before committed dispatch must not be originated.
+    await admin.query(
+      "UPDATE control.carousel_numbers SET status='passive' WHERE organization_id=$1 AND e164=$2",
+      [f.tenant,first]);
+    await assert.rejects(control.transaction(f.tenant,db=>car.finalize(db,{
+      organizationId:f.tenant,dispatchId:a.id,action:'commit'})),/CALLER_NOT_APPROVED/);
+    assert.equal(await control.transaction(f.tenant,db=>car.finalize(db,{
+      organizationId:f.tenant,dispatchId:a.id,action:'release'})),'released');
+    const {rows:[freed]}=await admin.query('SELECT held,used FROM control.physical_caller_day WHERE e164=$1',[first]);
+    assert.deepEqual(freed,{held:0,used:0});
+
+    // Uncommitted abandoned reservation is eventually reclaimed, not billed.
+    await admin.query(
+      "UPDATE control.carousel_dispatches SET expires_at=clock_timestamp()-interval '1 minute' WHERE id=$1",
+      [b.id]);
+    assert.equal(await control.transaction(f.tenant,db=>car.expireForTenant(db,f.tenant)),1);
+    assert.equal(await control.transaction(f.tenant,db=>car.expireForTenant(db,f.tenant)),0);
+    const {rows:[clean]}=await admin.query('SELECT held,used FROM control.physical_caller_day WHERE e164=$1',[second]);
+    assert.deepEqual(clean,{held:0,used:0});
+    const {rows:[dispatch]}=await admin.query('SELECT state FROM control.carousel_dispatches WHERE id=$1',[b.id]);
+    assert.equal(dispatch.state,'released');
+  });
+
   await t.test('parallel requests enforce concurrency and budget; duplicate returns same call', async () => {
     for (const [index, limits] of [{limit:1,balance:100},{limit:10,balance:10}].entries()) {
       const a = await fixture({...limits,number:'+7495000101' + index});
