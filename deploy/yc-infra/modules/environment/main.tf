@@ -133,13 +133,11 @@ resource "yandex_mdb_postgresql_cluster_v2" "db" {
     }
   }
 
-  dynamic "hosts" {
-    for_each = var.db_hosts
-    content {
-      # The v2 provider models hosts as a map: see the pinned provider docs.
-      # This block is intentionally reviewed by terraform validate in CI.
-      zone      = var.subnets[hosts.value].zone
-      subnet_id = yandex_vpc_subnet.environment[hosts.value].id
+  hosts = {
+    for host_name, subnet_key in var.db_hosts : host_name => {
+      zone             = var.subnets[subnet_key].zone
+      subnet_id        = yandex_vpc_subnet.environment[subnet_key].id
+      assign_public_ip = false
     }
   }
 
