@@ -2,6 +2,9 @@
 -- Incremental to v1 routing migration; no PSTN dispatch enabled by schema.
 SET search_path=control,pg_catalog;
 
+ALTER TABLE phone_numbers ADD CONSTRAINT phone_numbers_trunk_integrity
+  UNIQUE(organization_id,e164,trunk_id);
+
 CREATE TABLE carousel_numbers (
   organization_id uuid NOT NULL,
   e164 text NOT NULL CHECK(e164 ~ '^\+[1-9][0-9]{6,14}$'),
@@ -10,7 +13,7 @@ CREATE TABLE carousel_numbers (
   status text NOT NULL DEFAULT 'passive' CHECK(status IN('active','passive')),
   updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   PRIMARY KEY(organization_id,e164),
-  FOREIGN KEY(organization_id,e164) REFERENCES phone_numbers(organization_id,e164),
+  FOREIGN KEY(organization_id,e164,trunk_id) REFERENCES phone_numbers(organization_id,e164,trunk_id),
   FOREIGN KEY(organization_id,trunk_id) REFERENCES trunks(organization_id,id)
 );
 CREATE INDEX carousel_active ON carousel_numbers(organization_id,trunk_id,e164)
