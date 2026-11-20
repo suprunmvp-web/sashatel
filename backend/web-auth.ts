@@ -13,6 +13,16 @@ const deadline = (seconds: number) => new Date(Date.now()+seconds*1000);
 export interface MailPort {
   send(message: {id:string;email:string;code:string|null}): Promise<void>;
 }
+// Provider failures that must not be retried (invalid sender, forbidden API key, etc.).
+// Network timeouts and unknown outcomes remain retryable.
+export class MailDeliveryError extends Error {
+  readonly retryable:boolean;
+  constructor(retryable:boolean) {
+    super(retryable?'MAIL_TRANSIENT_FAILURE':'MAIL_PERMANENT_FAILURE');
+    this.name='MailDeliveryError';
+    this.retryable=retryable;
+  }
+}
 export interface LookupPort {
   lookup(inn:string): Promise<{legal_name:string;legal_address:string}|null>;
 }
@@ -511,18 +521,21 @@ export class WebAuth {
         FROM finished
         WHERE c.id = finished.challenge_id
       `, [job.challenge_id, leaseToken]);
-    } catch {
+    } catch (error) {
+      const permanent=error instanceof MailDeliveryError && !error.retryable;
       await this.pool.query(`
         WITH failed AS (
           UPDATE web_auth.mail_jobs
           SET attempts = attempts + 1,
-              available_at = clock_timestamp() + interval '60 seconds',
+              available_at = clock_timestamp() +
+                (make_interval(secs => LEAST(240,60*power(2,LEAST(attempts,2)))::int)
+                 + make_interval(secs => floor(random()*10)::int)),
               completed_at = CASE
-                WHEN attempts >= 4 THEN clock_timestamp()
+                WHEN $3::boolean OR attempts >= 4 THEN clock_timestamp()
                 ELSE NULL
               END,
               envelope = CASE
-                WHEN attempts >= 4 THEN NULL
+                WHEN $3::boolean OR attempts >= 4 THEN NULL
                 ELSE envelope
               END,
               lease_token = NULL,
@@ -535,7 +548,7 @@ export class WebAuth {
         SET delivery = 'failed'
         FROM failed
         WHERE c.id = failed.challenge_id
-      `, [job.challenge_id, leaseToken]);
+      `, [job.challenge_id, leaseToken, permanent]);
     }
   }
 }
