@@ -425,29 +425,117 @@ export class WebAuth {
       return {status:201,body:{organization:await this.organization(db,user.id,id)}};
     });
   }
+  
   async deliverOne() {
-    const db=await this.pool.connect();
+    const leaseToken = randomUUID();
+
+    // Atomic claim: only one worker owns this job.
+    const { rows: [job] } = await this.pool.query(`
+      WITH candidate AS (
+        SELECT j.challenge_id
+        FROM web_auth.mail_jobs j
+        WHERE j.completed_at IS NULL
+          AND j.available_at <= clock_timestamp()
+          AND (
+            j.lease_until IS NULL
+            OR j.lease_until <= clock_timestamp()
+          )
+        ORDER BY j.available_at
+        LIMIT 1
+        FOR UPDATE OF j SKIP LOCKED
+      )
+      UPDATE web_auth.mail_jobs j
+      SET lease_token = $1,
+          lease_until = clock_timestamp() + interval '30 seconds'
+      FROM candidate, web_auth.challenges c, web_auth.browsers b
+      WHERE j.challenge_id = candidate.challenge_id
+        AND c.id = j.challenge_id
+        AND b.hash = c.browser_hash
+      RETURNING
+        j.challenge_id,
+        j.envelope,
+        j.attempts,
+        c.expires_at,
+        c.consumed_at,
+        b.challenge_id AS active_challenge_id,
+        EXISTS (
+          SELECT 1
+          FROM control.users u
+          WHERE lower(u.login) = c.email
+        ) AS existing
+    `, [leaseToken]);
+
+    if (!job) return;
+
+    const current =
+      !job.consumed_at &&
+      job.challenge_id === job.active_challenge_id &&
+      new Date(job.expires_at).getTime() > Date.now();
+
+    if (!current) {
+      await this.pool.query(`
+        UPDATE web_auth.mail_jobs
+        SET completed_at = clock_timestamp(),
+            envelope = NULL,
+            lease_token = NULL,
+            lease_until = NULL
+        WHERE challenge_id = $1
+          AND lease_token = $2
+      `, [job.challenge_id, leaseToken]);
+      return;
+    }
+
     try {
-      await db.query('BEGIN');
-      const {rows:[job]}=await db.query(`SELECT j.*,c.email,c.expires_at,c.consumed_at,
-        EXISTS(SELECT 1 FROM control.users u WHERE lower(u.login)=c.email) AS existing
-        FROM web_auth.mail_jobs j JOIN web_auth.challenges c ON c.id=j.challenge_id
-        WHERE j.completed_at IS NULL AND j.available_at<=clock_timestamp() ORDER BY j.available_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED`);
-      if(!job) {await db.query('COMMIT');return;}
-      if(job.consumed_at||new Date(job.expires_at).getTime()<=Date.now()) {
-        await db.query('UPDATE web_auth.mail_jobs SET completed_at=clock_timestamp(),envelope=NULL WHERE challenge_id=$1',[job.challenge_id]);
-      } else {
-        try {
-          const message=this.open(job.envelope);
-          await this.mail.send({id:job.challenge_id,email:message.email,code:job.existing?null:message.code});
-          await db.query("UPDATE web_auth.challenges SET delivery='accepted' WHERE id=$1",[job.challenge_id]);
-          await db.query('UPDATE web_auth.mail_jobs SET completed_at=clock_timestamp(),envelope=NULL WHERE challenge_id=$1',[job.challenge_id]);
-        } catch {
-          await db.query("UPDATE web_auth.challenges SET delivery='failed' WHERE id=$1",[job.challenge_id]);
-          await db.query("UPDATE web_auth.mail_jobs SET attempts=attempts+1,available_at=clock_timestamp()+interval '60 seconds' WHERE challenge_id=$1",[job.challenge_id]);
-        }
-      }
-      await db.query('COMMIT');
-    } catch(error) {await db.query('ROLLBACK');throw error;} finally {db.release();}
+      // No PostgreSQL transaction is open during network I/O.
+      const message = this.open(job.envelope);
+
+      await this.mail.send({
+        id: job.challenge_id,
+        email: message.email,
+        code: job.existing ? null : message.code,
+      });
+
+      await this.pool.query(`
+        WITH finished AS (
+          UPDATE web_auth.mail_jobs
+          SET completed_at = clock_timestamp(),
+              envelope = NULL,
+              lease_token = NULL,
+              lease_until = NULL
+          WHERE challenge_id = $1
+            AND lease_token = $2
+          RETURNING challenge_id
+        )
+        UPDATE web_auth.challenges c
+        SET delivery = 'accepted'
+        FROM finished
+        WHERE c.id = finished.challenge_id
+      `, [job.challenge_id, leaseToken]);
+    } catch {
+      await this.pool.query(`
+        WITH failed AS (
+          UPDATE web_auth.mail_jobs
+          SET attempts = attempts + 1,
+              available_at = clock_timestamp() + interval '60 seconds',
+              completed_at = CASE
+                WHEN attempts >= 4 THEN clock_timestamp()
+                ELSE NULL
+              END,
+              envelope = CASE
+                WHEN attempts >= 4 THEN NULL
+                ELSE envelope
+              END,
+              lease_token = NULL,
+              lease_until = NULL
+          WHERE challenge_id = $1
+            AND lease_token = $2
+          RETURNING challenge_id
+        )
+        UPDATE web_auth.challenges c
+        SET delivery = 'failed'
+        FROM failed
+        WHERE c.id = failed.challenge_id
+      `, [job.challenge_id, leaseToken]);
+    }
   }
 }
