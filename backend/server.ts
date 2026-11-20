@@ -3,20 +3,38 @@ import { ControlPlane } from './control.ts';
 import { createApi } from './http.ts';
 import { databasePool } from './db.ts';
 import { WebAuth } from './web-auth.ts';
-import { DaDataLookup, EmailSink } from './web-ports.ts';
+import { DaDataLookup } from './web-ports.ts'; import { ResendMailProvider } from './resend-mail.ts';
 
-const {DATABASE_URL_FILE,DATABASE_CA_FILE,AUTH_KEY_FILE,WEB_ORIGIN,
- EMAIL_SINK_DIRECTORY,DADATA_API_KEY_FILE,PORT='8080',BIND_HOST='127.0.0.1'}=process.env;
-if(!DATABASE_URL_FILE||!AUTH_KEY_FILE||!WEB_ORIGIN||!EMAIL_SINK_DIRECTORY
- ||process.env.EMAIL_MODE!=='sink'||process.env.LIVE_CALL_DISPATCH!=='disabled') {
-  throw new Error('S1 requires database/auth secret files, exact Web origin, email sink and disabled call dispatch');
+
+const {
+  DATABASE_URL_FILE,
+  DATABASE_CA_FILE,
+  AUTH_KEY_FILE,
+  WEB_ORIGIN,
+  DADATA_API_KEY_FILE,
+  RESEND_API_KEY_FILE,
+  EMAIL_FROM,
+  PORT = '8080',
+  BIND_HOST = '127.0.0.1',
+} = process.env;
+
+if (
+  !DATABASE_URL_FILE ||
+  !AUTH_KEY_FILE ||
+  !WEB_ORIGIN ||
+  !RESEND_API_KEY_FILE ||
+  !EMAIL_FROM ||
+  process.env.EMAIL_MODE !== 'resend' ||
+  process.env.LIVE_CALL_DISPATCH !== 'disabled'
+) {
+  throw new Error('Invalid Backend configuration');
 }
 const pool=await databasePool(DATABASE_URL_FILE,DATABASE_CA_FILE);
 const key=(await readFile(AUTH_KEY_FILE,'utf8')).trim();
 if(!/^[0-9a-fA-F]{64}$/.test(key)) throw new Error('AUTH key must be 32-byte hex');
 const lookup=DADATA_API_KEY_FILE?new DaDataLookup((await readFile(DADATA_API_KEY_FILE,'utf8')).trim()):
   {async lookup():Promise<never> {throw new Error('DaData not configured');}};
-const auth=new WebAuth(pool,Buffer.from(key,'hex'),new EmailSink(EMAIL_SINK_DIRECTORY),lookup);
+ const resendKey = (await readFile(RESEND_API_KEY_FILE, 'utf8')).trim();  if (!resendKey) {   throw new Error('Email API key is empty'); }  const mail = new ResendMailProvider(resendKey, EMAIL_FROM); const auth = new WebAuth(pool, Buffer.from(key, 'hex'), mail, lookup);
 const control=new ControlPlane(pool);
 const ready=async()=>{
   const {rows:[role]}=await pool.query('SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user');
