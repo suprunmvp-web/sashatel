@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import pg from 'pg';
-import {WebAuth,type MailPort} from './web-auth.ts';
+import {WebAuth,MailDeliveryError,type MailPort} from './web-auth.ts';
 
 assert(process.env.DATABASE_URL && process.env.TEST_ADMIN_URL);
 const pool = new pg.Pool({connectionString:process.env.DATABASE_URL,max:8});
@@ -134,4 +134,42 @@ test('mail outbox lease, concurrency, recovery and invalidated challenges (Postg
     await auth.deliverOne();
     assert.deepEqual(sent,[newId]);
   });
+  await t.test('permanent provider rejection stops retrying and destroys encrypted envelope',async()=>{
+    let calls=0;
+    const mail:MailPort={async send() {
+      calls++;
+      throw new MailDeliveryError(false);
+    }};
+    const auth=new WebAuth(pool,randomBytes(32),mail,neverLookup);
+    const {id}=await register(auth);
+    await auth.deliverOne();
+    const failed=await job(id);
+    assert.equal(failed.attempts,1);
+    assert(failed.completed_at instanceof Date);
+    assert.equal(failed.envelope,null);
+    await auth.deliverOne();
+    assert.equal(calls,1);
+  });
+
+  await t.test('transient provider rejection preserves envelope with delayed retry',async()=>{
+    let calls=0;
+    const mail:MailPort={async send() {
+      calls++;
+      if(calls===1) throw new MailDeliveryError(true);
+    }};
+    const auth=new WebAuth(pool,randomBytes(32),mail,neverLookup);
+    const {id}=await register(auth);
+    await auth.deliverOne();
+    const failed=await job(id);
+    assert.equal(failed.attempts,1);
+    assert.equal(failed.completed_at,null);
+    assert.equal(typeof failed.envelope,'string');
+    await auth.deliverOne();
+    assert.equal(calls,1);
+    await admin.query('UPDATE web_auth.mail_jobs SET available_at=clock_timestamp() WHERE challenge_id=$1',[id]);
+    await auth.deliverOne();
+    assert.equal(calls,2);
+    assert((await job(id)).completed_at instanceof Date);
+  });
+
 });
