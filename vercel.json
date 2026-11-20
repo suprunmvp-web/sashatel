@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "framework": null,
+  "buildCommand": "node web/build.mjs",
+  "outputDirectory": "web/dist",
+  "rewrites": [
+    {
+      "source": "/v1/:path*",
+      "destination": "https://api.sashatel.ru/v1/:path*"
+    },
+    {
+      "source": "/((?!assets/|version\\.json|v1/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    }
+  ]
+}
