@@ -4,6 +4,8 @@
 **Ветка:** `feature/web-auth-production-20261121`. **Владелец изменений:** SashaTel Backend.
 **Главная цель:** реальный пользователь проходит `platform.sashatel.ru` → регистрация с паролем → email-код → подтверждение → создание организации → кабинет, без ручных серверных действий.
 
+**Инфраструктура, хосты, DNS, исторический аудит 46/100:** [BACKEND-INFRA-AUDIT-RU.md](./BACKEND-INFRA-AUDIT-RU.md). Этот документ — инженерный источник по Auth; аудит и инфраструктура вынесены отдельно.
+
 ## Обязательные первоисточники
 
 1. [История продуктовых решений и контракт v1.1](https://github.com/suprunmvp-web/sashatel/blob/docs/product-spec-v1-20261117/docs/product/PROJECT-HANDOFF-RU.md).
@@ -61,7 +63,7 @@
 **P0 — закончить очередь + тесты, без деплоя:**
 - [x] GitHub: новый Resend adapter, подключение в `server.ts` (**не протестировано**).
 - [x] GitHub: additive migration 007 и включение её в `migrate.ts` (**не применена**).
-- [ ] Переписать `deliverOne()`: atomic lease → commit → send → fencing finalize; expiry и backoff.
+- [x] Код в GitHub: `deliverOne()` переписан с atomic lease → send вне транзакции → fencing finalize (**не протестирован**, race conditions и error policy ещё требуют исправления).
 - [ ] Пересмотреть классификацию email provider errors; тесты конкуренции/аренды/падения, утилизации секретов и несовместимых schema states.
 - [ ] Запустить `npm run typecheck` и integration tests с реальной временной PostgreSQL, зафиксировать SHA и результат CI.
 
