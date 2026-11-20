@@ -130,6 +130,9 @@ summary:focus-visible {
   gap: 16px;
 }
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   text-decoration: none;
   font-size: 22px;
   font-weight: 550;
