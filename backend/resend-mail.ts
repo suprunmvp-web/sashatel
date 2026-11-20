@@ -1,5 +1,5 @@
 
-import type { MailPort } from './web-auth.ts';
+import { MailDeliveryError, type MailPort } from './web-auth.ts';
 
 type MailMessage = {
   id: string;
@@ -56,7 +56,7 @@ export class ResendMailProvider implements MailPort {
 
     if (!response.ok) {
       // Не пишем тело ошибки в лог: в нём могут быть данные запроса.
-      throw new Error(`Email provider rejected request: HTTP ${response.status}`);
+      throw new MailDeliveryError(response.status===408 || response.status===425 || response.status===429 || response.status>=500);
     }
 
     const result: unknown = await response.json();
@@ -67,7 +67,7 @@ export class ResendMailProvider implements MailPort {
       !('id' in result) ||
       typeof result.id !== 'string'
     ) {
-      throw new Error('Invalid email provider response');
+      throw new MailDeliveryError(true);
     }
   }
 }
