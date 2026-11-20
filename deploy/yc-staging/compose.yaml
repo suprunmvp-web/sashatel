@@ -1,0 +1,86 @@
+# Staging only. Not a production or PSTN deployment.
+services:
+  api:
+    # Deploy the exact CI-tested digest, never build an unreviewed image on the VM.
+    image: "${BACKEND_IMAGE:?immutable cr.yandex backend image digest required}"
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "127.0.0.1:${LOCAL_API_PORT:-8080}:8080"
+    environment:
+      PORT: "8080"
+      BIND_HOST: "0.0.0.0"
+      WEB_ORIGIN: "${WEB_ORIGIN:?exact preview origin required}"
+      EMAIL_MODE: "sink"
+      EMAIL_SINK_DIRECTORY: "/run/sashatel/mail-sink"
+      DATABASE_URL_FILE: "/run/secrets/database_url"
+      DATABASE_CA_FILE: "/run/secrets/database_ca"
+      AUTH_KEY_FILE: "/run/secrets/auth_key"
+      LIVE_CALL_DISPATCH: "disabled"
+    volumes:
+      - type: bind
+        source: "${STAGING_SECRETS_DIR:?secrets directory required}/database-url"
+        target: /run/secrets/database_url
+        read_only: true
+      - type: bind
+        source: "${STAGING_SECRETS_DIR:?secrets directory required}/database-ca.pem"
+        target: /run/secrets/database_ca
+        read_only: true
+      - type: bind
+        source: "${STAGING_SECRETS_DIR:?secrets directory required}/auth-key"
+        target: /run/secrets/auth_key
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=1000,gid=1000
+      - /run/sashatel/mail-sink:rw,noexec,nosuid,size=32m,uid=1000,gid=1000
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Explicit, one-off migration job: same immutable image, different DB identity.
+  # Never run alongside the API automatically. Run only after snapshot/plan review:
+  # docker compose --profile migration run --rm migrate
+  migrate:
+    profiles: ["migration"]
+    image: "${BACKEND_IMAGE:?immutable cr.yandex backend image digest required}"
+    restart: "no"
+    user: "1000:1000"
+    read_only: true
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    command: ["node","migrate.ts"]
+    environment:
+      MIGRATION_DATABASE_URL_FILE: "/run/secrets/migration_database_url"
+      DATABASE_CA_FILE: "/run/secrets/database_ca"
+    volumes:
+      - type: bind
+        source: "${STAGING_SECRETS_DIR:?secrets directory required}/migration-database-url"
+        target: /run/secrets/migration_database_url
+        read_only: true
+      - type: bind
+        source: "${STAGING_SECRETS_DIR:?secrets directory required}/database-ca.pem"
+        target: /run/secrets/database_ca
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000

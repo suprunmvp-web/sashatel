@@ -1,0 +1,64 @@
+name: Yandex Cloud infrastructure validation
+on:
+  pull_request:
+    paths:
+      - 'deploy/yc-infra/**'
+      - 'deploy/yc-staging/**'
+      - 'deploy/yc-production/**'
+      - '.github/workflows/yc-infra-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  terraform:
+    name: Terraform format and validate (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    defaults:
+      run:
+        working-directory: deploy/yc-infra/environments/${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+      - name: Formatting (module and both roots)
+        run: terraform fmt -recursive ../../
+      - name: Initialize providers without remote state
+        run: terraform init -backend=false -input=false
+      - name: Validate infrastructure syntax and provider schema
+        run: terraform validate -no-color
+  safety:
+    name: Non-deployment checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prevent infrastructure apply from this workflow
+        run: |
+          set -eu
+          ! grep -E 'terraform[[:space:]]+apply|tofu[[:space:]]+apply|yc[[:space:]]+compute[[:space:]]+instance[[:space:]]+create' .github/workflows/yc-infra-check.yml
+      - name: Validate immutable staging Compose deployment
+        env:
+          WEB_ORIGIN: https://staging.example.invalid
+          STAGING_SECRETS_DIR: /etc/sashatel/staging
+        run: |
+          set -eu
+          docker compose --env-file deploy/yc-staging/staging.env.example \
+            -f deploy/yc-staging/compose.yaml config -q
+          docker compose --env-file deploy/yc-staging/staging.env.example \
+            -f deploy/yc-staging/compose.yaml --profile migration config -q
+          grep -Eq 'BACKEND_IMAGE=.*@sha256:[0-9a-f]{64}' deploy/yc-staging/staging.env.example
+      - name: Validate one-command staging release shell
+        run: |
+          bash -n deploy/yc-staging/release.sh
+          grep -q 'LIVE_CALL_DISPATCH=disabled' deploy/yc-staging/release.sh
+          grep -q 'sha256:' deploy/yc-staging/release.sh
+      - name: Keep deployment gated
+        run: |
+          set -eu
+          grep -q 'LIVE_CALL_DISPATCH: "disabled"' deploy/yc-staging/compose.yaml
+          grep -q '127.0.0.1:' deploy/yc-staging/compose.yaml
+          test -f deploy/yc-infra/environments/production/main.tf

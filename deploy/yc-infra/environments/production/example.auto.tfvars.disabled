@@ -1,0 +1,6 @@
+# Never apply before staging acceptance, backup restoration and cost review.
+# folder_id is the ID of sashatel-production, never sashatel-staging.
+folder_id      = "INSERT_PRODUCTION_FOLDER_ID"
+vm_image_id    = "INSERT_REVIEWED_UBUNTU_IMAGE_ID"
+ssh_public_key = "ssh-ed25519 INSERT_REAL_PUBLIC_KEY"
+ssh_cidrs      = ["INSERT_TRUSTED_IP/32"]

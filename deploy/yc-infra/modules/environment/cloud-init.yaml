@@ -1,0 +1,35 @@
+#cloud-config
+# SashaTel VM bootstrap: packages only, NO secrets, NO PSTN, NO automatic deployment.
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - jq
+  - unattended-upgrades
+write_files:
+  - path: /usr/local/sbin/sashatel-install-docker
+    owner: root:root
+    permissions: '0700'
+    content: |
+      #!/usr/bin/env bash
+      set -Eeuo pipefail
+      . /etc/os-release
+      if [[ "$ID" != "ubuntu" ]]; then
+        echo "Only reviewed Ubuntu VM images supported" >&2
+        exit 1
+      fi
+      install -m 0755 -d /etc/apt/keyrings
+      curl --fail --silent --show-error --location https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      arch="$(dpkg --print-architecture)"
+      printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu %s stable\n' "$arch" "${VERSION_CODENAME}" >/etc/apt/sources.list.d/docker.list
+      apt-get update
+      DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      systemctl enable --now docker
+      install -d -m 0700 -o root -g root /etc/sashatel/staging
+      # Only operator-approved runtime credentials may be installed here.
+      # Never embed private tokens or passwords in cloud-init or instance metadata.
+runcmd:
+  - [bash, /usr/local/sbin/sashatel-install-docker]
+final_message: "SashaTel VM bootstrap finished; application deploy remains disabled pending secrets, migration and readiness checks."
