@@ -39,3 +39,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
+      - name: Build release Docker image (no registry push or deploy)
+        run: docker build --pull --file backend/Dockerfile --tag sashatel-backend:ci-${{ github.sha }} backend
+        working-directory: .
+
