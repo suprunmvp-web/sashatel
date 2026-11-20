@@ -8,13 +8,15 @@ type MailMessage = {
 };
 
 export class ResendMailProvider implements MailPort {
-  constructor(
-    private readonly apiKey: string,
-    private readonly from: string,
-  ) {
+  private readonly apiKey: string;
+  private readonly from: string;
+
+  constructor(apiKey: string, from: string) {
     if (!apiKey.trim() || !from.trim()) {
       throw new Error('Email provider configuration missing');
     }
+    this.apiKey = apiKey;
+    this.from = from;
   }
 
   async send(message: MailMessage): Promise<void> {
