@@ -43,7 +43,7 @@
 9. При shutdown worker прекращает брать новые задачи и корректно завершает текущую; lease остаётся механизмом восстановления после аварии.
 10. Тестовая `MailPort`-заглушка остаётся в `*.test.ts`; файл-записывающий `EmailSink` не должен попадать в runtime path. Никакой отдельный Redis/RabbitMQ не добавляем без подтверждённой необходимости.
 
-**Недоделка в текущем `resend-mail.ts`:** пока все HTTP ошибки бросаются одинаково; перед релизом необходимо классифицировать permanent/transient, покрыть timeout/повторы и проверить фактический контракт idempotency Resend (включая сроки хранения). Код и subject письма — чувствительные данные: не хранить/выводить в телеметрии.
+**Изменение 21.11:** в `resend-mail.ts` добавлена классификация HTTP 408/425/429/5xx как временных, прочих 4xx — как постоянных, плюс exponential backoff с jitter в `deliverOne()`. В `mail-queue.test.ts` добавлены тесты permanent/temporary failures, lease takeover и stale challenges. **Текущие изменения ещё проходят CI**; перед релизом необходимо проверить фактический контракт idempotency Resend (включая сроки хранения), timeout и race conditions. Код и subject письма — чувствительные данные: не хранить/выводить в телеметрии.
 
 **Миграции:** не редактировать применённую `004-web.sql`; новая `007-mail-lease.sql` additive. В `migrate.ts` миграции проверяются по checksum; обязателен контроль runtime прав, откат на уровне приложения и совместимости схемы.
 
@@ -64,8 +64,9 @@
 - [x] GitHub: новый Resend adapter, подключение в `server.ts` (**не протестировано**).
 - [x] GitHub: additive migration 007 и включение её в `migrate.ts` (**не применена**).
 - [x] Код в GitHub: `deliverOne()` переписан с atomic lease → send вне транзакции → fencing finalize (**не протестирован**, race conditions и error policy ещё требуют исправления).
-- [ ] Пересмотреть классификацию email provider errors; тесты конкуренции/аренды/падения, утилизации секретов и несовместимых schema states.
-- [ ] Запустить `npm run typecheck` и integration tests с реальной временной PostgreSQL, зафиксировать SHA и результат CI.
+- [x] В исходниках: классификация временных и постоянных email provider ошибок; PostgreSQL-тесты конкуренции, lease takeover, replaced challenge, retry/terminal failure. **Новые коммиты ещё требуют CI на финальном SHA**.
+- [ ] Отдельно проверить crash/expired-challenge race, утилизацию секретов, webhook delivery semantics и несовместимые schema states.
+- [x] Ранее подтверждён зелёный CI на `91fa3c3`; **новые изменения необходимо проверить на последнем SHA**.
 
 **P1 — транзакционная почта в staging:**
 - [ ] Выбрать/подключить почтовый аккаунт, верифицировать sender domain (SPF/DKIM/DMARC), хранить ключ вне GitHub.
