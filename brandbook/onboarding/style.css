@@ -40,7 +40,7 @@
   --danger: #bd3647;
   --warning-bg: #f0f1f4;
   --success: #168353;
-  --font: Geist, Arial, sans-serif;
+  --font: "Inter", Geist, Arial, sans-serif;
   --mono: "Geist Mono", monospace;
 }
 :root[data-theme="dark"] {
