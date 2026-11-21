@@ -261,3 +261,10 @@
 .ux-flow-form>.ux-flow-hint{margin:-2px 0 0;line-height:1.6}
 .ux-flow-form>.ux-flow-footer+.ux-flow-hint{margin:0}
 @media(max-width:470px){.ux-file-select{flex-wrap:wrap}.ux-file-select [data-file-name]{max-width:100%;margin:0}}
+
+/* First-login continuity: a quiet, actionable verification note, not an alarm banner. */
+.platform .ux-verification-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font:11px/1.5 var(--font);color:var(--sub);margin-top:8px}
+.platform .ux-verification-note [data-icon]{width:14px;height:14px;display:inline-flex;align-items:center}
+.platform .ux-verification-note [data-icon] svg{width:14px;height:14px}
+.platform .ux-verification-note a{color:var(--fg);font-weight:600;text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--fg) 35%,transparent)}
+.platform .ux-verification-note a:hover{border-bottom-color:var(--fg)}
