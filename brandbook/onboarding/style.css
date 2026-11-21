@@ -699,3 +699,68 @@ input::placeholder {
   align-items: center;
   gap: 16px;
 }
+
+/* SashaTel auth refinements: quiet focus, consistent soft corners, flag selector. */
+body:not(.in-workspace) input:not([type="checkbox"]),
+body:not(.in-workspace) select,
+body:not(.in-workspace) .button,
+body:not(.in-workspace) .secondary,
+body:not(.in-workspace) .icon-button {
+  border-radius: 10px;
+}
+body:not(.in-workspace) .phone-row {
+  border-radius: 10px;
+  overflow: hidden;
+}
+body:not(.in-workspace) .phone-row:focus-within {
+  border-color: #66666e;
+  box-shadow: 0 0 0 1px #66666e;
+}
+body:not(.in-workspace) .phone-row input,
+body:not(.in-workspace) .phone-row input:focus,
+body:not(.in-workspace) .phone-row input:focus-visible {
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+}
+body:not(.in-workspace) #country-button {
+  font: 500 14px/1 var(--font);
+  border-radius: 0;
+  min-width: 93px;
+  justify-content: space-between;
+}
+body:not(.in-workspace) #country-button:focus-visible {
+  outline: 2px solid #8a8a94;
+  outline-offset: -3px;
+}
+body:not(.in-workspace) #country-code {
+  white-space: nowrap;
+}
+body:not(.in-workspace) #country-picker {
+  border-radius: 12px;
+  top: calc(100% + 8px);
+}
+body:not(.in-workspace) .country-option {
+  border-radius: 8px;
+  align-items: center;
+}
+body:not(.in-workspace) .country-option-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+body:not(.in-workspace) .country-flag {
+  font: 21px/1 system-ui, sans-serif;
+  flex: none;
+}
+body:not(.in-workspace) .country-dial {
+  color: var(--sub);
+  font-family: var(--mono);
+  flex: none;
+}
+body:not(.in-workspace) .country-option-name > span:last-child {
+  color: var(--fg);
+  font-family: var(--font);
+}
