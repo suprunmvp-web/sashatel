@@ -1,5 +1,6 @@
 // UI journeys for tenant management. No artificial network success, no SIP secrets in the browser.
 import {notify} from './notifications.js';
+import {hydrate} from './components.js';
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const renderIcon=name=>'<span data-icon="'+name+'"></span>';
 function modal(title,subtitle,body){
@@ -10,7 +11,7 @@ function modal(title,subtitle,body){
  dialog.querySelector('[data-close]').addEventListener('click',close);
  dialog.addEventListener('close',()=>{dialog.remove();});
  dialog.addEventListener('click',e=>{if(e.target===dialog)close();});
- globalThis.__SashaIcons?.hydrate?.(dialog);
+ hydrate(dialog);
  dialog.showModal();
  return dialog;
 }
