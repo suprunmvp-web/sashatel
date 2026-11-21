@@ -34,6 +34,15 @@ paths["arrow-right"]="<path d=\"M5 12h14m-6-6 6 6-6 6\"/>";
 paths["download"]="<path d=\"M12 3v12m-5-5 5 5 5-5M5 20h14\"/>";
 paths['delete']='<path d="M10 5 2 12l8 7h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m18 9-6 6m0-6 6 6"/>';
 paths.folder='<path d="M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2z"/>';
+// UI v3 additions: approved outline geometry, same 24x24 stroke as all SashaTel icons.
+paths["phone-call"]='<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.97.34 1.93.66 2.85a2 2 0 0 1-.45 2.11L7.09 10.9a16 16 0 0 0 6 6l2.21-2.22a2 2 0 0 1 2.11-.45 12 12 0 0 0 2.85.66A2 2 0 0 1 22 16.92Z"/><path d="M15 2a7 7 0 0 1 7 7M15 6a3 3 0 0 1 3 3"/>';
+paths["headphones"]='<path d="M3 14v-3a9 9 0 0 1 18 0v3"/><path d="M21 16a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>';
+paths["file-up"]='<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v6h6M12 18v-7m-3 3 3-3 3 3"/>';
+paths["info"]='<circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/>';
+paths["shield-check"]='<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>';
+paths["shield"]='<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>';
+paths["chevrons-up-down"]='<path d="m7 10 5-5 5 5m-10 4 5 5 5-5"/>';
+paths["x"]='<path d="M18 6 6 18M6 6l12 12"/>';
 function render(){
  document.querySelectorAll('[data-icon]').forEach(node=>{
    const name=node.dataset.icon; const path=paths[name];
