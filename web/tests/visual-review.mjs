@@ -5,6 +5,10 @@ const dir=process.env.EVIDENCE_DIR||'/tmp/sashatel-ui-review';
 await mkdir(dir,{recursive:true});
 const browser=await chromium.launch({headless:true});
 const base=process.env.REVIEW_URL||'http://127.0.0.1:4174/ui-review.html';
+async function screenshot(page,options){
+ await page.evaluate(()=>document.body.classList.add('ux-clean-capture'));
+ try{await page.screenshot(options);}finally{await page.evaluate(()=>document.body.classList.remove('ux-clean-capture'));}
+}
 let all=0;
 for(const width of [1440,1024,768,390]){
  for(const theme of ['light','dark']){
@@ -17,7 +21,7 @@ for(const width of [1440,1024,768,390]){
   await assertIcons();
   const overflow=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth, offenders:[...document.querySelectorAll('body *')].map(el=>({el,rect:el.getBoundingClientRect()})).filter(o=>o.rect.right>innerWidth+2||o.rect.left< -2).slice(0,15).map(o=>({tag:o.el.tagName,cls:o.el.className?.baseVal||o.el.className,right:Math.round(o.rect.right),left:Math.round(o.rect.left)}))}));
   if(overflow.overflow)console.error('OVERFLOW DIAGNOSTICS',width,theme,JSON.stringify(overflow.offenders));
-  await page.screenshot({path:dir+'/'+width+'-'+theme+'-first-frame.png',fullPage:true});
+  await screenshot(page,{path:dir+'/'+width+'-'+theme+'-first-frame.png',fullPage:true});
   assert.equal(overflow.overflow,false,'horizontal overflow '+width+' '+theme);
   if(width===1440&&theme==='light'){
    await page.locator('[data-nav=trunks]').click();
@@ -26,13 +30,13 @@ for(const width of [1440,1024,768,390]){
    await page.getByRole('heading',{name:'Подготовка номеров'}).waitFor();
    await page.locator('#ux-csv-numbers').setInputFiles({name:'numbers.csv',mimeType:'text/csv',buffer:Buffer.from(['phone','89991234567','+79991234568','89991234567'].join(String.fromCharCode(10)))});
    await page.getByText(/Найдено номеров: 2/).waitFor();
-   await page.screenshot({path:dir+'/first-time-number-setup.png',fullPage:true});
+   await screenshot(page,{path:dir+'/first-time-number-setup.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('[data-nav=statistics]').click();
    await page.getByText('График появится после первых звонков').waitFor();
   }
   if(theme==='dark')await page.locator('#theme').click();
-  await page.screenshot({path:dir+'/'+width+'-'+theme+'-empty.png',fullPage:true});
+  await screenshot(page,{path:dir+'/'+width+'-'+theme+'-empty.png',fullPage:true});
   await page.locator('#state').click();
   await page.getByText('Анна Иванова').waitFor();
   await page.getByRole('button',{name:'По регионам'}).click();
@@ -42,29 +46,29 @@ for(const width of [1440,1024,768,390]){
   await page.locator('[data-ux-day="3"]').focus();
   await page.locator('.ux-day-tooltip').getByText('Инициаций').waitFor();
   await page.getByText('382').waitFor();
-  await page.screenshot({path:dir+'/'+width+'-'+theme+'-populated.png',fullPage:true});
+  await screenshot(page,{path:dir+'/'+width+'-'+theme+'-populated.png',fullPage:true});
   for(const section of ['history','trunks','employees','integrations','billing']){
    await page.locator('[data-nav='+section+']').click();
    assert(await page.locator('.ux-page').isVisible(),section+' is empty');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'overflow '+section+' '+width);
-   if(width===1440&&theme==='light')await page.screenshot({path:dir+'/'+section+'.png',fullPage:true});
+   if(width===1440&&theme==='light')await screenshot(page,{path:dir+'/'+section+'.png',fullPage:true});
   }
   if(width===1440&&theme==='light'){
    await page.locator('[data-nav=trunks]').click();
    await page.locator('[data-action=trunk]').click();
    await page.getByRole('heading',{name:'Создать SIP-транк'}).waitFor();
    await page.getByLabel('SIP-сервер').fill('sip.example.test');
-   await page.screenshot({path:dir+'/create-trunk-dialog.png',fullPage:true});
+   await screenshot(page,{path:dir+'/create-trunk-dialog.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('[data-nav=employees]').click();
    await page.locator('[data-employee-index="0"]').click();
    await page.getByRole('heading',{name:'Управление доступом'}).waitFor();
    await assertIcons();
-   await page.screenshot({path:dir+'/employee-access.png',fullPage:true});
+   await screenshot(page,{path:dir+'/employee-access.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('[data-action=invite]').click();
    await page.getByRole('heading',{name:'Пригласить сотрудника'}).waitFor();
-   await page.screenshot({path:dir+'/invite-employee-dialog.png',fullPage:true});
+   await screenshot(page,{path:dir+'/invite-employee-dialog.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('.profile-menu summary').click();
    await page.locator('[data-view=profile]').click();
@@ -77,7 +81,7 @@ for(const width of [1440,1024,768,390]){
    await page.getByRole('heading',{name:'+7 999 123-45-67'}).waitFor();
    await page.getByRole('tab',{name:'Детали'}).click();
    await page.getByText('SIP-код').waitFor();
-   await page.screenshot({path:dir+'/call-detail.png',fullPage:true});
+   await screenshot(page,{path:dir+'/call-detail.png',fullPage:true});
    await page.locator('.ux-backlink').click();
    await page.locator('[data-nav=trunks]').click();
    await page.locator('[data-ux-open=trunk]').first().click();
@@ -86,16 +90,16 @@ for(const width of [1440,1024,768,390]){
    await assertIcons();
    await page.getByLabel('Номер для звонка').fill('+7 999 111 22 33');
    await page.getByRole('button',{name:'Позвонить'}).isDisabled().then(v=>assert.equal(v,true,'no backend call must not be enabled'));
-   await page.screenshot({path:dir+'/web-test-call-dialog.png',fullPage:true});
+   await screenshot(page,{path:dir+'/web-test-call-dialog.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.getByRole('tab',{name:'Номера'}).click();
    await page.getByText('+7 999 888-22-11').waitFor();
-   await page.screenshot({path:dir+'/trunk-detail.png',fullPage:true});
+   await screenshot(page,{path:dir+'/trunk-detail.png',fullPage:true});
   }
   await page.locator('.ux-switcher summary').click();
   await page.locator('[data-admin]').click();
   await page.getByRole('heading',{name:'Обзор'}).waitFor();
-  if(width===1440&&theme==='light')await page.screenshot({path:dir+'/admin.png',fullPage:true});
+  if(width===1440&&theme==='light')await screenshot(page,{path:dir+'/admin.png',fullPage:true});
   assert.deepEqual(errors,[],'JS page errors '+width+' '+theme);
   all++;await page.close();
  }
