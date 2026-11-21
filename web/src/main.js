@@ -101,6 +101,37 @@ function operation(action){
  dialog.onclose=()=>{dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();};
  dialog.querySelectorAll('[data-select-org]').forEach(el=>el.onclick=async()=>{el.disabled=true;try{const result=await api.openOrganization(el.dataset.selectOrg);location.assign('/'+result.organization.id+'/'+previewSuffix);}catch(e){dialog.close();showError(e.message);} });
 }
+function reviewOrganizationDialog(id,decision){
+ const organization=internalOrganizations.find(o=>o.id===id);
+ if(!organization||organization.verification_status!=='unverified')return;
+ const dialog=document.querySelector('#operation-dialog');
+ dialog.innerHTML='<form id="internal-review-form"><header><h2 id="dialog-title">'+
+    (decision==='verified'?'Верифицировать':'Отклонить')+' организацию</h2>'+
+    '<button type="button" class="icon-button" data-review-close aria-label="Закрыть">'+icon('x')+'</button></header>'+
+    '<p><strong>'+esc(organization.legal_name)+'</strong> · ИНН '+esc(organization.inn)+'</p>'+
+    '<div class="dialog-fields"><label>Проверенные документы / основание<input name="evidence" maxlength="500" minlength="5" required></label>'+
+    '<label>Комментарий проверки<textarea name="explanation" minlength="8" maxlength="2000" required></textarea></label></div>'+
+    '<p class="warning">ИНН сам по себе не подтверждает полномочия. '+(decision==='verified'?'После подтверждения другие заявки с тем же ИНН нельзя верифицировать.':'При отклонении организация не сможет пользоваться телефонией.')+'</p>'+
+    '<button class="button" type="submit">'+(decision==='verified'?'Подтвердить организацию':'Отклонить организацию')+'</button></form>';
+ hydrate(dialog);
+ dialog.querySelector('[data-review-close]').onclick=()=>dialog.close();
+ dialog.querySelector('form').onsubmit=async(event)=>{
+   event.preventDefault();
+   const form=event.currentTarget;
+   if(!form.reportValidity())return;
+   const submit=form.querySelector('[type="submit"]');
+   submit.disabled=true;
+   try{
+     await api.reviewOrganization(id,decision,form.elements.evidence.value.trim(),form.elements.explanation.value.trim());
+     internalOrganizations=await api.internalOrganizations();
+     dialog.close();
+     render();
+     notify(decision==='verified'?'Организация верифицирована':'Заявка отклонена','success');
+   }catch(error){showError(error.message||'Не удалось провести проверку.');submit.disabled=false;}
+ };
+ dialog.onclose=()=>{dialog.replaceChildren();};
+ dialog.showModal();
+}
 function showError(message){notify(message,'error');}
 function wire(){
  document.querySelectorAll('[data-action]').forEach(el=>el.onclick=async()=>{
@@ -109,6 +140,9 @@ function wire(){
  if(action==='theme'){const value=savedTheme()==='dark'?'light':'dark';try{localStorage.setItem('sashatel.web.theme',value);}catch{}render();return;}
  if(action==='logout'){el.disabled=true;try{await api.logout();location.assign('/login/');}catch(e){el.disabled=false;showError(e.message);}return;}
  operation(action);
+ });
+ document.querySelectorAll('[data-review-org]').forEach(el=>el.onclick=()=>{
+   reviewOrganizationDialog(el.dataset.reviewOrg,el.dataset.reviewDecision);
  });
  const filter=document.querySelector('#organization-filter');if(filter)filter.oninput=()=>{document.querySelectorAll('tbody tr').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(filter.value.toLowerCase());});};
 }
