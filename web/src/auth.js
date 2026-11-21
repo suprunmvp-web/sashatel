@@ -408,6 +408,22 @@ root.addEventListener("click", (event) => {
     );
     return;
   }
+  if ((action === "login" || action === "register") && action !== state.page) {
+    // Switching screens is not a form submission. Clear potentially autofilled
+    // credentials before removing the old form so password managers do not
+    // mistake this navigation for a completed login/signup.
+    const oldForm = root.querySelector('form[data-form="login"], form[data-form="register"]');
+    if (oldForm) {
+      if (oldForm.contains(document.activeElement)) document.activeElement.blur();
+      for (const passwordInput of oldForm.querySelectorAll('input[type="password"], input[name="password"], input[name="repeat_password"]')) {
+        passwordInput.value = "";
+        passwordInput.defaultValue = "";
+        passwordInput.autocomplete = "off";
+        passwordInput.disabled = true;
+      }
+      oldForm.setAttribute("autocomplete", "off");
+    }
+  }
   go(action === "edit-email" || action === "verify-back" ? "register" : action);
 });
 setInterval(tick, 1000);
