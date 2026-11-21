@@ -68,3 +68,13 @@ export function openInvite({organization={},submitInvite=null}={}){
  form.onsubmit=async e=>{e.preventDefault();if(!submitInvite)return;const submit=form.querySelector('[type=submit]');submit.disabled=true;try{await submitInvite({email:form.elements.email.value,role:form.elements.role.value});notify('Приглашение отправлено','success');dialog.close();}catch(err){notify(err?.message||'Не удалось отправить приглашение','error');submit.disabled=false;}};
  return dialog;
 }
+
+export function openEmployeeAccess({employee={},updateRole=null,revokeSessions=null}={}){
+ const role=employee.role||'Сотрудник';
+ const isOwner=['Владелец','owner'].includes(role);
+ const body='<div class="ux-person"><span class="ux-person-avatar">'+h((employee.name||employee.email||'С').charAt(0))+'</span><div><strong>'+h(employee.name||'Сотрудник')+'</strong><span>'+h(employee.email||'')+'</span></div></div><form class="ux-flow-form"><label>Роль в организации<select name="role"'+(isOwner?' disabled':'')+'><option value="employee"'+(['Сотрудник','employee'].includes(role)?' selected':'')+'>Сотрудник</option><option value="admin"'+(['Администратор','admin'].includes(role)?' selected':'')+'>Администратор</option>'+(isOwner?'<option selected value="owner">Владелец</option>':'')+'</select></label><div class="ux-flow-explanation">'+renderIcon('shield-check')+'<p>Сотрудник входит в Desktop по своему email и паролю. Пароль нельзя просмотреть или изменить за него. При необходимости он самостоятельно восстановит доступ.</p></div><div class="ux-flow-footer"><button type="button" class="ux-button ux-button-secondary" data-cancel>Закрыть</button><button type="submit" class="ux-button"'+(!updateRole||isOwner?' disabled':'')+'>Сохранить роль</button></div>'+(!updateRole&&!isOwner?'<p class="ux-flow-hint">Изменение ролей станет доступно после подключения сервера.</p>':'')+'</form>';
+ const dialog=modal('Управление доступом','Роли и безопасность сотрудников',body),form=dialog.querySelector('form');
+ form.querySelector('[data-cancel]').onclick=()=>dialog.close();
+ form.onsubmit=async e=>{e.preventDefault();if(!updateRole||isOwner)return;const b=form.querySelector('[type=submit]');b.disabled=true;try{await updateRole({employeeId:employee.id,role:form.elements.role.value});notify('Права сотрудника обновлены','success');dialog.close();}catch(err){b.disabled=false;notify(err?.message||'Не удалось изменить права','error');}};
+ return dialog;
+}
