@@ -50,11 +50,11 @@ ALTER TABLE control.organizations ADD CONSTRAINT organizations_verification_stat
 
 -- Internal role is derived only from DBA-managed staff membership.
 CREATE FUNCTION web_auth.internal_staff_role(actor uuid) RETURNS text
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $staff$
  SELECT s.role FROM web_auth.internal_staff s
  JOIN control.users u ON u.id=s.user_id
  WHERE s.user_id=actor AND s.active AND u.active AND u.email_verified_at IS NOT NULL
-$;
+$staff$;
 REVOKE ALL ON FUNCTION web_auth.internal_staff_role(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION web_auth.internal_staff_role(uuid) TO control_runtime;
 
