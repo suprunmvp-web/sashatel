@@ -1,0 +1,74 @@
+name: Web platform integration
+on:
+  pull_request:
+    paths: ['web/**','docs/web/**','.github/workflows/web-platform.yml']
+  push:
+    branches: ['feature/web-onboarding-preview']
+    paths: ['web/**','docs/web/**','.github/workflows/web-platform.yml']
+permissions:
+  contents: read
+jobs:
+  integrated-web:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: disposable-web-admin
+          POSTGRES_DB: web_integration
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres -d web_integration"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      TEST_ADMIN_URL: postgresql://postgres:disposable-web-admin@127.0.0.1:5432/web_integration
+      DATABASE_URL: postgresql://control_runtime:disposable-web-runtime@127.0.0.1:5432/web_integration
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: suprunmvp-web/sashatel
+          ref: 6e01c154a53759e3a122c56226dd835a6e079313
+          path: .integration
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
+      - name: Prepare isolated PostgreSQL runtime
+        run: |
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE control_runtime LOGIN PASSWORD 'disposable-web-runtime' NOSUPERUSER NOBYPASSRLS"
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f .integration/backend/migrations/001.sql -f .integration/backend/migrations/runtime.sql -f .integration/backend/migrations/002-uis.sql -f .integration/backend/migrations/003-operator.sql -f .integration/backend/migrations/004-web.sql
+      - run: npm ci --ignore-scripts --prefix .integration/backend
+      - run: npm ci --ignore-scripts --prefix brandbook/onboarding
+      - run: cd brandbook/onboarding && npx playwright install --with-deps chromium
+      - name: Configure Chromium sandbox
+        run: |
+          task_browser=$(cd brandbook/onboarding && node --input-type=module -e 'import {chromium} from "playwright"; console.log(chromium.executablePath())')
+          task_dir=$(dirname "$task_browser")
+          sudo chown root:root "$task_dir/chrome_sandbox"
+          sudo chmod 4755 "$task_dir/chrome_sandbox"
+          echo "CHROME_DEVEL_SANDBOX=$task_dir/chrome_sandbox" >> "$GITHUB_ENV"
+      - run: node web/build.mjs
+      - name: Start real Backend and Web proxy
+        run: |
+          node web/tests/real-backend.mjs > /tmp/sashatel-api.log 2>&1 &
+          WEB_API_UPSTREAM=http://127.0.0.1:8080 node web/serve.mjs > /tmp/sashatel-web.log 2>&1 &
+          for task_attempt in $(seq 1 60); do
+            if curl -sf http://localhost:4174/ready > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Browser acceptance against actual Backend and PostgreSQL
+        run: node web/tests/browser.mjs
+        env:
+          EVIDENCE_DIR: ${{ github.workspace }}/web-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-platform-evidence
+          path: web-evidence/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-platform-dist
+          path: web/dist/

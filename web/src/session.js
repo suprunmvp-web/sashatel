@@ -1,0 +1,8 @@
+import {createHttpApi} from './api.js';
+export const isPreview=new URLSearchParams(location.search).get('preview')==='1';
+let selected;
+if(isPreview){
+ const legacy=(await import('./preview-api.js')).createPreviewApi(()=>sessionStorage.getItem('sashatel.onboarding.preview.scenario')||'normal');
+ selected={...legacy,register:input=>legacy.register({email:input.email,display_name:input.first_name})};
+}else selected=createHttpApi();
+export const api=selected;
