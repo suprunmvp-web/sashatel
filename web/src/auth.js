@@ -301,7 +301,7 @@ root.addEventListener("input", (event) => {
     const sequence = ++lookupSequence;
     lookupSuggestion = null;
     setLookupMessage(dropdown, "");
-    if (!state.lookup && /^(?:\\d{10}|\\d{12})$/.test(inn)) {
+    if (!state.lookup && /^(?:\d{10}|\d{12})$/.test(inn)) {
       setLookupMessage(dropdown, "Ищем организацию…");
       lookupTimer = setTimeout(() => { void requestCompanySuggestion(inn, sequence); }, 350);
     }
