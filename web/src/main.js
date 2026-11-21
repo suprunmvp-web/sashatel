@@ -1,4 +1,5 @@
 import {api,isPreview} from './session.js';
+import {notify} from './notifications.js';
 import {esc,icon,link,button,table,empty,missing,tabs,metrics,range,hydrate} from './components.js';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fixtureId='279a66cd-c1cc-4d19-9c09-3490e9049d0a';
@@ -64,7 +65,7 @@ function operation(action){
  dialog.onclose=()=>{dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();};
  dialog.querySelectorAll('[data-select-org]').forEach(el=>el.onclick=async()=>{el.disabled=true;try{const result=await api.openOrganization(el.dataset.selectOrg);location.assign('/'+result.organization.id+'/'+previewSuffix);}catch(e){dialog.close();showError(e.message);} });
 }
-function showError(message){const el=document.querySelector('#platform-error');if(el){el.textContent=message;el.hidden=false;el.focus();}}
+function showError(message){notify(message,'error');}
 function wire(){
  document.querySelectorAll('[data-action]').forEach(el=>el.onclick=async()=>{
  const action=el.dataset.action;
