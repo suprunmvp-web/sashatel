@@ -165,7 +165,7 @@ function render() {
     default:
       html = ``;
   }
-  root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p><p id="request-status" role="status" class="status"></p>`;
+  root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p>`;
   if(state.page==="verify") {
     syncOtp();
     const notice=root.querySelector("#delivery-state");
@@ -209,7 +209,8 @@ async function run(action, success) {
   const generation = state.generation;
   state.busy = true;
   announceError("");
-  root.querySelector("#request-status").textContent = "Подождите…";
+  // Requests run silently. Prevent duplicate submissions without changing
+  // visible button labels or adding loading text to the form.
   root.querySelectorAll("button,input").forEach((el) => {
     el.disabled = true;
   });
@@ -232,7 +233,6 @@ async function run(action, success) {
       root.querySelectorAll("button,input").forEach((el) => {
         el.disabled = false;
       });
-      root.querySelector("#request-status").textContent = "";
       tick();
     }
   }
@@ -269,7 +269,9 @@ function setLookupMessage(dropdown,message) {
 async function requestCompanySuggestions(query,sequence,controller) {
   const dropdown=root.querySelector("#inn-suggestions");
   if(!dropdown||sequence!==lookupSequence||state.page!=="lookup")return;
-  setLookupMessage(dropdown,"Ищем организации…");
+  // No transient "searching" row; only show results, an actual empty result
+  // or a real retrieval error.
+  resetLookupDropdown(dropdown);
   try {
     const result=await api.suggestOrganizations(query,{signal:controller.signal});
     if(controller.signal.aborted||sequence!==lookupSequence||state.page!=="lookup")return;
