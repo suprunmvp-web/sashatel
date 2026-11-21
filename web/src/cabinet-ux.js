@@ -80,12 +80,15 @@ function callDetail(ctx={}){
  const details=kv([['Номер абонента',c.phone],['Сотрудник',c.employee],['Результат',c.status],['Длительность',c.duration],['Транк',c.trunk],['Caller ID',c.callerId],['Оператор',c.provider],['Регион нумерации',c.region],['Страна',c.country],['Часовой пояс',c.timezone],['SIP-код',c.sipCode],['Причина завершения',c.hangupReason],['Начало вызова',c.startedAt],['Соединение',c.connectedAt],['Окончание',c.endedAt],['CRM',c.crm]]);
  return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">ИСХОДЯЩИЙ ВЫЗОВ</p><h2>'+escape(c.phone)+'</h2><p class="ux-subtitle">'+escape(c.date)+' · '+escape(c.employee)+'</p></div>'+pill(c.status,c.status==='Дозвон'?'success':'neutral')+'</div><div class="ux-call-facts">'+[['Длительность',c.duration],['Транк',c.trunk],['Caller ID',c.callerId]].map(([key,val])=>'<div><span>'+escape(key)+'</span><strong>'+escape(val??'—')+'</strong></div>').join('')+'</div><section class="ux-section"><div class="ux-section-title"><h2>Саммари разговора</h2><span class="ux-note">Сгенерировано автоматически</span></div><div class="ux-call-summary">'+summary+'</div></section><section class="ux-section"><div class="ux-detail-tabs" role="tablist">'+detailTab('transcript','Транскрипт',true)+detailTab('details','Детали')+'</div><div class="ux-detail-panel" data-ux-detail-panel="transcript">'+transcript+'</div><div class="ux-detail-panel" data-ux-detail-panel="details" hidden>'+details+'</div></section>');
 }
+function numberRowsFor(numbers,status){
+ return numbers.filter(n=>(n.status||'active')===status).map(n=>[escape(n.number),escape(n.spam||'—'),int(n.attempts),int(n.answers),number(n.attempts)?(number(n.answers)/number(n.attempts)*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%':'—']);
+}
 function trunkDetail(ctx={}){
  const t=ctx.trunk,back=ctx.orgId?'/'+escape(ctx.orgId)+'/trunks/':'#';
  const intro='<a class="ux-backlink" href="'+back+'">← Все транки</a>';
  if(!t)return shell(intro+hint('Данные транка пока недоступны','Откройте транк из списка или повторите попытку позже.'));
  const management='<div class="ux-settings-row"><div><strong>Исходящие вызовы</strong><p>Новые звонки через этот транк '+(t.active?'разрешены':'приостановлены')+'. Текущие разговоры не прерываются.</p></div>'+pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')+'</div><p class="ux-footnote">Карусель автоматически распределяет разрешённые Caller ID. Клиент не настраивает алгоритм оценки качества номеров.</p>';
- const numberRows=(t.numbers||[]).map(n=>[escape(n.number),escape(n.spam||'—'),int(n.attempts),int(n.answers),number(n.attempts)?(number(n.answers)/number(n.attempts)*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%':'—']);
+ const numberRows=numberRowsFor(t.numbers||[],'active');
  const numbers='<div class="ux-detail-toolbar"><div class="ux-segment" role="group" aria-label="Фильтр номеров"><button type="button" data-ux-number="active" aria-pressed="true">Активные</button><button type="button" data-ux-number="passive" aria-pressed="false">Пассивные</button></div></div><div id="ux-numbers-table">'+table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],numberRows,'Нет номеров в выбранной группе')+'</div>';
  const information=kv([['SIP-сервер',t.host],['Порт',t.port],['Транспорт',t.transport],['Регистрация',t.registration],['Готовность к вызову',t.ready],['Режим авторизации',t.authType]]);
  return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">SIP-ТРАНК</p><h2>'+escape(t.name)+'</h2><p class="ux-subtitle">Статус подключения и управление Caller ID</p></div>'+pill(t.ready||'Неизвестно',t.ready==='Готов'?'success':'neutral')+'</div><div class="ux-detail-tabs" role="tablist">'+detailTab('management','Управление',true)+detailTab('numbers','Номера')+detailTab('information','Информация')+'</div><div class="ux-detail-panel" data-ux-detail-panel="management">'+management+'</div><div class="ux-detail-panel" data-ux-detail-panel="numbers" hidden>'+numbers+'</div><div class="ux-detail-panel" data-ux-detail-panel="information" hidden>'+information+'</div>');
@@ -101,6 +104,9 @@ export function sectionUI(page,ctx={}){
  return null;
 }
 export function wireSectionUI(){
+ const numbersPayload=document.querySelector('#ux-numbers-data')?.textContent;
+ if(numbersPayload)document.querySelectorAll('[data-ux-number]').forEach(button=>button.addEventListener('click',()=>{const status=button.dataset.uxNumber;document.querySelectorAll('[data-ux-number]').forEach(el=>el.setAttribute('aria-pressed',String(el===button)));document.querySelector('#ux-numbers-table').innerHTML=table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],numberRowsFor(JSON.parse(numbersPayload),status),'Нет номеров в выбранной группе');}));
+
  document.querySelectorAll('[data-ux-detail]').forEach(tab=>tab.addEventListener('click',()=>{const target=tab.dataset.uxDetail;document.querySelectorAll('[data-ux-detail]').forEach(el=>el.setAttribute('aria-selected',String(el===tab)));document.querySelectorAll('[data-ux-detail-panel]').forEach(el=>el.hidden=el.dataset.uxDetailPanel!==target);}));
 
  const chartData=document.querySelector('#ux-chart-data');
