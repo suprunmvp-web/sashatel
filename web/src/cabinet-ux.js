@@ -41,8 +41,8 @@ function listPage(label,info,headers,emptyTitle,emptyText,actionLabel,actionId){
 }
 const pill=(label,tone='neutral')=>'<span class="ux-pill ux-pill-'+tone+'">'+escape(label)+'</span>';
 const sectionHeading=(subtitle,cta='')=>'<div class="ux-headline"><p class="ux-subtitle">'+subtitle+'</p>'+cta+'</div>';
-function trunks(data=[]){
- const rows=data.map(t=>[escape(t.name),pill(t.registration||'Нет данных',t.registration==='Зарегистрирован'?'success':'neutral'),pill(t.ready||'Нет данных',t.ready==='Готов'?'success':'neutral'),pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')]);
+function trunks(data=[],ctx={}){
+ const rows=data.map(t=>[(t.id&&ctx.orgId?'<a class="ux-row-link" href="/'+escape(ctx.orgId)+'/trunks/'+escape(t.id)+'/"'+(ctx.review?' data-ux-open="trunk"':'')+'>'+escape(t.name)+'</a>':escape(t.name)),pill(t.registration||'Нет данных',t.registration==='Зарегистрирован'?'success':'neutral'),pill(t.ready||'Нет данных',t.ready==='Готов'?'success':'neutral'),pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')]);
  return shell(sectionHeading('Подключения операторов и маршрутизация исходящих звонков',action('Создать транк','trunk',true))+'<section class="ux-section ux-list">'+table(['Транк','Регистрация','Готовность','Статус'],rows,'Транков пока нет')+(rows.length?'':hint('Подключите первый SIP-транк','После подключения здесь появятся транки, их номера и состояние соединения.'))+'</section>');
 }
 function employees(data=[]){
@@ -59,8 +59,8 @@ function billing(data={}){
  const rows=(data.documents||[]).map(d=>[escape(d.name),escape(d.period),escape(d.amount),pill(d.status,d.status==='Оплачен'?'success':'neutral')]);
  return shell(sectionHeading('Начисления за подтверждённые разговоры и расчётные документы')+'<div class="ux-kpis ux-kpis-three">'+summary.map(([k,val])=>'<div class="ux-kpi"><span>'+k+'</span><strong>'+val+'</strong></div>').join('')+'</div><section class="ux-section ux-list">'+heading('Документы и начисления','Постоплата за фактически оказанные услуги')+table(['Документ','Период','Сумма','Статус'],rows,'Документов пока нет')+'</section><p class="ux-footnote">Тариф SashaTel: 3 ₽ за тарифицируемую минуту подтверждённого разговора с человеком. Расчёты стороннего оператора ведутся отдельно.</p>');
 }
-function history(data=[]){
- const rows=data.map(c=>[escape(c.date),escape(c.employee),escape(c.phone),escape(c.trunk),escape(c.duration),pill(c.status,c.status==='Дозвон'?'success':c.status==='Ошибка'?'error':'neutral')]);
+function history(data=[],ctx={}){
+ const rows=data.map(c=>[(c.id&&ctx.orgId?'<a class="ux-row-link" href="/'+escape(ctx.orgId)+'/history/'+escape(c.id)+'/"'+(ctx.review?' data-ux-open="call"':'')+'>'+escape(c.date)+'</a>':escape(c.date)),escape(c.employee),escape(c.phone),escape(c.trunk),escape(c.duration),pill(c.status,c.status==='Дозвон'?'success':c.status==='Ошибка'?'error':'neutral')]);
  return shell(sectionHeading('Подробности, записи и результаты отдельных вызовов',calendar)+'<section class="ux-section ux-list">'+table(['Дата и время','Сотрудник','Абонент','Транк','Длительность','Результат'],rows,'За выбранный период звонков нет')+(rows.length?'':hint('История звонков пока пуста','После первых вызовов здесь появятся записи, результаты соединений и подробности разговоров.'))+'</section>');
 }
 function adminOverview(data={}){
@@ -93,8 +93,8 @@ function trunkDetail(ctx={}){
 export function sectionUI(page,ctx={}){
  if(ctx.admin)return page==='overview'?adminOverview(ctx.adminData):page==='employees'?listPage('Команда SashaTel','Управление внутренними сотрудниками',['Сотрудник','Email','Роль'],'Сотрудников пока нет','Назначения появятся после подключения внутреннего API.','',''):null;
  if(page==='statistics')return stats(ctx.stats);
- if(page==='history')return ctx.details?callDetail(ctx):history(ctx.history);
- if(page==='trunks')return ctx.details?trunkDetail(ctx):trunks(ctx.trunks);
+ if(page==='history')return ctx.details?callDetail(ctx):history(ctx.history,ctx);
+ if(page==='trunks')return ctx.details?trunkDetail(ctx):trunks(ctx.trunks,ctx);
  if(page==='employees')return employees(ctx.employees);
  if(page==='integrations')return integrations(ctx.integrations);
  if(page==='billing')return billing(ctx.billing);
