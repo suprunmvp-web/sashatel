@@ -7,7 +7,7 @@ export function webHandler(auth:WebAuth,origin:string) {
   if(new URL(origin).origin!==origin) throw new Error('Exact WEB_ORIGIN required');
   return async(req:IncomingMessage,res:ServerResponse) => {
     const path=req.url?.split('?')[0]??'';
-    if(!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')) return false;
+    if(!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
     res.setHeader('content-type','application/json');
     res.setHeader('cache-control','no-store');
@@ -41,6 +41,8 @@ export function webHandler(auth:WebAuth,origin:string) {
           const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx)).user)}}));
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
+        else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
+        else if(path==='/v1/internal/organizations') send(await auth.internalOrganizations(ctx));
         else if(path.startsWith('/v1/organizations/creation-status/')) send(await auth.creationStatus(ctx,path.split('/').at(-1)!));
         else if(path.startsWith('/v1/auth/email/challenges/')) send(await auth.tx(ctx,async db=>({status:200,body:await auth.challengeStatus(db,ctx,path.split('/').at(-1)!,true)})));
         else throw new ApiError(404,'RESOURCE_NOT_FOUND');
@@ -79,6 +81,11 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/organizations/lookup':result=await auth.lookupOrganization(ctx,body);break;
         case '/v1/organizations/suggest':result=await auth.suggestOrganizations(ctx,body);break;
         case '/v1/organizations':result=await auth.createOrganization(ctx,body,key);break;
+        case '/v1/internal/organizations/review':{
+          if(typeof body.organization_id!=='string') throw new ApiError(400,'INVALID_REQUEST');
+          const {organization_id,...review}=body;
+          result=await auth.reviewOrganization(ctx,organization_id,review);break;
+        }
         default:throw new ApiError(404,'RESOURCE_NOT_FOUND');
       }
       send(result);

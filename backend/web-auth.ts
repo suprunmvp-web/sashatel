@@ -582,6 +582,55 @@ export class WebAuth {
       return {status:200,body:{organization:await this.organization(db,user.id,receipt.organization_id)}};
     });
   }
+  async internalSession(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
+      if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+      return {status:200,body:{role:role.role}};
+    });
+  }
+  async internalOrganizations(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations($1)',[user.id]);
+        return {status:200,body:{items:rows}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        throw error;
+      }
+    });
+  }
+  async reviewOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    exact(input,['decision','evidence_reference','explanation']);
+    const decision=required(input,'decision',16);
+    const evidence=required(input,'evidence_reference',500).trim();
+    const explanation=required(input,'explanation',2000).trim();
+    if(!['verified','rejected'].includes(decision)||evidence.length<5||explanation.length<8)
+      throw new ApiError(422,'INVALID_REVIEW');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx),id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.review_organization($1,$2,$3,$4,$5,$6) AS status',
+          [user.id,orgId,decision,evidence,explanation,id],
+        );
+        await this.audit(db,ctx,'internal.organization_review',user.id,orgId,orgId,{decision,review_id:id,evidence_reference:evidence,explanation});
+        return {status:200,body:{organization_id:orgId,verification_status:row.status,review_id:id}};
+      } catch(error) {
+        const code=(error as {code?:string,message?:string}).code;
+        const message=(error as {message?:string}).message||'';
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'ALREADY_REVIEWED');
+        if(code==='23505') throw new ApiError(409,'VERIFIED_ORGANIZATION_EXISTS');
+        if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
+        throw error;
+      }
+    });
+  }
   async createOrganization(ctx:Context,input:Record<string,unknown>,key:string) {
     const lookup=required(input,'lookup_id',36);
     if(!uuid.test(lookup)||!uuid.test(key)||input.confirm!==true||Object.keys(input).length!==2) throw new ApiError(400,'INVALID_REQUEST');
@@ -595,6 +644,8 @@ export class WebAuth {
       const {rows:[row]}=await db.query('SELECT *,expires_at>clock_timestamp() AS fresh FROM web_auth.lookups WHERE id=$1 AND user_id=$2',[lookup,user.id]);
       if(!row) throw new ApiError(404,'RESOURCE_NOT_FOUND');
       if(!row.fresh) throw new ApiError(409,'LOOKUP_EXPIRED');
+      // Serialize creation/review for the same INN to prevent racing a verified claim.
+      await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[row.inn]);
       // Recheck at creation time: UI disabled controls are not a security boundary.
       const {rows:[claimed]}=await db.query('SELECT inn FROM web_auth.verified_inns($1::text[])',[[row.inn]]);
       if(claimed) throw new ApiError(409,'ORGANIZATION_ALREADY_EXISTS');
