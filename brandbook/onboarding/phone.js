@@ -7,6 +7,14 @@ const flag = (code) => /^[A-Z]{2}$/.test(code) && !["AC", "TA", "XK"].includes(c
 const options = countries
   .map(([code, dial]) => ({ code, dial, name: names.of(code) }))
   .sort((a, b) => a.name.localeCompare(b.name, "ru"));
+// UI-only digit grouping; API gets unformatted E.164.
+function groupDigits(digits,region) {
+  if(region==="RU"||region==="KZ"){
+    const parts=[digits.slice(0,3),digits.slice(3,6),digits.slice(6,8),digits.slice(8,10)].filter(Boolean);
+    return parts.map((part,i)=>i===0?part:i===1?" "+part:"-"+part).join("");
+  }
+  return digits.replace(/(\d{3})(?=\d)/g,"$1 ").trim();
+}
 export function setupPhone() {
   lifecycle.abort();
   lifecycle = new AbortController();
@@ -17,6 +25,31 @@ export function setupPhone() {
   const search = document.querySelector("#country-search");
   const list = document.querySelector("#country-options");
   let selected = { code: "RU", dial: "7" };
+  function formatInput(){
+    const raw=input.value;
+    const caret=input.selectionStart??raw.length;
+    const before=raw.slice(0,caret).replace(/\D/g,"").length;
+    let digits=raw.replace(/\D/g,"");
+    let removed=0;
+    if(raw.trim().startsWith("+")&&digits.startsWith(selected.dial)&&digits.length>selected.dial.length+5){
+      removed=selected.dial.length;
+      digits=digits.slice(removed);
+    }else if((selected.code==="RU"||selected.code==="KZ")&&digits.length===11&&digits.startsWith("8")){
+      removed=1;
+      digits=digits.slice(1);
+    }
+    digits=digits.slice(0,Math.max(0,15-selected.dial.length));
+    const formatted=groupDigits(digits,selected.code);
+    input.value=formatted;
+    if(document.activeElement===input&&input.setSelectionRange){
+      let cursor=0,seen=0;
+      while(cursor<formatted.length&&seen<Math.max(0,before-removed)){
+        if(/\d/.test(formatted[cursor]))seen++;
+        cursor++;
+      }
+      input.setSelectionRange(cursor,cursor);
+    }
+  }
   function validate() {
     const digits = input.value.replace(/\D/g, "");
     input.setCustomValidity(
@@ -59,6 +92,7 @@ export function setupPhone() {
         document.querySelector("#phone-prefix").textContent = `+${country.dial}`;
         trigger.setAttribute("aria-label", `Страна: ${country.name}, код +${country.dial}`);
         input.dataset.dial = country.dial;
+        formatInput();
         close();
         validate();
         input.focus();
@@ -76,6 +110,7 @@ export function setupPhone() {
   });
   input.addEventListener("input", () => {
     input.value = input.value.replace(/[^\d\s()+-]/g, "");
+    formatInput();
     validate();
   });
   input.addEventListener("paste", (e) => {
@@ -87,7 +122,7 @@ export function setupPhone() {
       input.selectionEnd,
       "end",
     );
-    input.value = input.value.slice(0, 18);
+    formatInput();
     validate();
   });
   trigger.addEventListener("click", () => {
