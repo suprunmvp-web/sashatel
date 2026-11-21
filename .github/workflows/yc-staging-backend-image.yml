@@ -1,3 +1,4 @@
+# Publish reset/verified-INN Backend artifact (merge 9db12d4), no rollout.
 # Release trigger: password recovery and verified-INN suggestions; publication only, no runtime rollout.
 name: SashaTel Backend — staging image
 
