@@ -248,3 +248,16 @@
 .ux-csv-summary .ux-flow-hint{margin:8px 0 0}
 @media(max-width:790px){.platform .ux-setup-steps{grid-template-columns:1fr}.platform .ux-setup-step{padding:18px 24px}.platform .ux-setup-step+.ux-setup-step{border-left:0;border-top:1px solid var(--line)}.platform .ux-trunk-welcome-head{padding:24px}.platform .ux-setup-footer{padding:17px 24px}}
 @media(max-width:550px){.platform .ux-trunk-welcome h2{font-size:20px}.platform .ux-setup-footer{align-items:stretch;flex-direction:column}.platform .ux-setup-footer>p{text-align:left}.platform .ux-head-actions{flex-wrap:wrap}.platform .ux-head-actions .ux-button{flex:1;justify-content:center;white-space:nowrap}}
+
+/* CSV selection is one actionable surface; the browser's language-dependent file input stays accessible but visually hidden. */
+.ux-file-control{position:relative;display:grid;gap:9px;cursor:pointer}
+.ux-file-control input[type=file]{position:absolute;inset:27px 0 0;width:100%;height:58px;opacity:0;cursor:pointer;z-index:2}
+.ux-file-select{display:flex;align-items:center;gap:10px;padding:13px 14px;border:1px dashed color-mix(in srgb,var(--fg) 20%,var(--line));border-radius:9px;min-height:58px;background:var(--surface);transition:background-color .15s,border-color .15s}
+.ux-file-select [data-icon]{flex:none;width:18px;height:18px;color:var(--sub)}
+.ux-file-select strong{font:500 12px var(--font);color:var(--fg)}
+.ux-file-select [data-file-name]{font:11px var(--font);color:var(--sub);margin-left:auto;max-width:125px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ux-file-control:hover .ux-file-select,.ux-file-control:focus-within .ux-file-select{border-color:var(--fg);background:var(--hover)}
+.ux-file-control:focus-within .ux-file-select{outline:2px solid color-mix(in srgb,var(--fg) 30%,transparent);outline-offset:2px}
+.ux-flow-form>.ux-flow-hint{margin:-2px 0 0;line-height:1.6}
+.ux-flow-form>.ux-flow-footer+.ux-flow-hint{margin:0}
+@media(max-width:470px){.ux-file-select{flex-wrap:wrap}.ux-file-select [data-file-name]{max-width:100%;margin:0}}
