@@ -1,5 +1,9 @@
 import { countries } from "./countries.js";
 const names = new Intl.DisplayNames(["ru"], { type: "region" });
+// ISO 3166 alpha-2 codes are rendered as native flag emoji (no external assets).
+const flag = (code) => /^[A-Z]{2}$/.test(code) && !["AC", "TA", "XK"].includes(code)
+  ? String.fromCodePoint(...[...code].map((char) => char.charCodeAt(0) + 127397))
+  : "🌐";
 const options = countries
   .map(([code, dial]) => ({ code, dial, name: names.of(code) }))
   .sort((a, b) => a.name.localeCompare(b.name, "ru"));
@@ -34,14 +38,23 @@ export function setupPhone() {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "country-option";
-      button.textContent = country.name;
+      const nameGroup = document.createElement("span");
+      nameGroup.className = "country-option-name";
+      const flagIcon = document.createElement("span");
+      flagIcon.className = "country-flag";
+      flagIcon.textContent = flag(country.code);
+      flagIcon.setAttribute("aria-hidden", "true");
+      const countryName = document.createElement("span");
+      countryName.textContent = country.name;
+      nameGroup.append(flagIcon, countryName);
       const code = document.createElement("span");
+      code.className = "country-dial";
       code.textContent = `+${country.dial}`;
-      button.append(code);
+      button.append(nameGroup, code);
       button.addEventListener("click", () => {
         selected = country;
         document.querySelector("#country-code").textContent =
-          `${country.code} +${country.dial}`;
+          `${flag(country.code)} +${country.dial}`;
         input.dataset.dial = country.dial;
         close();
         validate();
@@ -52,6 +65,7 @@ export function setupPhone() {
     if (!list.childElementCount) list.textContent = "Страна не найдена";
   }
   input.dataset.dial = "7";
+  document.querySelector("#country-code").textContent = `${flag("RU")} +7`;
   input.addEventListener("beforeinput", (e) => {
     if (e.data && /[^\d\s()+-]/.test(e.data)) e.preventDefault();
   });
