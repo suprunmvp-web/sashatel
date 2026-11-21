@@ -216,3 +216,10 @@
 .ux-flow-explanation p{font:11px/1.65 var(--font);color:var(--sub);margin:0}
 @media(max-width:740px){.platform .ux-call-hero{flex-wrap:wrap}.platform .ux-call-hero .ux-call-actions{margin-left:0;max-width:100%;width:100%}.platform .ux-test-call-trigger{max-width:100%}}
 @media(max-width:520px){.ux-flow-shell{padding:20px}.ux-flow-head h2{font-size:19px}.platform .ux-test-call-trigger{width:100%;justify-content:center}}
+
+.platform .ux-table-action{display:inline-grid;place-items:center;width:29px;height:29px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--sub);margin-left:auto}
+.platform .ux-table-action:hover,.platform .ux-table-action:focus-visible{border-color:var(--line);color:var(--fg);background:var(--hover)}
+.platform .ux-table-action [data-icon]{width:16px;height:16px}
+.ux-person{display:flex;align-items:center;gap:12px;margin-bottom:20px;border:1px solid var(--line);border-radius:9px;padding:12px}
+.ux-person-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--hover);font-weight:600;font-size:13px}
+.ux-person>div{display:grid;gap:4px;min-width:0}.ux-person strong{font:600 12px var(--font)}.ux-person>div>span{font:11px var(--font);color:var(--sub);overflow:hidden;text-overflow:ellipsis}
