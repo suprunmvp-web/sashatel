@@ -825,3 +825,58 @@ body:not(.platform) .legal-eyebrow { font: 11px/1.4 var(--mono); letter-spacing:
   body:not(.platform) .auth-switch { margin-bottom: 12px; }
   body:not(.platform) form { gap: 12px; }
 }
+
+/* Phone field: flag-only country toggle, dial prefix inside a shared input. */
+body:not(.platform) .phone-row { display: flex; align-items: stretch; min-height: 46px; }
+body:not(.platform) #country-button {
+  flex: 0 0 76px;
+  min-width: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 10px;
+}
+body:not(.platform) #country-button .country-flag { font: 22px/1 system-ui, sans-serif; }
+body:not(.platform) #country-button [data-icon] { width: 16px; height: 16px; }
+body:not(.platform) .phone-entry {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 15px;
+}
+body:not(.platform) #phone-prefix {
+  flex: none;
+  font: 500 14px/1.4 var(--font);
+  color: var(--fg);
+  white-space: nowrap;
+  pointer-events: none;
+}
+body:not(.platform) .phone-entry #phone {
+  flex: 1;
+  width: 1%;
+  min-width: 0;
+  padding-left: 0;
+  border: 0;
+  background: transparent;
+}
+body:not(.platform) #country-options .country-option.selected {
+  background: #2a2a30;
+}
+body:not(.platform) #country-options .country-option:focus-visible {
+  outline: 1px solid #92929d;
+  outline-offset: -1px;
+}
+body:not(.platform) #country-search {
+  outline: none;
+  border: 1px solid #44444d;
+  border-radius: 9px;
+}
+body:not(.platform) #country-search:focus,
+body:not(.platform) #country-search:focus-visible {
+  outline: none;
+  border-color: #80808a;
+  box-shadow: 0 0 0 1px #80808a;
+}
