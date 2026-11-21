@@ -23,7 +23,7 @@ for(const width of [1440,1024,768,390]){
   await page.getByRole('button',{name:'По сотрудникам'}).click();
   await page.getByText('Анна Иванова').waitFor();
   await page.locator('[data-ux-day="3"]').focus();
-  await page.getByText('Инициаций').waitFor();
+  await page.locator('.ux-day-tooltip').getByText('Инициаций').waitFor();
   await page.getByText('382').waitFor();
   await page.screenshot({path:dir+'/'+width+'-'+theme+'-populated.png',fullPage:true});
   for(const section of ['history','trunks','employees','integrations','billing']){
