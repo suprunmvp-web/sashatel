@@ -84,6 +84,7 @@ function savedTheme() {
 }
 function render() {
   root.classList.toggle("workspace", state.page === "cabinet");
+  document.body.classList.toggle("auth-verifying", state.page === "verify");
   document.body.classList.toggle("in-workspace", state.page === "cabinet");
   document.documentElement.dataset.theme =
     state.page === "cabinet" ? savedTheme() : "dark";
@@ -96,7 +97,7 @@ function render() {
       html = `<h1 class="greeting" tabindex="-1">Добро <em>пожаловать.</em></h1><div class="auth-switch">Впервые в SashaTel? <button class="text-button" data-action="register">Создать аккаунт</button></div><form novalidate data-form="login">${field("Email", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.com"')}${password("current-password")}<a href="/recovery/">Забыли пароль?</a><button class="button" type="submit">Войти</button><p class="legal-note">Продолжая, вы можете ознакомиться с документами: <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политика обработки персональных данных</a>.</p></form>`;
       break;
     case "verify":
-      html = `<div class="eyebrow">ПОДТВЕРЖДЕНИЕ EMAIL</div><h1 tabindex="-1">Проверьте почту</h1><p class="intro">Введите код подтверждения для<br><span class="email">${esc(state.email)}</span></p><form novalidate data-form="verify"><label>Код из письма<input class="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="12" aria-describedby="code-hint" required><span class="hint" id="code-hint">6 цифр · можно вставить код целиком</span></label><button class="button" type="submit">Подтвердить email</button></form><p class="status" id="expiry"></p><button class="text-button" id="resend" data-action="resend">Отправить код ещё раз</button><br><button class="text-button" data-action="edit-email">Исправить email</button>`;
+      html = `<section class="verify-screen" aria-labelledby="verify-heading"><div class="verify-emblem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></div><h1 id="verify-heading" tabindex="-1">Подтвердите вашу почту</h1><p class="verify-intro">Мы отправили 6-значный код на <strong class="email">${esc(state.email)}</strong>.<br>Введите его ниже для подтверждения.</p><form novalidate data-form="verify" class="verify-form"><div class="otp-field"><label class="otp-label" for="verify-code">Код подтверждения</label><div class="otp-box" id="otp-box"><div class="otp-cells" aria-hidden="true">${Array.from({length:6},(_,i)=>`<span class="otp-cell" data-otp-cell="${i}"></span>`).join("")}</div><input class="otp-input" id="verify-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-label="Шестизначный код подтверждения" required></div></div><button class="button" type="submit">Подтвердить</button></form><div class="verify-actions"><p id="expiry" class="verify-expiry" aria-live="off"></p><p>Не получили код? <button class="verify-link" id="resend" data-action="resend" type="button">Отправить повторно</button></p><p>Ввели не ту почту? <button class="verify-link" data-action="edit-email" type="button">Ввести заново</button></p></div><p class="verify-delivery" id="delivery-state" role="status"></p></section>`;
       break;
     case "organizations":
       html = '<h1 tabindex="-1">Выберите организацию</h1><div class="actions">'+state.organizations.map(org=>'<button class="button secondary" data-org="'+esc(org.id)+'">'+esc(org.legal_name)+'</button>').join('')+'</div>'+button("Создать организацию","lookup",true)+'<button class="text-button" data-action="logout">Выйти</button>';
@@ -120,11 +121,27 @@ function render() {
       html = ``;
   }
   root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p><p id="request-status" role="status" class="status"></p>`;
-  if(state.page==="verify"&&state.delivery){const notice=document.createElement("p");notice.className="status";notice.id="delivery-state";notice.setAttribute("role","status");notice.textContent=state.delivery.state==="queued"?"Отправляем письмо…":state.delivery.state==="accepted"?"Письмо принято почтовым сервисом.":"Не удалось отправить письмо. Повторите отправку позже.";root.prepend(notice);}
+  if(state.page==="verify") {
+    syncOtp();
+    const notice=root.querySelector("#delivery-state");
+    if(notice&&state.delivery)notice.textContent=state.delivery.state==="failed"?"Письмо не доставлено. Попробуйте отправить ещё раз.":"";
+  }
   window.renderSashaIcons?.(root);
   root.querySelector("h1")?.focus();
   setupPhone();
   tick();
+}
+function syncOtp() {
+  const field=root.querySelector(".otp-input");
+  if(!field)return;
+  const digits=field.value.replace(/\D/g,"").slice(0,6);
+  if(field.value!==digits)field.value=digits;
+  const active=document.activeElement===field;
+  root.querySelectorAll("[data-otp-cell]").forEach((cell,i)=>{
+    cell.textContent=digits[i]||"";
+    cell.classList.toggle("otp-cell--active",active&&i===Math.min(digits.length,5));
+    cell.classList.toggle("otp-cell--filled",i<digits.length);
+  });
 }
 function tick() {
   const verify=root.querySelector('[data-form="verify"] [type="submit"]');if(verify)verify.disabled=state.busy||state.canVerify===false;
@@ -133,12 +150,12 @@ function tick() {
   const seconds = Math.max(0, Math.ceil((state.resendAt - Date.now()) / 1000));
   resend.disabled = state.busy || seconds > 0;
   resend.textContent = seconds
-    ? `Отправить ещё раз через ${seconds} с`
-    : "Отправить код ещё раз";
+    ? `Отправить через ${seconds} с`
+    : "Отправить повторно";
   const remaining = Math.ceil((state.expiresAt - Date.now()) / 1000);
   root.querySelector("#expiry").textContent =
     remaining > 0
-      ? `Код действует ещё ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
+      ? `Код действителен ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
       : "Срок действия кода истёк. Запросите новый.";
 }
 async function run(action, success) {
@@ -204,8 +221,10 @@ root.addEventListener("input", (event) => {
       repeat.value = "";
     }
   }
-  if (event.target.name === "code")
-    event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
+  if(event.target.name==="code"){
+    event.target.value=event.target.value.replace(/\D/g,"").slice(0,6);
+    syncOtp();
+  }
 });
 root.addEventListener("paste", (event) => {
   if (event.target.name !== "code") return;
@@ -215,7 +234,10 @@ root.addEventListener("paste", (event) => {
     .slice(0, 6);
   event.preventDefault();
   event.target.value = code;
+  syncOtp();
 });
+root.addEventListener("focusin",event=>{if(event.target.name==="code")syncOtp();});
+root.addEventListener("focusout",event=>{if(event.target.name==="code")requestAnimationFrame(syncOtp);});
 root.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target;
@@ -361,7 +383,7 @@ root.addEventListener("click", (event) => {
 });
 setInterval(tick, 1000);
 let checking=false;
-setInterval(async()=>{if(checking||state.busy||state.page!=="verify"||!api.challengeStatus||document.hidden)return;const generation=state.generation,id=state.challengeId;checking=true;try{const c=await api.challengeStatus(id);if(generation!==state.generation)return;state.delivery=c.delivery;state.canVerify=c.can_verify;state.expiresAt=Date.parse(c.expires_at);state.resendAt=Date.parse(c.resend_at);let notice=root.querySelector("#delivery-state");if(!notice){notice=document.createElement("p");notice.id="delivery-state";notice.className="status";notice.setAttribute("role","status");root.prepend(notice);}notice.textContent=c.delivery.state==="queued"?"Отправляем письмо…":c.delivery.state==="accepted"?"Письмо принято почтовым сервисом.":"Не удалось отправить письмо. Повторите отправку позже.";tick();}catch(e){if(generation===state.generation&&e.code!=="RATE_LIMITED")announceError(e.message);}finally{checking=false;}},5000);
+setInterval(async()=>{if(checking||state.busy||state.page!=="verify"||!api.challengeStatus||document.hidden)return;const generation=state.generation,id=state.challengeId;checking=true;try{const c=await api.challengeStatus(id);if(generation!==state.generation)return;state.delivery=c.delivery;state.canVerify=c.can_verify;state.expiresAt=Date.parse(c.expires_at);state.resendAt=Date.parse(c.resend_at);const notice=root.querySelector("#delivery-state");if(notice)notice.textContent=c.delivery.state==="failed"?"Письмо не доставлено. Попробуйте отправить ещё раз.":"";tick();}catch(e){if(generation===state.generation&&e.code!=="RATE_LIMITED")announceError(e.message);}finally{checking=false;}},5000);
 // Session lifetime is owned by the API; the preview stores only a labelled, non-secret fixture.
 async function bootstrap() {
   go("loading");
