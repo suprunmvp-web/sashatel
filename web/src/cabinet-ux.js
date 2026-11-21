@@ -69,17 +69,40 @@ function adminOverview(data={}){
  const rows=companies.map(o=>[escape(o.name),escape(o.inn),pill(o.verified?'Верифицирована':'Не верифицирована',o.verified?'success':'neutral'),escape(o.manager||'—')]);
  return shell(sectionHeading('Внутреннее управление организациями SashaTel')+'<div class="ux-kpis ux-kpis-three">'+summary.map(([k,val])=>'<div class="ux-kpi"><span>'+k+'</span><strong>'+val+'</strong></div>').join('')+'</div><section class="ux-section ux-list">'+heading('Организации','Организации с доступом к платформе')+table(['Организация','ИНН','Верификация','Ответственный'],rows,'Нет доступных организаций')+'</section>');
 }
+const kv=(pairs)=>'<dl class="ux-kv">'+pairs.map(([label,val])=>'<div><dt>'+escape(label)+'</dt><dd>'+escape(val??'Нет данных')+'</dd></div>').join('')+'</dl>';
+function detailTab(id,name,active=false){return '<button type="button" role="tab" data-ux-detail="'+id+'" aria-selected="'+Boolean(active)+'">'+escape(name)+'</button>';}
+function callDetail(ctx={}){
+ const c=ctx.call;const back=ctx.orgId?'/'+escape(ctx.orgId)+'/history/':'#';
+ const intro='<a class="ux-backlink" href="'+back+'">← История звонков</a>';
+ if(!c)return shell(intro+hint('Не удалось загрузить детали вызова','Проверьте доступность записи или вернитесь к истории звонков.'));
+ const summary=c.summary?'<p>'+escape(c.summary)+'</p>':'<p class="ux-subtitle">Саммари появится после обработки записи разговора.</p>';
+ const transcript=c.transcript?.length?c.transcript.map(t=>'<div class="ux-transcript-line"><small>'+escape(t.time)+'</small><strong>'+escape(t.speaker)+'</strong><p>'+escape(t.text)+'</p></div>').join(''):'<p class="ux-subtitle">Транскрипт ещё не готов или запись недоступна.</p>';
+ const details=kv([['Номер абонента',c.phone],['Сотрудник',c.employee],['Результат',c.status],['Длительность',c.duration],['Транк',c.trunk],['Caller ID',c.callerId],['Оператор',c.provider],['Регион нумерации',c.region],['Страна',c.country],['Часовой пояс',c.timezone],['SIP-код',c.sipCode],['Причина завершения',c.hangupReason],['Начало вызова',c.startedAt],['Соединение',c.connectedAt],['Окончание',c.endedAt],['CRM',c.crm]]);
+ return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">ИСХОДЯЩИЙ ВЫЗОВ</p><h2>'+escape(c.phone)+'</h2><p class="ux-subtitle">'+escape(c.date)+' · '+escape(c.employee)+'</p></div>'+pill(c.status,c.status==='Дозвон'?'success':'neutral')+'</div><div class="ux-call-facts">'+[['Длительность',c.duration],['Транк',c.trunk],['Caller ID',c.callerId]].map(([key,val])=>'<div><span>'+escape(key)+'</span><strong>'+escape(val??'—')+'</strong></div>').join('')+'</div><section class="ux-section"><div class="ux-section-title"><h2>Саммари разговора</h2><span class="ux-note">Сгенерировано автоматически</span></div><div class="ux-call-summary">'+summary+'</div></section><section class="ux-section"><div class="ux-detail-tabs" role="tablist">'+detailTab('transcript','Транскрипт',true)+detailTab('details','Детали')+'</div><div class="ux-detail-panel" data-ux-detail-panel="transcript">'+transcript+'</div><div class="ux-detail-panel" data-ux-detail-panel="details" hidden>'+details+'</div></section>');
+}
+function trunkDetail(ctx={}){
+ const t=ctx.trunk,back=ctx.orgId?'/'+escape(ctx.orgId)+'/trunks/':'#';
+ const intro='<a class="ux-backlink" href="'+back+'">← Все транки</a>';
+ if(!t)return shell(intro+hint('Данные транка пока недоступны','Откройте транк из списка или повторите попытку позже.'));
+ const management='<div class="ux-settings-row"><div><strong>Исходящие вызовы</strong><p>Новые звонки через этот транк '+(t.active?'разрешены':'приостановлены')+'. Текущие разговоры не прерываются.</p></div>'+pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')+'</div><p class="ux-footnote">Карусель автоматически распределяет разрешённые Caller ID. Клиент не настраивает алгоритм оценки качества номеров.</p>';
+ const numberRows=(t.numbers||[]).map(n=>[escape(n.number),escape(n.spam||'—'),int(n.attempts),int(n.answers),number(n.attempts)?(number(n.answers)/number(n.attempts)*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%':'—']);
+ const numbers='<div class="ux-detail-toolbar"><div class="ux-segment" role="group" aria-label="Фильтр номеров"><button type="button" data-ux-number="active" aria-pressed="true">Активные</button><button type="button" data-ux-number="passive" aria-pressed="false">Пассивные</button></div></div><div id="ux-numbers-table">'+table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],numberRows,'Нет номеров в выбранной группе')+'</div>';
+ const information=kv([['SIP-сервер',t.host],['Порт',t.port],['Транспорт',t.transport],['Регистрация',t.registration],['Готовность к вызову',t.ready],['Режим авторизации',t.authType]]);
+ return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">SIP-ТРАНК</p><h2>'+escape(t.name)+'</h2><p class="ux-subtitle">Статус подключения и управление Caller ID</p></div>'+pill(t.ready||'Неизвестно',t.ready==='Готов'?'success':'neutral')+'</div><div class="ux-detail-tabs" role="tablist">'+detailTab('management','Управление',true)+detailTab('numbers','Номера')+detailTab('information','Информация')+'</div><div class="ux-detail-panel" data-ux-detail-panel="management">'+management+'</div><div class="ux-detail-panel" data-ux-detail-panel="numbers" hidden>'+numbers+'</div><div class="ux-detail-panel" data-ux-detail-panel="information" hidden>'+information+'</div>');
+}
 export function sectionUI(page,ctx={}){
  if(ctx.admin)return page==='overview'?adminOverview(ctx.adminData):page==='employees'?listPage('Команда SashaTel','Управление внутренними сотрудниками',['Сотрудник','Email','Роль'],'Сотрудников пока нет','Назначения появятся после подключения внутреннего API.','',''):null;
  if(page==='statistics')return stats(ctx.stats);
- if(page==='history'&&!ctx.details)return history(ctx.history);
- if(page==='trunks'&&!ctx.details)return trunks(ctx.trunks);
+ if(page==='history')return ctx.details?callDetail(ctx):history(ctx.history);
+ if(page==='trunks')return ctx.details?trunkDetail(ctx):trunks(ctx.trunks);
  if(page==='employees')return employees(ctx.employees);
  if(page==='integrations')return integrations(ctx.integrations);
  if(page==='billing')return billing(ctx.billing);
  return null;
 }
 export function wireSectionUI(){
+ document.querySelectorAll('[data-ux-detail]').forEach(tab=>tab.addEventListener('click',()=>{const target=tab.dataset.uxDetail;document.querySelectorAll('[data-ux-detail]').forEach(el=>el.setAttribute('aria-selected',String(el===tab)));document.querySelectorAll('[data-ux-detail-panel]').forEach(el=>el.hidden=el.dataset.uxDetailPanel!==target);}));
+
  const chartData=document.querySelector('#ux-chart-data');
  if(chartData){
   const days=JSON.parse(chartData.textContent),tip=document.querySelector('.ux-day-tooltip');
