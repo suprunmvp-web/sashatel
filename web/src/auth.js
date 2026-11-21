@@ -418,7 +418,9 @@ async function bootstrap() {
   go("loading");
   try {
     const result = await api.resume();
-    if (result?.challenge) {
+    // An unfinished registration challenge must not hijack an explicit sign-in route.
+    // The user can have an existing verified account while this browser holds a newer challenge.
+    if (result?.challenge && !location.pathname.startsWith("/login")) {
       if(result.account)setAccount(result.account);
       if(result.challenge.email)state.email=result.challenge.email;
       Object.assign(state, {
