@@ -42,4 +42,20 @@ jobs:
       - name: Build release Docker image (no registry push or deploy)
         run: docker build --pull --file backend/Dockerfile --tag sashatel-backend:ci-${{ github.sha }} backend
         working-directory: .
-
+      - name: Export tested backend image
+        if: success()
+        working-directory: .
+        run: |
+          docker save "sashatel-backend:ci-${{ github.sha }}" | gzip -1 > /tmp/sashatel-backend-${{ github.sha }}.tar.gz
+          sha256sum /tmp/sashatel-backend-${{ github.sha }}.tar.gz > /tmp/sashatel-backend-${{ github.sha }}.tar.gz.sha256
+      - name: Publish backend image as GitHub Actions artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sashatel-backend-${{ github.sha }}
+          path: |
+            /tmp/sashatel-backend-${{ github.sha }}.tar.gz
+            /tmp/sashatel-backend-${{ github.sha }}.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
