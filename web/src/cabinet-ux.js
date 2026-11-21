@@ -1,4 +1,4 @@
-import {testCallBlock,openTestCall,openEmployeeAccess} from './interaction-flows.js';
+import {testCallBlock,openTestCall,openEmployeeAccess,openNumberPreparation} from './interaction-flows.js';
 // SashaTel Web UI v2: intentional zero-data states. No fixtures or fabricated account metrics.
 const escape = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=(name)=>'<span class="ux-icon" aria-hidden="true">'+({chart:'▥',phone:'↗',users:'♙',link:'⇄',invoice:'▤',server:'▣',spark:'✦',arrow:'→'}[name]||'·')+'</span>';
@@ -44,6 +44,9 @@ function listPage(label,info,headers,emptyTitle,emptyText,actionLabel,actionId){
 const pill=(label,tone='neutral')=>'<span class="ux-pill ux-pill-'+tone+'">'+escape(label)+'</span>';
 const sectionHeading=(subtitle,cta='')=>'<div class="ux-headline"><p class="ux-subtitle">'+subtitle+'</p>'+cta+'</div>';
 function trunks(data=[],ctx={}){
+ if(!data.length){
+  return shell('<div class="ux-trunk-welcome"><div class="ux-trunk-welcome-head"><span class="ux-setup-kicker">ПОДКЛЮЧЕНИЕ ТЕЛЕФОНИИ</span><h2>Подготовим исходящие звонки</h2><p>Три этапа до первого разговора. Платформа проведёт по ним без лишних настроек.</p></div><div class="ux-setup-steps"><div class="ux-setup-step ux-setup-step-current"><span class="ux-step-num">01</span><div><strong>Номера</strong><p>Подготовьте CSV со списком номеров, полученных от SashaTel.</p></div></div><div class="ux-setup-step"><span class="ux-step-num">02</span><div><strong>Маркировка</strong><p>Подтвердите номера через Госуслуги по инструкции оператора.</p></div></div><div class="ux-setup-step"><span class="ux-step-num">03</span><div><strong>Подключение</strong><p>После подтверждения наша команда подготовит SIP-транк и данные для входа.</p></div></div></div><div class="ux-setup-footer"><button class="ux-button" type="button" data-action="prepare-numbers"><span data-icon="file-up"></span> Проверить CSV номеров</button><p>Сведения о маркировке подтвердит оператор. До этого транк не считается готовым.</p></div></div>');
+ }
  const rows=data.map(t=>{
   const name=t.id&&ctx.orgId?'<a class="ux-row-link" href="/'+escape(ctx.orgId)+'/trunks/'+escape(t.id)+'/"'+(ctx.review?' data-ux-open="trunk"':'')+'>'+escape(t.name)+'</a>':escape(t.name);
   const connected=t.registration==='Зарегистрирован'&&t.ready==='Готов';
@@ -51,7 +54,9 @@ function trunks(data=[],ctx={}){
   const phones=Number.isFinite(t.numberCount)?int(t.numberCount):'—';
   return [name,condition,phones,pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')];
  });
- return shell(sectionHeading('Управление исходящими SIP-подключениями',action('Создать транк','trunk',true))+'<section class="ux-section ux-list">'+table(['Транк','Подключение','Номера','Состояние'],rows,'Транков пока нет')+(rows.length?'':hint('Транков пока нет','Создайте первый SIP-транк, чтобы подключить исходящую телефонию.'))+'</section>');
+ const ready=data.find(t=>t.ready==='Готов'&&t.active&&t.registration==='Зарегистрирован');
+ const callCTA='<button class="ux-button ux-trunk-call" data-test-call-list type="button"'+(!ready?' disabled title="Нет готового транка"':'')+'><span data-icon="phone-call"></span> Тестовый звонок</button>';
+ return shell('<div class="ux-headline"><p class="ux-subtitle">Исходящие SIP-подключения и номера карусели</p><div class="ux-head-actions">'+action('Добавить транк','trunk',true)+callCTA+'</div></div><section class="ux-section ux-list">'+table(['Транк','Подключение','Номера','Состояние'],rows,'Транков пока нет')+'</section>');
 }
 function employees(data=[],ctx={}){
  const rows=data.map((e,i)=>[escape(e.name||'—'),escape(e.email||'—'),pill(e.role||'Сотрудник'),pill(e.presence||'Не в сети',e.presence==='В сети'?'success':e.presence==='На линии'?'warning':'neutral'),'<button class="ux-table-action" type="button" data-employee-index="'+i+'" aria-label="Управлять доступом: '+escape(e.name||e.email||'Сотрудник')+'"><span data-icon="ellipsis"></span></button>']);
@@ -127,6 +132,9 @@ export function sectionUI(page,ctx={}){
  return null;
 }
 export function wireSectionUI(ctx={}){
+ document.querySelectorAll('[data-action="prepare-numbers"]').forEach(btn=>btn.addEventListener('click',openNumberPreparation));
+ document.querySelectorAll('[data-test-call-list]').forEach(btn=>btn.addEventListener('click',()=>{const ready=(ctx.trunks||[]).find(t=>t.ready==='Готов'&&t.active&&t.registration==='Зарегистрирован');if(ready)openTestCall({trunk:ready,organization:ctx.organization||{},startCall:ctx.startCall||null});}));
+
  const employeesRaw=document.querySelector('#ux-employees-data')?.textContent;
  if(employeesRaw){const employees=JSON.parse(employeesRaw);document.querySelectorAll('[data-employee-index]').forEach(btn=>btn.addEventListener('click',()=>openEmployeeAccess({employee:employees[Number(btn.dataset.employeeIndex)],updateRole:ctx.updateRole||null})));}
 
