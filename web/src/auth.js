@@ -256,32 +256,40 @@ async function enter(result) {
 // Lookup results must come from the authenticated Backend/DaData API, never fixtures.
 let lookupSequence=0;
 let lookupTimer=null;
-let lookupSuggestion=null;
-function setLookupMessage(dropdown, message) {
-  dropdown.hidden = !message;
-  dropdown.innerHTML = message ? `<div class="inn-lookup-status" role="status">${esc(message)}</div>` : "";
+let lookupController=null;
+let lookupSuggestions=[];
+function resetLookupDropdown(dropdown) {
+  dropdown.hidden=true;
+  dropdown.innerHTML="";
 }
-async function requestCompanySuggestion(inn, sequence) {
+function setLookupMessage(dropdown,message) {
+  dropdown.hidden=false;
+  dropdown.innerHTML=`<div class="inn-lookup-status" role="status">${esc(message)}</div>`;
+}
+async function requestCompanySuggestions(query,sequence,controller) {
+  const dropdown=root.querySelector("#inn-suggestions");
+  if(!dropdown||sequence!==lookupSequence||state.page!=="lookup")return;
+  setLookupMessage(dropdown,"Ищем организации…");
   try {
-    const result = await api.lookup({inn});
-    if (sequence !== lookupSequence || state.page !== "lookup") return;
-    const current = root.querySelector('[name="inn"]');
-    if (!current || current.value !== inn) return;
-    const dropdown = root.querySelector("#inn-suggestions");
-    if (!dropdown) return;
-    if (!result?.lookup_id || !result?.legal_name) {
-      setLookupMessage(dropdown, "Организация не найдена.");
+    const result=await api.suggestOrganizations(query,{signal:controller.signal});
+    if(controller.signal.aborted||sequence!==lookupSequence||state.page!=="lookup")return;
+    const current=root.querySelector('[name="inn"]');
+    if(!current||current.value!==query)return;
+    lookupSuggestions=(Array.isArray(result?.items)?result.items:[]).filter(item=>
+      typeof item?.inn==="string"&&item.inn.startsWith(query)&&
+      typeof item?.legal_name==="string"&&item.legal_name.trim()).slice(0,20);
+    if(!lookupSuggestions.length) {
+      setLookupMessage(dropdown,"Организации не найдены");
       return;
     }
-    lookupSuggestion = result;
-    dropdown.hidden = false;
-    dropdown.innerHTML = `<button type="button" class="inn-result" data-action="select-inn" role="option"><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(result.legal_name))}</strong><small>ИНН ${esc(result.inn || inn)}</small></span>${icon("arrow-right")}</button>`;
+    dropdown.hidden=false;
+    dropdown.innerHTML=lookupSuggestions.map((item,index)=>
+      `<button type="button" class="inn-result" data-action="select-inn" data-index="${index}" role="option"><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(item.legal_name))}</strong><small>ИНН ${esc(item.inn)}</small></span>${icon("arrow-right")}</button>`
+    ).join("");
     window.renderSashaIcons?.(dropdown);
-  } catch (error) {
-    if (sequence !== lookupSequence || state.page !== "lookup") return;
-    const dropdown = root.querySelector("#inn-suggestions");
-    if (!dropdown) return;
-    setLookupMessage(dropdown, error.code === "INN_INVALID" || error.code === "RESOURCE_NOT_FOUND" ? "Организация не найдена." : "Не удалось проверить ИНН. Попробуйте ещё раз.");
+  }catch(error){
+    if(controller.signal.aborted||sequence!==lookupSequence||state.page!=="lookup")return;
+    setLookupMessage(dropdown,"Не удалось получить организации. Повторите ввод.");
   }
 }
 root.addEventListener("input", (event) => {
@@ -298,12 +306,15 @@ root.addEventListener("input", (event) => {
       // A selected suggestion or Enter triggers lookup.
     }
     clearTimeout(lookupTimer);
-    const sequence = ++lookupSequence;
-    lookupSuggestion = null;
-    setLookupMessage(dropdown, "");
-    if (!state.lookup && /^(?:\d{10}|\d{12})$/.test(inn)) {
-      setLookupMessage(dropdown, "Ищем организацию…");
-      lookupTimer = setTimeout(() => { void requestCompanySuggestion(inn, sequence); }, 350);
+    lookupController?.abort();
+    lookupController=null;
+    const sequence=++lookupSequence;
+    lookupSuggestions=[];
+    resetLookupDropdown(dropdown);
+    if(!state.lookup&&inn.length>=4) {
+      lookupController=new AbortController();
+      const controller=lookupController;
+      lookupTimer=setTimeout(()=>{void requestCompanySuggestions(inn,sequence,controller);},300);
     }
   }
   if (event.target.name === "password" && state.page === "register") {
@@ -404,8 +415,9 @@ root.addEventListener("submit", (event) => {
     case "lookup":
       // Enter also resolves only a real, full INN via Backend.
       clearTimeout(lookupTimer);
+      lookupController?.abort();
       ++lookupSequence;
-      lookupSuggestion = null;
+      lookupSuggestions=[];
       void run(
         () => api.lookup({ inn: values.inn }),
         (result) => {
@@ -448,14 +460,25 @@ root.addEventListener("click", (event) => {
     return;
   }
   if (action === "select-inn") {
-    const form = root.querySelector('form[data-form="lookup"]');
-    if (form && lookupSuggestion && form.elements.namedItem('inn').value === String(lookupSuggestion.inn)) {
+    const selected=event.target.closest('[data-index]');
+    const index=selected?Number(selected.dataset.index):-1;
+    const item=Number.isInteger(index)?lookupSuggestions[index]:null;
+    const form=root.querySelector('form[data-form="lookup"]');
+    if(item&&form) {
       clearTimeout(lookupTimer);
+      lookupController?.abort();
       ++lookupSequence;
-      state.lookup = lookupSuggestion;
-      lookupSuggestion = null;
-      state.createKey = crypto.randomUUID();
-      go("lookup");
+      lookupSuggestions=[];
+      form.elements.namedItem('inn').value=item.inn;
+      resetLookupDropdown(root.querySelector("#inn-suggestions"));
+      void run(
+        ()=>api.lookup({inn:item.inn}),
+        result=>{
+          state.lookup=result;
+          state.createKey=crypto.randomUUID();
+          go("lookup");
+        },
+      );
     }
     return;
   }
