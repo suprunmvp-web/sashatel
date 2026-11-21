@@ -17,6 +17,15 @@ for(const width of [1440,1024,768,390]){
   if(overflow.overflow)console.error('OVERFLOW DIAGNOSTICS',width,theme,JSON.stringify(overflow.offenders));
   await page.screenshot({path:dir+'/'+width+'-'+theme+'-first-frame.png',fullPage:true});
   assert.equal(overflow.overflow,false,'horizontal overflow '+width+' '+theme);
+  if(width===1440&&theme==='light'){
+   await page.locator('[data-nav=trunks]').click();
+   await page.getByText('Транков пока нет').first().waitFor();
+   await page.locator('[data-action=trunk]').click();
+   await page.getByRole('heading',{name:'Создать SIP-транк'}).waitFor();
+   await page.getByRole('button',{name:'Закрыть'}).first().click();
+   await page.locator('[data-nav=statistics]').click();
+   await page.getByText('График появится после первых звонков').waitFor();
+  }
   if(theme==='dark')await page.locator('#theme').click();
   await page.screenshot({path:dir+'/'+width+'-'+theme+'-empty.png',fullPage:true});
   await page.locator('#state').click();
