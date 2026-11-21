@@ -63,8 +63,14 @@ test('organization review: duplicates, staff gate, verified-only uniqueness and 
  await assert.rejects(auth.createOrganization(ctx,{lookup_id:lookup,confirm:true},randomUUID()),error('ORGANIZATION_ALREADY_EXISTS'));
  const rejected=await auth.reviewOrganization(ctx,b,{decision:'rejected',evidence_reference:'document-check-124',explanation:'Полномочия заявителя не подтверждены'});
  assert.equal((rejected.body as any).verification_status,'rejected');
+ const appeal={evidence_reference:'new-documents-125',explanation:'Предоставлены новые подтверждения полномочий'};
+ await assert.rejects(auth.reopenOrganization(ctx,b,appeal),error('INTERNAL_ACCESS_DENIED'));
+ await admin.query("UPDATE web_auth.internal_staff SET role='owner' WHERE user_id=$1",[user.id]);
+ const reopened=await auth.reopenOrganization(ctx,b,appeal);
+ assert.equal((reopened.body as any).verification_status,'unverified');
+ await assert.rejects(auth.reopenOrganization(ctx,b,appeal),error('REOPEN_REQUIRES_REJECTED'));
  const {rows:reviews}=await admin.query("SELECT outcome,evidence_reference FROM web_auth.organization_reviews WHERE organization_id=ANY($1::uuid[]) ORDER BY recorded_at",[ [a,b] ]);
- assert.deepEqual(reviews.map(x=>x.outcome).sort(),['rejected','verified']);
+ assert.deepEqual(reviews.map(x=>x.outcome).sort(),['rejected','reopened','verified']);
  const {rows:[subscription]}=await admin.query('SELECT count(*)::int AS n FROM control.subscriptions WHERE organization_id=ANY($1::uuid[]) AND telephony=true',[[a,b]]);
  assert.equal(subscription.n,0);
  await admin.query("UPDATE web_auth.internal_staff SET active=false WHERE user_id=$1",[user.id]);
