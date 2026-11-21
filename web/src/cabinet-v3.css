@@ -268,3 +268,9 @@
 .platform .ux-verification-note [data-icon] svg{width:14px;height:14px}
 .platform .ux-verification-note a{color:var(--fg);font-weight:600;text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--fg) 35%,transparent)}
 .platform .ux-verification-note a:hover{border-bottom-color:var(--fg)}
+
+/* Dense timeseries should read as one line, not a chain of permanent markers. */
+.platform .ux-chart-interactive .ux-point{opacity:0;fill:var(--surface);stroke:var(--fg);stroke-width:2;transition:opacity .12s ease}
+.platform .ux-chart-interactive .ux-point:hover,.platform .ux-chart-interactive .ux-point:focus{opacity:1;outline:none}
+.platform .ux-chart-interactive svg:focus-within .ux-point:focus{opacity:1}
+@media(prefers-reduced-motion:reduce){.platform .ux-chart-interactive .ux-point{transition:none}}
