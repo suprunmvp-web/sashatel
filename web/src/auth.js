@@ -1,5 +1,6 @@
 import {api,isPreview as preview} from "./session.js";
 import {setupPhone} from "./phone.js";
+import {notify} from "./notifications.js";
 const root = document.querySelector("main");
 const state = {
   page: "register",
@@ -33,7 +34,9 @@ const button = (text, action, secondary = false) =>
 const field = (label, name, value = "", attributes = "") =>
   `<label>${label}<input name="${name}" value="${esc(value)}" ${attributes} required></label>`;
 const password = (autocomplete) =>
-  `<label>Пароль<div class="password-row"><input name="password" type="password" autocomplete="${autocomplete}" required ${autocomplete === "new-password" ? 'minlength="12"' : ""} maxlength="256" placeholder="********"><button type="button" class="icon-button" data-action="password" aria-label="Показать пароль">${icon("eye")}</button></div></label>`;
+  `<label>Пароль<div class="password-row"><input name="password" type="password" autocomplete="${autocomplete}" required ${autocomplete === "new-password" ? 'minlength="8"' : ""} maxlength="256" placeholder="********"><button type="button" class="icon-button" data-action="password" aria-label="Показать пароль">${icon("eye")}</button></div></label>`;
+const confirmPassword = () =>
+  `<div class="confirm-password" id="confirm-password" hidden><label for="repeat-password">Повторите пароль</label><div class="password-row"><input id="repeat-password" name="repeat_password" type="password" autocomplete="new-password" minlength="8" maxlength="256" placeholder="********" disabled required><button type="button" class="icon-button" data-action="password" aria-label="Показать пароль" data-for="repeat-password">${icon("eye")}</button></div></div>`;
 function accountTitle() {
   return `<h1 class="serif" tabindex="-1">Добро пожаловать,<br><em>${esc(state.name)}!</em></h1>`;
 }
@@ -68,10 +71,7 @@ function go(page) {
 }
 function announceError(message) {
   state.error = message;
-  const error = root.querySelector("[role=alert]");
-  error.textContent = message;
-  error.hidden = !message;
-  if (message) error.focus();
+  if (message) notify(message, "error");
 }
 function savedTheme() {
   try {
@@ -90,7 +90,7 @@ function render() {
   let html;
   switch (state.page) {
     case "register":
-      html = `<h1 class="greeting" tabindex="-1">Давайте <em>познакомимся.</em></h1><div class="auth-switch">Уже есть аккаунт? <button class="text-button" data-action="login">Войти</button></div><form data-form="register"><div class="name-row">${field("Имя", "display_name", state.name, 'autocomplete="given-name" maxlength="80" placeholder="Иван"')}${field("Фамилия", "surname", state.surname, 'autocomplete="family-name" maxlength="80" placeholder="Иванов"')}</div>${field("Почта", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.com"')}<div class="phone-field"><label for="phone">Номер телефона</label><div class="phone-row"><button type="button" id="country-button" aria-label="Код страны" aria-expanded="false" aria-controls="country-picker"><span id="country-code" class="country-flag" aria-hidden="true">🇷🇺</span>${icon("chevron-down")}</button><div class="phone-entry"><span id="phone-prefix">+7</span><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="18" placeholder="999 123-45-67" required></div></div><div id="country-picker" hidden><label class="country-search">Страна или код<input id="country-search" type="search" autocomplete="off" placeholder="Поиск страны"></label><div id="country-options" role="group" aria-label="Страны"></div></div></div>${password("new-password")}<div class="consents"><label class="check"><input type="checkbox" name="news"><span>Получать новости и обновления SashaTel</span></label><label class="check"><input type="checkbox" name="terms" required><span>Я принимаю <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и даю согласие на обработку персональных данных в соответствии с <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политикой обработки персональных данных</a>.</span></label></div><button class="button" type="submit">Зарегистрироваться</button></form>`;
+      html = `<h1 class="greeting" tabindex="-1">Давайте <em>познакомимся.</em></h1><div class="auth-switch">Уже есть аккаунт? <button class="text-button" data-action="login">Войти</button></div><form data-form="register"><div class="name-row">${field("Имя", "display_name", state.name, 'autocomplete="given-name" maxlength="80" placeholder="Иван"')}${field("Фамилия", "surname", state.surname, 'autocomplete="family-name" maxlength="80" placeholder="Иванов"')}</div>${field("Почта", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.com"')}<div class="phone-field"><label for="phone">Номер телефона</label><div class="phone-row"><button type="button" id="country-button" aria-label="Код страны" aria-expanded="false" aria-controls="country-picker"><span id="country-code" class="country-flag" aria-hidden="true">🇷🇺</span>${icon("chevron-down")}</button><div class="phone-entry"><span id="phone-prefix">+7</span><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="18" placeholder="999 123-45-67" required></div></div><div id="country-picker" hidden><label class="country-search">Страна или код<input id="country-search" type="search" autocomplete="off" placeholder="Поиск страны"></label><div id="country-options" role="group" aria-label="Страны"></div></div></div>${password("new-password")}${confirmPassword()}<div class="consents"><label class="check"><input type="checkbox" name="news"><span>Получать новости и обновления SashaTel</span></label><label class="check"><input type="checkbox" name="terms" required><span>Я принимаю <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и даю согласие на обработку персональных данных в соответствии с <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политикой обработки персональных данных</a>.</span></label></div><button class="button" type="submit">Зарегистрироваться</button></form>`;
       break;
     case "login":
       html = `<h1 class="greeting" tabindex="-1">Добро <em>пожаловать.</em></h1><div class="auth-switch">Впервые в SashaTel? <button class="text-button" data-action="register">Создать аккаунт</button></div><form data-form="login">${field("Email", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.com"')}${password("current-password")}<a href="/recovery/">Забыли пароль?</a><button class="button" type="submit">Войти</button><p class="legal-note">Продолжая, вы можете ознакомиться с документами: <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политика обработки персональных данных</a>.</p></form>`;
@@ -189,6 +189,21 @@ async function enter(result) {
   }
 }
 root.addEventListener("input", (event) => {
+  if (event.target.name === "password" && state.page === "register") {
+    const confirmation = root.querySelector("#confirm-password");
+    if (confirmation && event.target.value && confirmation.hidden) {
+      confirmation.hidden = false;
+      confirmation.querySelector("input").disabled = false;
+      requestAnimationFrame(() => confirmation.classList.add("is-visible"));
+    }
+    if (confirmation && !event.target.value && !confirmation.hidden) {
+      confirmation.classList.remove("is-visible");
+      confirmation.hidden = true;
+      const repeat = confirmation.querySelector("input");
+      repeat.disabled = true;
+      repeat.value = "";
+    }
+  }
   if (event.target.name === "code")
     event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
 });
@@ -212,7 +227,11 @@ root.addEventListener("submit", (event) => {
   const phoneInput=form.querySelector("#phone");
   const phoneNumber=phoneInput ? "+"+(phoneInput.dataset.dial||"7")+String(values.phone).replace(/\D/g,"") : null;
   const passwordField = form.querySelector("[name=password]");
-  if (values.password && form.dataset.form==="register" && ([...values.password].length<12 || [...values.password].length>128 || new TextEncoder().encode(values.password).length>512)){announceError("Пароль: от 12 до 128 символов, не более 512 байт.");return;}
+  if (values.password && form.dataset.form==="register" && ([...values.password].length<8 || [...values.password].length>128 || new TextEncoder().encode(values.password).length>512)){announceError("Пароль: от 8 до 128 символов, не более 512 байт.");return;}
+  if (form.dataset.form === "register" && values.password !== values.repeat_password) {
+    announceError("Пароли не совпадают.");
+    return;
+  }
   if (passwordField) passwordField.value = "";
   switch (form.dataset.form) {
     case "register":
@@ -279,8 +298,10 @@ root.addEventListener("click", (event) => {
     return;
   }
   if (action === "password") {
-    const input = root.querySelector("[name=password]");
-    const button = root.querySelector("[data-action=password]");
+    const button = event.target.closest("[data-action=password]");
+    const input = button.dataset.for
+      ? root.querySelector("#" + button.dataset.for)
+      : root.querySelector("[name=password]");
     input.type = input.type === "password" ? "text" : "password";
     button.setAttribute(
       "aria-label",
@@ -288,7 +309,6 @@ root.addEventListener("click", (event) => {
     );
     button.innerHTML = icon(input.type === "text" ? "eye-off" : "eye");
     window.renderSashaIcons?.(root);
-    input.focus();
     return;
   }
   if (action === "resend") {
