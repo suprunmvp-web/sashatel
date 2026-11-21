@@ -37,6 +37,7 @@ function clientPage(){
 }
 function adminPage(){
  if(!internalRole)return empty('Служебный доступ недоступен','Backend ещё не предоставляет подтверждённую identity и scope сотрудника SashaTel. Клиентская сессия не даёт внутренних полномочий.',true);
+ const adminView=sectionUI(page,{admin:true});if(adminView!==null)return adminView;
  if(page==='employees')return '<div class="page-actions">'+button('Пригласить сотрудника SashaTel','internal-invite',internalRole==='manager')+'</div>'+table(['Имя и фамилия','Email','Телефон','Роль','Ответственные организации'],[])+missing('внутренних сотрудников');
  if(page!=='overview')return empty('Страница не найдена','Выберите раздел в меню.');
  const rows=[];
