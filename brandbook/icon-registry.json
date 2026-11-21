@@ -357,13 +357,13 @@
       "contexts": [
         "installation"
       ]
-    }
-    ,{"name":"headphones","meaning":"Разговор в браузере через WebRTC","contexts":["web-call"]}
-    ,{"name":"file-up","meaning":"Подготовить CSV со списком номеров","contexts":["number-onboarding"]}
-    ,{"name":"info","meaning":"Краткая информационная подсказка","contexts":["help"]}
-    ,{"name":"shield-check","meaning":"Доступ и безопасность аккаунта","contexts":["employee-access"]}
-    ,{"name":"shield","meaning":"Внутренний кабинет SashaTel","contexts":["workspace-switch"]}
-    ,{"name":"chevrons-up-down","meaning":"Переключить организацию","contexts":["workspace-switch"]}
+    },
+    {"name":"headphones","meaning":"Разговор в браузере через WebRTC","contexts":["web-call"]},
+    {"name":"file-up","meaning":"Подготовить CSV со списком номеров","contexts":["number-onboarding"]},
+    {"name":"info","meaning":"Краткая информационная подсказка","contexts":["help"]},
+    {"name":"shield-check","meaning":"Доступ и безопасность аккаунта","contexts":["employee-access"]},
+    {"name":"shield","meaning":"Внутренний кабинет SashaTel","contexts":["workspace-switch"]},
+    {"name":"chevrons-up-down","meaning":"Переключить организацию","contexts":["workspace-switch"]}
   ],
   "rulesOfUse": [
     "Не использовать символы Unicode вместо SVG-иконок.",
