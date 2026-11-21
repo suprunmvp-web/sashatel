@@ -61,3 +61,25 @@ test('server boots with file-backed Resend configuration and exposes health and 
     await rm(directory,{recursive:true,force:true});
   }
 });
+
+test('database pool absorbs idle-client errors and redacts internal error details',async()=>{
+  const {databasePool}=await import('./db.ts');
+  const directory=await mkdtemp(join(tmpdir(),'sashatel-pool-'));
+  const file=join(directory,'url');
+  await writeFile(file,process.env.DATABASE_URL!,{mode:0o600});
+  const pool=await databasePool(file);
+  const output:string[]=[];
+  const old=console.error;
+  try {
+    console.error=(...args:unknown[])=>{output.push(args.map(String).join(' '));};
+    assert.equal(pool.emit('error',Object.assign(new Error('connection URL: secret'),{code:'57P01'})),true);
+    assert.equal((await pool.query('SELECT 1 AS ok')).rows[0].ok,1);
+    assert.equal(output.length,1);
+    assert.match(output[0],/postgres_idle_client_error/);
+    assert(!output[0].includes('secret'));
+  } finally {
+    console.error=old;
+    await pool.end();
+    await rm(directory,{recursive:true,force:true});
+  }
+});

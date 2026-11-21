@@ -104,11 +104,16 @@ export class WebAuth {
     await this.pool.query('INSERT INTO web_auth.browsers(hash,expires_at) VALUES($1,$2)',[hash(value),deadline(86400)]);
     return value;
   }
-  async tx<T>(ctx:Context,fn:(db:PoolClient)=>Promise<T>) {
+  async tx<T>(ctx:Context,fn:(db:PoolClient)=>Promise<T>,readOnly=false) {
     const db=await this.pool.connect();
     try {
       await db.query('BEGIN');
-      const locked=await db.query('SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp() FOR UPDATE',[hash(ctx.browser)]);
+      // Read-only views must not serialize behind one shared browser row.
+      // Mutations retain the exclusive lock to protect challenges and refresh.
+      const statement=readOnly
+        ? 'SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp()'
+        : 'SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp() FOR UPDATE';
+      const locked=await db.query(statement,[hash(ctx.browser)]);
       if(!locked.rowCount) throw new ApiError(401,'SESSION_REVOKED');
       const value=await fn(db);await db.query('COMMIT');return value;
     } catch(error) {
@@ -139,13 +144,13 @@ export class WebAuth {
     await db.query('INSERT INTO web_auth.audit(actor_user_id,organization_id,action,target_id,request_id,changes) VALUES($1,$2,$3,$4,$5,$6)',
       [user,org,action,target,ctx.requestId,changes]);
   }
-  async identity(db:PoolClient,ctx:Context) {
+  async identity(db:PoolClient,ctx:Context,readOnly=false) {
     if(!ctx.access) throw new ApiError(401,'SESSION_REVOKED');
     const {rows:[family]}=await db.query(`SELECT *,access_expires>clock_timestamp() AS fresh FROM web_auth.families
-      WHERE access_hash=$1 AND browser_hash=$2 FOR UPDATE`,[hash(ctx.access),hash(ctx.browser)]);
+      WHERE access_hash=$1 AND browser_hash=$2 ${readOnly?'':'FOR UPDATE'}`,[hash(ctx.access),hash(ctx.browser)]);
     if(!family||family.revoked_at) throw new ApiError(401,'SESSION_REVOKED');
     if(!family.fresh) throw new ApiError(401,'ACCESS_EXPIRED');
-    const {rows:[user]}=await db.query('SELECT * FROM control.users WHERE id=$1 FOR UPDATE',[family.user_id]);
+    const {rows:[user]}=await db.query('SELECT * FROM control.users WHERE id=$1 '+(readOnly?'':'FOR UPDATE'),[family.user_id]);
     if(!user?.active) throw new ApiError(403,'USER_REVOKED');
     if(!user.email_verified_at) throw new ApiError(403,'EMAIL_UNVERIFIED');
     return {family,user};
@@ -509,13 +514,11 @@ export class WebAuth {
   }
   async organizations(ctx:Context) {
     return this.tx(ctx,async db=>{
-      const {user}=await this.identity(db,ctx);
-      // Narrow SECURITY DEFINER function lists IDs only for this authenticated account.
-      const {rows}=await db.query('SELECT organization_id FROM web_auth.own_organization_ids($1)',[user.id]);
-      const items=[];
-      for(const row of rows) items.push(await this.organization(db,user.id,row.organization_id));
-      return {status:200,body:{items}};
-    });
+      const {user}=await this.identity(db,ctx,true);
+      // One bounded, account-scoped query instead of N tenant-switching queries.
+      const {rows}=await db.query('SELECT * FROM web_auth.account_organizations($1)',[user.id]);
+      return {status:200,body:{items:rows}};
+    },true);
   }
   async selectOrganization(ctx:Context,input:Record<string,unknown>) {
     exact(input,['organization_id','expected_context_epoch']);
@@ -584,23 +587,27 @@ export class WebAuth {
   }
   async internalSession(ctx:Context) {
     return this.tx(ctx,async db=>{
-      const {user}=await this.identity(db,ctx);
+      const {user}=await this.identity(db,ctx,true);
       const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       return {status:200,body:{role:role.role}};
-    });
+    },true);
   }
-  async internalOrganizations(ctx:Context) {
+  async internalOrganizations(ctx:Context,page:{offset?:number;limit?:number}={}) {
+    const offset=page.offset??0,limit=page.limit??200;
+    if(!Number.isSafeInteger(offset)||offset<0||offset>100000||
+       !Number.isSafeInteger(limit)||limit<1||limit>200) throw new ApiError(422,'INVALID_PAGE');
     return this.tx(ctx,async db=>{
-      const {user}=await this.identity(db,ctx);
+      const {user}=await this.identity(db,ctx,true);
       try {
-        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations($1)',[user.id]);
-        return {status:200,body:{items:rows}};
+        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations_page($1,$2,$3)',[user.id,offset,limit]);
+        const more=rows.length>limit;
+        return {status:200,body:{items:rows.slice(0,limit),next_offset:more?offset+limit:null}};
       } catch(error) {
         if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
         throw error;
       }
-    });
+    },true);
   }
   async reviewOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
     if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
@@ -626,6 +633,32 @@ export class WebAuth {
         if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
         if(code==='23514') throw new ApiError(409,'ALREADY_REVIEWED');
         if(code==='23505') throw new ApiError(409,'VERIFIED_ORGANIZATION_EXISTS');
+        if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
+        throw error;
+      }
+    });
+  }
+  async reopenOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    exact(input,['evidence_reference','explanation']);
+    const evidence=required(input,'evidence_reference',500).trim();
+    const explanation=required(input,'explanation',2000).trim();
+    if(evidence.length<5||explanation.length<8) throw new ApiError(422,'INVALID_REVIEW');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx),id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.reopen_organization_review($1,$2,$3,$4,$5) AS status',
+          [user.id,orgId,evidence,explanation,id],
+        );
+        await this.audit(db,ctx,'internal.organization_reopened',user.id,orgId,orgId,
+          {review_id:id,evidence_reference:evidence,explanation});
+        return {status:200,body:{organization_id:orgId,verification_status:row.status,review_id:id}};
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'REOPEN_REQUIRES_REJECTED');
         if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
         throw error;
       }

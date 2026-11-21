@@ -9,6 +9,7 @@ export function webHandler(auth:WebAuth,origin:string) {
     const path=req.url?.split('?')[0]??'';
     if(!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
+    res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
     res.setHeader('cache-control','no-store');
     const parsed:Record<string,string>={};
@@ -38,11 +39,23 @@ export function webHandler(auth:WebAuth,origin:string) {
       if(req.method==='GET') {
         if(path==='/v1/auth/bootstrap') send(await auth.bootstrap(ctx));
         else if(path==='/v1/account') {
-          const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx)).user)}}));
+          const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx,true)).user)}}),true);
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
-        else if(path==='/v1/internal/organizations') send(await auth.internalOrganizations(ctx));
+        else if(path==='/v1/internal/organizations') {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+          if([...query.keys()].some(key=>!['offset','limit'].includes(key)) ||
+             [...query.keys()].some(key=>query.getAll(key).length!==1))
+            throw new ApiError(422,'INVALID_PAGE');
+          const value=(name:string)=>{
+            const input=query.get(name);
+            if(input===null)return undefined;
+            if(!/^(?:0|[1-9][0-9]{0,5})$/.test(input)) throw new ApiError(422,'INVALID_PAGE');
+            return Number(input);
+          };
+          send(await auth.internalOrganizations(ctx,{offset:value('offset'),limit:value('limit')}));
+        }
         else if(path.startsWith('/v1/organizations/creation-status/')) send(await auth.creationStatus(ctx,path.split('/').at(-1)!));
         else if(path.startsWith('/v1/auth/email/challenges/')) send(await auth.tx(ctx,async db=>({status:200,body:await auth.challengeStatus(db,ctx,path.split('/').at(-1)!,true)})));
         else throw new ApiError(404,'RESOURCE_NOT_FOUND');
@@ -61,8 +74,12 @@ export function webHandler(auth:WebAuth,origin:string) {
       try {body=JSON.parse(raw);if(!body||Array.isArray(body)||typeof body!=='object') throw Error();}
       catch {throw new ApiError(400,'INVALID_REQUEST');}
       if(['/v1/auth/email/complete','/v1/auth/refresh','/v1/auth/logout'].includes(path)&&Object.keys(body).length) throw new ApiError(400,'INVALID_REQUEST');
+      // A reverse proxy may multiplex many different visitors over one socket.
+      // Do not rate-limit legitimate customers by req.socket.remoteAddress.
+      // Account/email limits are enforced in WebAuth; this additional browser
+      // limit dampens repeated attempts from the same preauth identity.
       if(['/v1/auth/register','/v1/auth/login'].includes(path)) {
-        await auth.tx(ctx,db=>auth.limit(db,'ip:'+path+':'+req.socket.remoteAddress,20,3600));
+        await auth.tx(ctx,db=>auth.limit(db,'browser:'+path+':'+browser,20,3600));
       }
       const key=typeof req.headers['idempotency-key']==='string'?req.headers['idempotency-key']:'';
       let result:WebResult;
@@ -86,10 +103,22 @@ export function webHandler(auth:WebAuth,origin:string) {
           const {organization_id,...review}=body;
           result=await auth.reviewOrganization(ctx,organization_id,review);break;
         }
+        case '/v1/internal/organizations/reopen':{
+          if(typeof body.organization_id!=='string') throw new ApiError(400,'INVALID_REQUEST');
+          const {organization_id,...review}=body;
+          result=await auth.reopenOrganization(ctx,organization_id,review);break;
+        }
         default:throw new ApiError(404,'RESOURCE_NOT_FOUND');
       }
       send(result);
     } catch(error) {
+      if(!(error instanceof ApiError)) {
+        // No request bodies, credentials, email addresses or database query text.
+        const pgCode=(error as {code?:unknown})?.code;
+        console.error(JSON.stringify({event:'web_api_failure',request_id:requestId,
+          route:path,kind:error instanceof Error?error.name:'unknown',
+          db_code:typeof pgCode==='string'&&/^[A-Z0-9]{5}$/.test(pgCode)?pgCode:null}));
+      }
       const api=error instanceof ApiError?error:new ApiError(503,'AUTH_UNAVAILABLE');
       if(api.status===429) res.setHeader('retry-after','60');
       send({status:api.status,body:{code:api.code,message:api.message,request_id:requestId,...(api.status===429?{retry_after_seconds:60}:{})}});
