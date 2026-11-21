@@ -269,6 +269,10 @@ export class WebAuth {
   async bootstrap(ctx:Context) {
     return this.tx(ctx,async db=>{
       const {rows:[browser]}=await db.query('SELECT *,completion_expires>clock_timestamp() AS valid FROM web_auth.browsers WHERE hash=$1',[hash(ctx.browser)]);
+      // Browsers remove the short-lived access cookie after five minutes.
+      // A remaining refresh cookie means this is an expiring session, not an anonymous visitor.
+      // Signal the client to rotate credentials rather than showing onboarding again.
+      if(!ctx.access&&ctx.refresh) throw new ApiError(401,'ACCESS_EXPIRED');
       if(ctx.access) {
         const {family,user}=await this.identity(db,ctx);
         await this.closeCompletion(db,ctx);
