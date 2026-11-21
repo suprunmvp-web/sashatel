@@ -638,6 +638,32 @@ export class WebAuth {
       }
     });
   }
+  async reopenOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    exact(input,['evidence_reference','explanation']);
+    const evidence=required(input,'evidence_reference',500).trim();
+    const explanation=required(input,'explanation',2000).trim();
+    if(evidence.length<5||explanation.length<8) throw new ApiError(422,'INVALID_REVIEW');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx),id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.reopen_organization_review($1,$2,$3,$4,$5) AS status',
+          [user.id,orgId,evidence,explanation,id],
+        );
+        await this.audit(db,ctx,'internal.organization_reopened',user.id,orgId,orgId,
+          {review_id:id,evidence_reference:evidence,explanation});
+        return {status:200,body:{organization_id:orgId,verification_status:row.status,review_id:id}};
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'REOPEN_REQUIRES_REJECTED');
+        if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
+        throw error;
+      }
+    });
+  }
   async createOrganization(ctx:Context,input:Record<string,unknown>,key:string) {
     const lookup=required(input,'lookup_id',36);
     if(!uuid.test(lookup)||!uuid.test(key)||input.confirm!==true||Object.keys(input).length!==2) throw new ApiError(400,'INVALID_REQUEST');
