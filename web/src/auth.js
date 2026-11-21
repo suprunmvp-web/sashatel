@@ -165,7 +165,7 @@ function render() {
     default:
       html = ``;
   }
-  root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p><p id="request-status" role="status" class="status"></p>`;
+  root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p>`;
   if(state.page==="verify") {
     syncOtp();
     const notice=root.querySelector("#delivery-state");
@@ -209,7 +209,14 @@ async function run(action, success) {
   const generation = state.generation;
   state.busy = true;
   announceError("");
-  root.querySelector("#request-status").textContent = "Подождите…";
+  // Keep loading feedback inside the active submit button, never as a
+  // detached status line below the form. All other controls stay disabled.
+  const submit = root.querySelector('form button[type="submit"]');
+  const originalSubmitContent = submit?.innerHTML;
+  if (submit) {
+    submit.textContent = state.page === "login" ? "Входим…" : "Отправляем…";
+    submit.setAttribute("aria-busy", "true");
+  }
   root.querySelectorAll("button,input").forEach((el) => {
     el.disabled = true;
   });
@@ -232,7 +239,10 @@ async function run(action, success) {
       root.querySelectorAll("button,input").forEach((el) => {
         el.disabled = false;
       });
-      root.querySelector("#request-status").textContent = "";
+      if (submit?.isConnected) {
+        submit.innerHTML = originalSubmitContent;
+        submit.removeAttribute("aria-busy");
+      }
       tick();
     }
   }
