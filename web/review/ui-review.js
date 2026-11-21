@@ -13,7 +13,7 @@ const demo={
  {date:'21.11.2026, 15:19',employee:'Анна Иванова',phone:'+7 495 625-11-22',trunk:'Основной',duration:'00:00',status:'Автоответчик'}
  ],
  trunks:[
- {id:'demo-trunk-1',name:'Основной · Билайн',registration:'Зарегистрирован',ready:'Готов',numberCount:2,active:true},
+ {id:'demo-trunk-1',name:'Основной · Билайн',registration:'Зарегистрирован',ready:'Готов',numberCount:2,numbers:[{number:'+7 999 888-22-11',status:'active'},{number:'+7 999 888-22-12',status:'active'}],active:true},
  {name:'Резервный · UIS',registration:'Не зарегистрирован',ready:'Нет связи',numberCount:0,active:false}
  ],
  staff:[
@@ -69,6 +69,6 @@ function render(){
  document.querySelectorAll('[data-action]').forEach(btn=>btn.addEventListener('click',()=>btn.dataset.action==='invite'?openInvite({organization:{legal_name:org}}):reviewAction(btn.dataset.action)));
  document.querySelectorAll('[data-ux-open]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();detail=link.dataset.uxOpen;render()}));
  document.querySelectorAll('.ux-backlink').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();detail=null;render()}));
- hydrate(document.querySelector('#review-root'));wireSectionUI({trunk:detail==='trunk'?demo.trunkDetail:null,organization:{verification_status:'verified'}});
+ hydrate(document.querySelector('#review-root'));wireSectionUI({trunk:detail==='trunk'?demo.trunkDetail:null,trunks:scenario==='populated'?demo.trunks:[],organization:{verification_status:'verified'}});
 }
 render();
