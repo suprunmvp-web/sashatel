@@ -130,3 +130,20 @@
 .platform .ux-review-dock button{padding:6px 8px}
 .platform .ux-review-dock>span{font-size:10px}
 @media(max-width:768px){.platform .ux-review-dock{width:45px;left:10px;padding:5px;justify-content:center}.platform .ux-review-dock>span{display:none}.platform .ux-review-dock button{font-size:0;width:31px;height:29px;padding:0}.platform .ux-review-dock button::after{content:'◉';font-size:13px}}
+
+.platform .ux-preview-dialog{width:min(460px,calc(100vw - 32px));max-height:calc(100svh - 32px);border:1px solid var(--line);border-radius:13px;padding:0;background:var(--surface);color:var(--fg);box-shadow:0 18px 70px #0003}
+.platform .ux-preview-dialog::backdrop{background:#0007;backdrop-filter:blur(2px)}
+.platform .ux-preview-form{display:block;padding:24px}
+.platform .ux-dialog-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:24px}
+.platform .ux-dialog-header h2{font:600 19px/1.3 var(--font);letter-spacing:-.035em;margin:0 0 7px}
+.platform .ux-dialog-header p{font-size:12px;color:var(--sub);line-height:1.6;margin:0}
+.platform .ux-dialog-close{width:30px;height:30px;display:grid;place-items:center;flex:none;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--sub);cursor:pointer}
+.platform .ux-dialog-close:hover{background:var(--hover);color:var(--fg)}
+.platform .ux-dialog-close [data-icon]{width:17px;height:17px}
+.platform .ux-preview-fields{display:grid;gap:15px}
+.platform .ux-form-field{display:grid;gap:7px;font:500 12px var(--font);color:var(--fg)}
+.platform .ux-form-field input{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:13px var(--font);height:40px;padding:9px 12px;outline:none}
+.platform .ux-form-field input:focus{border-color:var(--fg);box-shadow:0 0 0 2px color-mix(in srgb,var(--fg) 8%,transparent)}
+.platform .ux-dialog-footer{border-top:1px solid var(--line);margin-top:23px;padding-top:16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.platform .ux-dialog-footer>span{font:11px/1.5 var(--font);color:var(--sub);max-width:220px}
+@media(max-width:520px){.platform .ux-preview-form{padding:20px}.platform .ux-dialog-footer{align-items:flex-start;flex-direction:column}}
