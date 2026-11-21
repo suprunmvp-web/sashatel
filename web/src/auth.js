@@ -107,6 +107,7 @@ function render() {
   document.body.classList.toggle("auth-verifying", state.page === "verify");
   document.body.classList.toggle("auth-welcome", state.page === "welcome");
   document.body.classList.toggle("auth-lookup", state.page === "lookup");
+  document.body.classList.toggle("auth-confirm", state.page === "confirm");
   document.body.classList.toggle("in-workspace", state.page === "cabinet");
   document.documentElement.dataset.theme =
     state.page === "cabinet" ? savedTheme() : "dark";
