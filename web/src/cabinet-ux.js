@@ -93,6 +93,17 @@ function trunkDetail(ctx={}){
  const information=kv([['SIP-сервер',t.host],['Порт',t.port],['Транспорт',t.transport],['Регистрация',t.registration],['Готовность к вызову',t.ready],['Режим авторизации',t.authType]]);
  return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">SIP-ТРАНК</p><h2>'+escape(t.name)+'</h2><p class="ux-subtitle">Статус подключения и управление Caller ID</p></div>'+pill(t.ready||'Неизвестно',t.ready==='Готов'?'success':'neutral')+'</div><div class="ux-detail-tabs" role="tablist">'+detailTab('management','Управление',true)+detailTab('numbers','Номера')+detailTab('information','Информация')+'</div><div class="ux-detail-panel" data-ux-detail-panel="management">'+management+'</div><div class="ux-detail-panel" data-ux-detail-panel="numbers" hidden>'+numbers+'</div><div class="ux-detail-panel" data-ux-detail-panel="information" hidden>'+information+'</div>');
 }
+function profile(ctx={}){
+ const a=ctx.account||{};
+ return shell('<div class="ux-headline"><p class="ux-subtitle">Данные вашего аккаунта SashaTel</p></div><section class="ux-section">'+heading('Личная информация','Используется при входе и работе в организациях')+kv([['Имя',a.first_name],['Фамилия',a.last_name],['Email',a.email],['Телефон',a.phone]])+'</section><p class="ux-footnote">Изменение почты и пароля требует подтверждения владельцем аккаунта. Телефон не используется как способ входа.</p>');
+}
+function security(){
+ return shell('<div class="ux-headline"><p class="ux-subtitle">Управление доступом к аккаунту</p></div><section class="ux-section">'+heading('Безопасность аккаунта','Доступ к SashaTel и активным сессиям')+'<div class="ux-settings-row"><div><strong>Пароль</strong><p>Изменение пароля доступно через подтверждение по электронной почте.</p></div></div><div class="ux-settings-row"><div><strong>Текущая сессия</strong><p>При выходе доступ к личному кабинету на этом устройстве завершится.</p></div><button type="button" class="ux-button ux-button-secondary" data-action="logout">Выйти из аккаунта</button></div></section>');
+}
+function organization(ctx={}){
+ const o=ctx.organization||{};
+ return shell('<div class="ux-headline"><p class="ux-subtitle">Реквизиты и состояние организации</p>'+pill(o.verification_status==='verified'?'Верифицирована':'Не верифицирована',o.verification_status==='verified'?'success':'neutral')+'</div><section class="ux-section">'+heading('Реквизиты','Используются для документооборота и подключения услуг')+kv([['Название',o.legal_name],['ИНН',o.inn],['Роль в организации',o.role==='owner'?'Владелец':o.role==='admin'?'Администратор':'Сотрудник']])+'</section><p class="ux-footnote">Изменение юридических реквизитов после проверки требует подтверждения SashaTel.</p>');
+}
 export function sectionUI(page,ctx={}){
  if(ctx.admin)return page==='overview'?adminOverview(ctx.adminData):page==='employees'?listPage('Команда SashaTel','Управление внутренними сотрудниками',['Сотрудник','Email','Роль'],'Сотрудников пока нет','Назначения появятся после подключения внутреннего API.','',''):null;
  if(page==='statistics')return stats(ctx.stats);
@@ -101,6 +112,9 @@ export function sectionUI(page,ctx={}){
  if(page==='employees')return employees(ctx.employees);
  if(page==='integrations')return integrations(ctx.integrations);
  if(page==='billing')return billing(ctx.billing);
+ if(page==='profile')return profile(ctx);
+ if(page==='security')return security();
+ if(page==='organization')return organization(ctx);
  return null;
 }
 export function wireSectionUI(){
