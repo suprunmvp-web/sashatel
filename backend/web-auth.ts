@@ -53,7 +53,7 @@ function profile(input:Record<string,unknown>) {
     return result;
   };
   if(typeof input.email!=='string'||input.email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) throw new ApiError(422,'INVALID_EMAIL');
-  if(typeof input.password!=='string'||[...input.password].length<12||[...input.password].length>128||Buffer.byteLength(input.password)>512) throw new ApiError(422,'INVALID_PASSWORD');
+  if(typeof input.password!=='string'||[...input.password].length<8||[...input.password].length>128||Buffer.byteLength(input.password)>512) throw new ApiError(422,'INVALID_PASSWORD');
   if(typeof input.phone!=='string'||!/^\+[0-9 ()-]+$/.test(input.phone)||input.phone.length>40) throw new ApiError(422,'INVALID_PHONE');
   const phone=parsePhoneNumberFromString(input.phone.replace(/[ ()-]/g,''));
   if(!phone?.isValid()) throw new ApiError(422,'INVALID_PHONE');
