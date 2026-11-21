@@ -40,7 +40,17 @@ test('organization review: duplicates, staff gate, verified-only uniqueness and 
  const approved=await auth.reviewOrganization(ctx,a,decision);
  assert.equal((approved.body as any).verification_status,'verified');
  await assert.rejects(auth.reviewOrganization(ctx,b,decision),error('VERIFIED_ORGANIZATION_EXISTS'));
- await assert.rejects(insert(c),error('23505'));
+ await insert(c); // DB permits unverified duplicates; API rejects new claims.
+ await assert.rejects(
+   admin.query("UPDATE control.organizations SET verification_status='verified' WHERE id=$1",[c]),
+   error('23505'),
+ );
+ const lookup=randomUUID();
+ await admin.query(
+  "INSERT INTO web_auth.lookups(id,user_id,inn,legal_name,legal_address,expires_at) VALUES($1,$2,$3,$4,$5,clock_timestamp()+interval '10 minutes')",
+  [lookup,user.id,inn,'ООО Тест','Москва'],
+ );
+ await assert.rejects(auth.createOrganization(ctx,{lookup_id:lookup,confirm:true},randomUUID()),error('ORGANIZATION_ALREADY_EXISTS'));
  const rejected=await auth.reviewOrganization(ctx,b,{decision:'rejected',evidence_reference:'document-check-124',explanation:'Полномочия заявителя не подтверждены'});
  assert.equal((rejected.body as any).verification_status,'rejected');
  const {rows:reviews}=await admin.query("SELECT outcome,evidence_reference FROM web_auth.organization_reviews WHERE organization_id=ANY($1::uuid[]) ORDER BY recorded_at",[ [a,b] ]);
@@ -50,5 +60,5 @@ test('organization review: duplicates, staff gate, verified-only uniqueness and 
  await admin.query("UPDATE web_auth.internal_staff SET active=false WHERE user_id=$1",[user.id]);
  await assert.rejects(auth.internalOrganizations(ctx),error('INTERNAL_ACCESS_DENIED'));
  await admin.query("DELETE FROM web_auth.organization_reviews WHERE organization_id=ANY($1::uuid[])",[[a,b]]);
- await admin.query("DELETE FROM control.organizations WHERE id=ANY($1::uuid[])",[[a,b]]);
+ await admin.query("DELETE FROM control.organizations WHERE id=ANY($1::uuid[])",[[a,b,c]]);
 });
