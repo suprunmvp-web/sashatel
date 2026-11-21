@@ -69,6 +69,9 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/auth/email/verify':result=await auth.verify(ctx,body);break;
         case '/v1/auth/email/complete':result=await auth.complete(ctx);break;
         case '/v1/auth/email/resend':result=await auth.resend(ctx,body,key);break;
+        case '/v1/auth/password/reset/request':result=await auth.requestPasswordReset(ctx,body);break;
+        case '/v1/auth/password/reset/verify':result=await auth.verifyPasswordReset(ctx,body);break;
+        case '/v1/auth/password/reset/complete':result=await auth.completePasswordReset(ctx,body);break;
         case '/v1/auth/login':result=await auth.login(ctx,body);break;
         case '/v1/auth/refresh':result=await auth.refresh(ctx);break;
         case '/v1/auth/logout':result=await auth.logout(ctx);break;
