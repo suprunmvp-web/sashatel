@@ -1,3 +1,4 @@
+import {testCallBlock,openTestCall,openInvite} from './interaction-flows.js';
 // SashaTel Web UI v2: intentional zero-data states. No fixtures or fabricated account metrics.
 const escape = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=(name)=>'<span class="ux-icon" aria-hidden="true">'+({chart:'▥',phone:'↗',users:'♙',link:'⇄',invoice:'▤',server:'▣',spark:'✦',arrow:'→'}[name]||'·')+'</span>';
@@ -52,9 +53,9 @@ function trunks(data=[],ctx={}){
  });
  return shell(sectionHeading('Управление исходящими SIP-подключениями',action('Создать транк','trunk',true))+'<section class="ux-section ux-list">'+table(['Транк','Подключение','Номера','Состояние'],rows,'Транков пока нет')+(rows.length?'':hint('Транков пока нет','Создайте первый SIP-транк, чтобы подключить исходящую телефонию.'))+'</section>');
 }
-function employees(data=[]){
+function employees(data=[],ctx={}){
  const rows=data.map(e=>[escape(e.name),escape(e.email),pill(e.role||'Сотрудник'),pill(e.presence||'Не в сети',e.presence==='В сети'?'success':e.presence==='На линии'?'warning':'neutral')]);
- return shell(sectionHeading('Управление доступом и рабочими местами сотрудников',action('Пригласить сотрудника','invite',true))+'<section class="ux-section ux-list">'+table(['Сотрудник','Email','Роль','Присутствие'],rows,'Сотрудников пока нет')+(rows.length?'':hint('Пригласите команду','Сотрудники смогут войти в Desktop и совершать звонки с назначенным транком.'))+'</section>');
+ return shell(sectionHeading('Менеджеры входят в Desktop под своими аккаунтами',action('Пригласить сотрудника','invite',true))+'<section class="ux-section ux-list">'+table(['Сотрудник','Email','Роль','Присутствие'],rows,'Сотрудников пока нет')+(rows.length?'':hint('Пригласите команду','Сотрудники смогут войти в Desktop и совершать звонки с назначенным транком.'))+'</section>');
 }
 function integrations(data=[]){
  const integrations=[['amoCRM','CRM'],['Битрикс24','CRM'],['Webhook / API','Для разработчиков']];
@@ -98,7 +99,7 @@ function trunkDetail(ctx={}){
  const numberRows=numberRowsFor(t.numbers||[],'active');
  const numbers='<div class="ux-detail-toolbar"><div class="ux-segment" role="group" aria-label="Фильтр номеров"><button type="button" data-ux-number="active" aria-pressed="true">Активные</button><button type="button" data-ux-number="passive" aria-pressed="false">Пассивные</button></div></div><div id="ux-numbers-table">'+table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],numberRows,'Нет номеров в выбранной группе')+'</div><script type="application/json" id="ux-numbers-data">'+JSON.stringify(t.numbers||[]).replace(/</g,'\\u003c')+'</script>';
  const information=kv([['SIP-сервер',t.host],['Порт',t.port],['Транспорт',t.transport],['Регистрация',t.registration],['Готовность к вызову',t.ready],['Режим авторизации',t.authType]]);
- return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">SIP-ТРАНК</p><div class="ux-title-line"><h2>'+escape(t.name)+'</h2>'+pill(t.ready||'Неизвестно',t.ready==='Готов'?'success':'neutral')+'</div><p class="ux-subtitle">Статус подключения и номера для исходящих звонков</p></div></div><div class="ux-detail-tabs" role="tablist">'+detailTab('management','Управление',true)+detailTab('numbers','Номера')+detailTab('information','Информация')+'</div><div class="ux-detail-panel" data-ux-detail-panel="management">'+management+'</div><div class="ux-detail-panel" data-ux-detail-panel="numbers" hidden>'+numbers+'</div><div class="ux-detail-panel" data-ux-detail-panel="information" hidden>'+information+'</div>');
+ return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">SIP-ТРАНК</p><div class="ux-title-line"><h2>'+escape(t.name)+'</h2>'+pill(t.ready||'Неизвестно',t.ready==='Готов'?'success':'neutral')+'</div><p class="ux-subtitle">Статус подключения и номера для исходящих звонков</p></div><div class="ux-call-actions">'+testCallBlock({trunk:t,organization:ctx.organization||{}})+'</div></div><div class="ux-detail-tabs" role="tablist">'+detailTab('management','Управление',true)+detailTab('numbers','Номера')+detailTab('information','Информация')+'</div><div class="ux-detail-panel" data-ux-detail-panel="management">'+management+'</div><div class="ux-detail-panel" data-ux-detail-panel="numbers" hidden>'+numbers+'</div><div class="ux-detail-panel" data-ux-detail-panel="information" hidden>'+information+'</div>');
 }
 function profile(ctx={}){
  const a=ctx.account||{};
@@ -116,7 +117,7 @@ export function sectionUI(page,ctx={}){
  if(page==='statistics')return stats(ctx.stats);
  if(page==='history')return ctx.details?callDetail(ctx):history(ctx.history,ctx);
  if(page==='trunks')return ctx.details?trunkDetail(ctx):trunks(ctx.trunks,ctx);
- if(page==='employees')return employees(ctx.employees);
+ if(page==='employees')return employees(ctx.employees,ctx);
  if(page==='integrations')return integrations(ctx.integrations);
  if(page==='billing')return billing(ctx.billing);
  if(page==='profile')return profile(ctx);
@@ -124,7 +125,9 @@ export function sectionUI(page,ctx={}){
  if(page==='organization')return organization(ctx);
  return null;
 }
-export function wireSectionUI(){
+export function wireSectionUI(ctx={}){
+ document.querySelectorAll('[data-test-call]').forEach(btn=>btn.addEventListener('click',()=>openTestCall({trunk:ctx.trunk||{},organization:ctx.organization||{},startCall:ctx.startCall||null,onCallComplete:ctx.onCallComplete||null})));
+
  const numbersPayload=document.querySelector('#ux-numbers-data')?.textContent;
  if(numbersPayload)document.querySelectorAll('[data-ux-number]').forEach(button=>button.addEventListener('click',()=>{const status=button.dataset.uxNumber;document.querySelectorAll('[data-ux-number]').forEach(el=>el.setAttribute('aria-pressed',String(el===button)));document.querySelector('#ux-numbers-table').innerHTML=table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],numberRowsFor(JSON.parse(numbersPayload),status),'Нет номеров в выбранной группе');}));
 
