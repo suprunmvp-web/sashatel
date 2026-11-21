@@ -59,6 +59,11 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
   },
   async openOrganization(id){const result=await request('/session/organization',{body:{organization_id:id,expected_context_epoch:context?.context_epoch??null}});context=result.context;return {organization:context.organization};},
   async logout(){generation++;await request('/auth/logout',{body:{}});invalidate();},
+  async internalSession(){return request('/internal/session');},
+  async internalOrganizations(){return (await request('/internal/organizations')).items;},
+  async reviewOrganization(organization_id,decision,evidence_reference,explanation){
+    return request('/internal/organizations/review',{body:{organization_id,decision,evidence_reference,explanation}});
+  },
   async organizations(){return (await request('/organizations')).items;},
   get account(){return account;},get context(){return context;},
  };
