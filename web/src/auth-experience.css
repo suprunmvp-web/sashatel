@@ -615,3 +615,23 @@ body.auth-confirm:not(.platform) main:not(.workspace) {
   .confirm-card { padding: 21px; }
   .confirm-details { gap: 15px; }
 }
+
+
+/* A visible way out of the verification step without another API call. */
+.verify-screen { position: relative; }
+.verify-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  color: #aaaab3;
+  padding: 7px 0;
+  margin: 0 0 22px;
+  font: 500 12px/1.4 var(--font);
+  cursor: pointer;
+}
+.verify-back span { font: 20px/1 var(--font); }
+.verify-back:hover { color: #f2f2f5; }
+.verify-back:focus-visible { outline: 2px solid #e8c547; outline-offset: 5px; border-radius: 4px; }
+.verify-actions p:last-child { margin-top: 12px; }
