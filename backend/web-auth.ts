@@ -287,7 +287,7 @@ export class WebAuth {
   async requestPasswordReset(ctx:Context,input:Record<string,unknown>) {
     exact(input,['email']);
     const email=required(input,'email',254).trim().toLowerCase();
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new ApiError(422,'INVALID_EMAIL');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(422,'INVALID_EMAIL');
     return this.tx(ctx,async db=>{
       // The result is identical whether or not the account exists.
       await this.limit(db,'password-reset-browser:'+hash(ctx.browser),6,3600);
@@ -323,7 +323,7 @@ export class WebAuth {
     exact(input,['email','code']);
     const email=required(input,'email',254).trim().toLowerCase();
     const code=required(input,'code',6);
-    if(!/^\\d{6}$/.test(code)) throw new ApiError(400,'CODE_INVALID_OR_EXPIRED');
+    if(!/^\d{6}$/.test(code)) throw new ApiError(400,'CODE_INVALID_OR_EXPIRED');
     return this.tx(ctx,async db=>{
       await this.limit(db,'password-reset-verify:'+hash(ctx.browser),20,3600);
       const {rows:[row]}=await db.query(
