@@ -11,7 +11,7 @@ await cp(root+'src/auth-layout.css',out+'/assets/auth-layout.css');
 await cp(root+'../brandbook/onboarding/phone.js',out+'/assets/phone.js');
 await cp(root+'../brandbook/onboarding/countries.js',out+'/assets/countries.js');
 const enablePreview=process.env.SASHA_ENABLE_PREVIEW==='1';
-if(enablePreview)await cp(root+'../brandbook/onboarding/preview-api.js',out+'/assets/preview-api.js');
+if(enablePreview){await cp(root+'../brandbook/onboarding/preview-api.js',out+'/assets/preview-api.js');await cp(root+'review/ui-review.html',out+'/ui-review.html');await cp(root+'review/ui-review.js',out+'/assets/ui-review.js');await cp(root+'review/ui-review.css',out+'/assets/ui-review.css');}
 else await rm(out+'/assets/preview-api.js',{force:true});
 await cp(root+'../assets/sashatel-symbol.svg',out+'/assets/sashatel-symbol.svg');
 await cp(root+'../assets/sashatel-lock.svg',out+'/assets/lock.svg');
