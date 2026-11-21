@@ -392,3 +392,121 @@ body:not(.platform) .verify-form .otp-input:focus-visible {
   .verify-form .otp-field { width: min(100%, 282px); }
   .verify-actions { font-size: 13px; }
 }
+
+/* Organization onboarding: clear primary path, invitation as secondary guidance. */
+body.auth-welcome:not(.platform) main:not(.workspace) {
+  width: min(calc(100% - 40px), 620px);
+  margin: clamp(30px, 5vh, 60px) auto 52px;
+}
+.welcome-screen { color: var(--fg); }
+.welcome-head { margin-bottom: 32px; }
+.welcome-kicker {
+  margin: 0 0 16px;
+  color: var(--accent);
+  font: 500 11px/1.4 var(--mono);
+  letter-spacing: .07em;
+}
+.welcome-screen .serif {
+  margin: 0 0 18px;
+  font-size: clamp(36px, 6vw, 51px);
+  line-height: 1.09;
+  letter-spacing: -.045em;
+}
+.welcome-description {
+  max-width: 530px;
+  color: var(--sub);
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0;
+}
+.welcome-primary {
+  border: 1px solid #39393f;
+  background: #141416;
+  border-radius: 15px;
+  padding: clamp(20px, 4vw, 28px);
+}
+.welcome-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 17px;
+  color: #e7e7eb;
+  background: #232328;
+  border: 1px solid #35353a;
+  border-radius: 11px;
+}
+.welcome-card-icon [data-icon],
+.welcome-invite-copy [data-icon] { display: inline-flex; width: 21px; height: 21px; }
+.welcome-primary h2 {
+  color: var(--fg);
+  font-size: 19px;
+  letter-spacing: -.025em;
+  font-weight: 600;
+  margin: 0 0 9px;
+}
+.welcome-primary > p:not(.welcome-card-caption) {
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 0 0 21px;
+  max-width: 470px;
+}
+body.auth-welcome:not(.platform) .welcome-create {
+  display: flex;
+  width: 100%;
+  border-radius: 10px;
+  min-height: 47px;
+  margin: 0;
+  font-size: 13px;
+}
+.welcome-card-caption {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--sub);
+}
+.welcome-invite {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 21px 3px 0;
+}
+.welcome-invite-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+}
+.welcome-invite-copy > span {
+  display: inline-flex;
+  flex: none;
+  color: #9b9ba5;
+  margin-top: 2px;
+}
+.welcome-invite-copy p {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.welcome-invite-copy strong { color: var(--fg); font-weight: 550; }
+.welcome-invite-copy .email { font-weight: 500; overflow-wrap: anywhere; }
+.welcome-invite-action { flex: none; color: var(--fg); padding: 0; min-height: 25px; text-decoration: underline; text-underline-offset: 3px; }
+.welcome-logout {
+  display: block;
+  margin: 35px auto 0;
+  color: var(--sub);
+  padding: 4px 0;
+  font-size: 12px;
+  min-height: 30px;
+}
+@media(max-width:480px) {
+  .welcome-head { margin-bottom: 23px; }
+  .welcome-screen .serif { font-size: 36px; }
+  .welcome-primary { padding: 19px; }
+  .welcome-invite { flex-direction: column; gap: 9px; }
+  .welcome-invite-action { margin-left: 32px; }
+}
