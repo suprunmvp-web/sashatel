@@ -1,4 +1,4 @@
-import {testCallBlock,openTestCall,openInvite} from './interaction-flows.js';
+import {testCallBlock,openTestCall,openEmployeeAccess} from './interaction-flows.js';
 // SashaTel Web UI v2: intentional zero-data states. No fixtures or fabricated account metrics.
 const escape = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=(name)=>'<span class="ux-icon" aria-hidden="true">'+({chart:'▥',phone:'↗',users:'♙',link:'⇄',invoice:'▤',server:'▣',spark:'✦',arrow:'→'}[name]||'·')+'</span>';
@@ -54,8 +54,9 @@ function trunks(data=[],ctx={}){
  return shell(sectionHeading('Управление исходящими SIP-подключениями',action('Создать транк','trunk',true))+'<section class="ux-section ux-list">'+table(['Транк','Подключение','Номера','Состояние'],rows,'Транков пока нет')+(rows.length?'':hint('Транков пока нет','Создайте первый SIP-транк, чтобы подключить исходящую телефонию.'))+'</section>');
 }
 function employees(data=[],ctx={}){
- const rows=data.map(e=>[escape(e.name),escape(e.email),pill(e.role||'Сотрудник'),pill(e.presence||'Не в сети',e.presence==='В сети'?'success':e.presence==='На линии'?'warning':'neutral')]);
- return shell(sectionHeading('Менеджеры входят в Desktop под своими аккаунтами',action('Пригласить сотрудника','invite',true))+'<section class="ux-section ux-list">'+table(['Сотрудник','Email','Роль','Присутствие'],rows,'Сотрудников пока нет')+(rows.length?'':hint('Пригласите команду','Сотрудники смогут войти в Desktop и совершать звонки с назначенным транком.'))+'</section>');
+ const rows=data.map((e,i)=>[escape(e.name||'—'),escape(e.email||'—'),pill(e.role||'Сотрудник'),pill(e.presence||'Не в сети',e.presence==='В сети'?'success':e.presence==='На линии'?'warning':'neutral'),'<button class="ux-table-action" type="button" data-employee-index="'+i+'" aria-label="Управлять доступом: '+escape(e.name||e.email||'Сотрудник')+'"><span data-icon="ellipsis"></span></button>']);
+ const payload='<script type="application/json" id="ux-employees-data">'+JSON.stringify(data.map(e=>({id:e.id||null,name:e.name||'',email:e.email||'',role:e.role||'Сотрудник',presence:e.presence||'Не в сети'}))).replace(/</g,'\\u003c')+'</script>';
+ return shell(sectionHeading('Доступ в Desktop и права сотрудников',action('Пригласить сотрудника','invite',true))+'<section class="ux-section ux-list">'+table(['Сотрудник','Email','Роль','Присутствие',''],rows,'Сотрудников пока нет')+payload+(rows.length?'':hint('Команда ещё не приглашена','Пригласите сотрудников по рабочим email — каждый самостоятельно задаст пароль для Desktop.'))+'</section>');
 }
 function integrations(data=[]){
  const integrations=[['amoCRM','CRM'],['Битрикс24','CRM'],['Webhook / API','Для разработчиков']];
@@ -126,6 +127,9 @@ export function sectionUI(page,ctx={}){
  return null;
 }
 export function wireSectionUI(ctx={}){
+ const employeesRaw=document.querySelector('#ux-employees-data')?.textContent;
+ if(employeesRaw){const employees=JSON.parse(employeesRaw);document.querySelectorAll('[data-employee-index]').forEach(btn=>btn.addEventListener('click',()=>openEmployeeAccess({employee:employees[Number(btn.dataset.employeeIndex)],updateRole:ctx.updateRole||null})));}
+
  document.querySelectorAll('[data-test-call]').forEach(btn=>btn.addEventListener('click',()=>openTestCall({trunk:ctx.trunk||{},organization:ctx.organization||{},startCall:ctx.startCall||null,onCallComplete:ctx.onCallComplete||null})));
 
  const numbersPayload=document.querySelector('#ux-numbers-data')?.textContent;
