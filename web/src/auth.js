@@ -28,6 +28,26 @@ const esc = (value) =>
         char
       ],
   );
+// Presentation-only OПФ abbreviation; retain full DaData name for API and persistence.
+const displayLegalName = (name) => {
+  const full = String(name ?? "").trim();
+  const forms = [
+    [/^Индивидуальный предприниматель\s+/iu, "ИП "],
+    [/^Общество с ограниченной ответственностью\s+/iu, "ООО "],
+    [/^Публичное акционерное общество\s+/iu, "ПАО "],
+    [/^Непубличное акционерное общество\s+/iu, "АО "],
+    [/^Акционерное общество\s+/iu, "АО "],
+    [/^Закрытое акционерное общество\s+/iu, "ЗАО "],
+    [/^Открытое акционерное общество\s+/iu, "ОАО "],
+    [/^Автономная некоммерческая организация\s+/iu, "АНО "],
+    [/^Некоммерческое партнерство\s+/iu, "НП "],
+    [/^Потребительский кооператив\s+/iu, "ПК "],
+  ];
+  for (const [pattern, short] of forms) {
+    if (pattern.test(full)) return full.replace(pattern, short);
+  }
+  return full;
+};
 const icon = (name) => `<span data-icon="${name}"></span>`;
 const button = (text, action, secondary = false) =>
   `<button type="button" class="button ${secondary ? "secondary" : ""}" data-action="${action}">${text}</button>`;
@@ -114,7 +134,7 @@ function render() {
       html = `<section class="lookup-screen" aria-labelledby="lookup-heading"><div class="lookup-emblem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-3v17M12 8l7 3v10M8 10h1M8 13h1M8 16h1M15 13h1M15 16h1"/></svg></div><p class="eyebrow">НОВАЯ ОРГАНИЗАЦИЯ</p><h1 id="lookup-heading" tabindex="-1">Найдём вашу компанию</h1><p class="lookup-intro">Введите ИНН организации или ИП. Реквизиты проверим перед созданием кабинета.</p><form novalidate data-form="lookup">${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="7707083893" aria-describedby="inn-hint"')}<span class="hint" id="inn-hint">10 цифр для организации, 12 — для ИП</span><button class="button" type="submit">Найти организацию</button></form><button class="text-button lookup-back" data-action="welcome">Назад</button></section>`;
       break;
     case "confirm":
-      html = `<div class="eyebrow">ПОДТВЕРЖДЕНИЕ РЕКВИЗИТОВ</div><h1 tabindex="-1">Это ваша организация?</h1><p>Кабинет будет создан для юридического лица ниже.</p><dl class="summary"><dt>Юридическое название</dt><dd>${esc(state.lookup.legal_name)}</dd><dt>ИНН</dt><dd class="mono">${esc(state.lookup.inn)}</dd><dt>Адрес</dt><dd>${esc(state.lookup.legal_address)}</dd></dl><p class="hint">Вы станете единственным Владельцем. Проверка организации и подключение телефонии выполняются отдельно.</p><div class="actions">${button("Создать кабинет", "create")}${button("Изменить ИНН", "lookup", true)}</div><button class="text-button" data-action="welcome">Отмена</button>`;
+      html = `<section class="confirm-screen" aria-labelledby="confirm-heading"><div class="confirm-heading"><p class="confirm-step">ПОЧТИ ГОТОВО</p><h1 id="confirm-heading" class="serif" tabindex="-1">Подтвердите<br><em>организацию.</em></h1><p class="confirm-intro">Проверьте данные перед созданием кабинета.</p></div><section class="confirm-card" aria-label="Реквизиты организации"><div class="confirm-identity"><span class="confirm-company-label">ВАША ОРГАНИЗАЦИЯ</span><h2>${esc(displayLegalName(state.lookup.legal_name))}</h2></div><dl class="confirm-details"><div><dt>ИНН</dt><dd class="mono">${esc(state.lookup.inn)}</dd></div><div><dt>Юридический адрес</dt><dd>${esc(state.lookup.legal_address)}</dd></div></dl></section><p class="confirm-owner-note">Вы станете владельцем кабинета. Телефонию подключим отдельно после проверки организации.</p><div class="confirm-actions">${button("Создать организацию", "create")}<button type="button" class="text-button" data-action="lookup">Изменить ИНН</button></div></section>`;
       break;
     case "cabinet":
       html = `<div class="workspace-header"><div><div class="eyebrow">КАБИНЕТ ОРГАНИЗАЦИИ</div><h1 tabindex="-1">${esc(state.organization.legal_name)}</h1><div class="meta"><span>ИНН <span class="mono">${esc(state.organization.inn)}</span></span><span>${esc(state.name)} · Владелец</span></div></div><div class="workspace-controls"><button class="icon-button" data-action="theme" aria-label="Переключить тему">${icon(document.documentElement.dataset.theme === "dark" ? "sun" : "moon")}</button><button class="text-button" data-action="logout">Выйти</button></div></div><div class="warning">Организация не верифицирована. Телефония выключена.</div><section class="empty"><h2>Здесь начинается работа команды</h2><p>Звонков пока нет. После подключения телефонии и первого звонка здесь появятся данные организации.</p><p class="hint">Подключение телефонии будет доступно на следующем этапе.</p></section>`;
