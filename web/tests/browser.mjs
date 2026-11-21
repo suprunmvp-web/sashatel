@@ -17,6 +17,7 @@ try{
  await page.getByLabel('Почта',{exact:true}).fill(email);
  await page.getByLabel('Номер телефона',{exact:true}).fill('9261234567');
  await page.locator('[name=password]').fill('integration-password-123');
+ await page.locator('[name=repeat_password]').fill('integration-password-123');
  await page.locator('[name=terms]').check();
  let registerBody;page.on('request',r=>{if(r.url().endsWith('/v1/auth/register'))registerBody=JSON.parse(r.postData());});
  await page.getByRole('button',{name:'Зарегистрироваться',exact:true}).click();await heading(page,'Подтвердите вашу почту');
