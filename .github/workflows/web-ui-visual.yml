@@ -1,0 +1,45 @@
+name: SashaTel Web UI visual review
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-ui-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Playwright
+        run: |
+          npm ci --ignore-scripts --prefix brandbook/onboarding
+          cd brandbook/onboarding
+          npx playwright install --with-deps chromium
+      - name: Build isolated UI review
+        run: SASHA_ENABLE_PREVIEW=1 node web/build.mjs
+      - name: Start Web
+        run: |
+          node web/serve.mjs > /tmp/sashatel-review-server.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:4174/ui-review.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/sashatel-review-server.log
+          exit 1
+      - name: Visual acceptance
+        run: node web/tests/visual-review.mjs
+        env:
+          EVIDENCE_DIR: web-ui-review-evidence
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sashatel-web-ui-v2
+          path: web-ui-review-evidence/
+          if-no-files-found: warn
