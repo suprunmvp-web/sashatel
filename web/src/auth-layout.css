@@ -26,3 +26,97 @@ body.auth-shell .company-locked-input textarea { padding-top:12px; padding-botto
 body.auth-shell .company-lock-icon { position:absolute; right:15px; top:50%; transform:translateY(-50%); width:20px; height:20px; pointer-events:none; opacity:.9; }
 @media(max-height:700px){body.auth-shell #content:not(.workspace){margin-top:26px!important;margin-bottom:32px!important}}
 @media(max-width:600px){body.auth-shell #content:not(.workspace){margin-top:clamp(20px,5svh,48px)!important;margin-bottom:36px!important}}
+
+/* Stable centered layout for all real auth/onboarding screens.
+   The header remains at its own fixed position; content starts from one
+   consistent baseline and long forms scroll without viewport jumping. */
+body.auth-shell #content:not(.workspace) {
+  margin: clamp(32px, 8svh, 76px) auto 56px !important;
+  min-width: 0;
+}
+body.auth-shell #content:not(.workspace) > section {
+  min-width: 0;
+  max-width: 100%;
+}
+body.auth-shell #content:not(.workspace) :is(.welcome-screen,.lookup-screen,.verify-screen,.playground-waiting) {
+  width: 100%;
+  text-align: center;
+}
+body.auth-shell #content:not(.workspace):has(.welcome-screen) {
+  width: min(calc(100% - 48px), 900px) !important;
+  max-width: 900px !important;
+}
+body.auth-shell .welcome-head { text-align: center; margin-inline: auto; }
+body.auth-shell .welcome-description { margin-inline: auto; }
+body.auth-shell .welcome-screen .serif {
+  font-size: clamp(34px, 4.2vw, 54px);
+  line-height: 1.14;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+body.auth-shell .playground-welcome-choices {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  width: min(100%, 690px);
+  margin-inline: auto;
+  gap: 18px;
+}
+body.auth-shell .playground-choice {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 300px;
+  text-align: left;
+}
+body.auth-shell .playground-choice .button {
+  margin-top: auto;
+}
+body.auth-shell #content:not(.workspace):has(.lookup-screen) {
+  width: min(calc(100% - 36px), 560px) !important;
+  max-width: 560px !important;
+}
+body.auth-shell .lookup-screen .serif {
+  font: 400 clamp(34px, 3.5vw, 46px)/1.13 Georgia, serif;
+  letter-spacing: -.045em;
+  overflow-wrap: normal;
+  word-break: normal;
+  margin: 0 auto 16px;
+  max-width: 100%;
+}
+body.auth-shell .lookup-screen .serif em { display:inline; }
+body.auth-shell .lookup-screen .lookup-intro { margin-inline:auto; }
+body.auth-shell .lookup-screen .company-lookup-form { text-align:left; width:100%; }
+body.auth-shell .lookup-screen .company-complete { width:100%; }
+body.auth-shell .lookup-screen .inn-control { min-width:0; }
+body.auth-shell .lookup-screen .inn-suggestions { width:100%; max-height:min(290px,40svh); }
+body.auth-shell .lookup-screen .inn-result { min-width:0; }
+body.auth-shell .lookup-screen .inn-result > span:nth-child(2) { flex:1; min-width:0; }
+body.auth-shell .lookup-screen .inn-result strong {
+  display:block; overflow-wrap:anywhere; font-weight:600;
+}
+body.auth-shell .lookup-screen .inn-result small { display:block; }
+body.auth-shell .inn-lookup-status {
+  padding: 16px;
+  color: var(--sub);
+  font: 400 13px/1.5 var(--font);
+  text-align:left;
+}
+body.auth-shell #content:not(.workspace):has(.playground-waiting),
+body.auth-shell #content:not(.workspace):has(.verify-screen) {
+  width: min(calc(100% - 32px), 480px) !important;
+  max-width: 480px !important;
+}
+body.auth-shell .playground-waiting, body.auth-shell .verify-screen { text-align:center; }
+body.auth-shell #content:not(.workspace):has(.recovery-screen) {
+  width: min(calc(100% - 32px), 440px) !important;
+  max-width: 440px !important;
+}
+body.auth-shell .recovery-screen { margin-inline:auto; }
+@media(max-width:600px){
+  body.auth-shell #content:not(.workspace) { margin-top:clamp(20px,5svh,48px)!important; margin-bottom:36px!important; }
+  body.auth-shell #content:not(.workspace):has(.welcome-screen) { width: min(calc(100% - 32px), 440px)!important; }
+  body.auth-shell .playground-welcome-choices { grid-template-columns:1fr; width:min(100%,420px); }
+  body.auth-shell .playground-choice { min-height:240px; }
+  body.auth-shell .welcome-screen .serif { font-size:clamp(31px,8vw,42px); }
+  body.auth-shell .lookup-screen .serif { font-size:clamp(31px,8vw,42px); }
+}
