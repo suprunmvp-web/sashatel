@@ -93,7 +93,7 @@ async function start(){
   const session=await api.resume();account=session?.account;organizations=session?.organizations||[];
   if(!account){await import('./auth.js');return;}
   if(admin){render();return;}
-  if(uuid.test(parts[0]||'')){org=(await api.openOrganization(parts[0])).organization;render();return;}
+  if(uuid.test(parts[0]||'')){org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;render();return;}
   if(session.organization){location.replace('/'+session.organization.id+'/');return;}
   await import('./auth.js');
  }catch(e){document.querySelector('main').innerHTML='<h1>Не удалось открыть платформу</h1><p role="alert">'+esc(e.message)+'</p><button class="button" id="retry">Повторить</button><a href="/login/">Ко входу</a>';document.querySelector('#retry').onclick=()=>location.reload();}
