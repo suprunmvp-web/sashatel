@@ -41,6 +41,7 @@ const ready=async()=>{
   if(role.rolsuper||role.rolbypassrls) throw new Error('Unsafe runtime role');
   await pool.query('SELECT first_name,last_name,phone FROM control.users LIMIT 0');
   await pool.query('SELECT completion_family FROM web_auth.browsers LIMIT 0');
+  await pool.query('SELECT reset_hash FROM web_auth.password_resets LIMIT 0');
   const {rows:[rls]}=await pool.query("SELECT bool_and(relforcerowsecurity) AS enabled FROM pg_class WHERE oid IN ('control.organizations'::regclass,'control.memberships'::regclass)");
   if(!rls.enabled) throw new Error('Tenant RLS required');
   const {rows:[grants]}=await pool.query(`SELECT has_table_privilege(current_user,'web_auth.audit','INSERT') AS append,
