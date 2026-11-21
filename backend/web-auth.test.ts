@@ -186,11 +186,11 @@ test('Web onboarding with real PostgreSQL',async t=>{
       const headers={cookie:signedCookie,origin:'https://platform.example.test','x-csrf-token':csrf_token,'content-type':'application/json'};
       const looked=await fetch(base+'/v1/organizations/lookup',{method:'POST',headers,body:JSON.stringify({inn:'7707083893'})});
       assert.equal(looked.status,200);
-      // This INN belongs to an earlier test. The HTTP route must preserve the stable conflict.
+      // Same INN is allowed while the prior organization remains unverified.
       const lookupReceipt=await looked.json();
       const created=await fetch(base+'/v1/organizations',{method:'POST',headers:{...headers,'idempotency-key':randomUUID()},body:JSON.stringify({lookup_id:lookupReceipt.lookup_id,confirm:true})});
-      assert.equal(created.status,409);
-      assert.equal((await created.json()).code,'ORGANIZATION_ALREADY_EXISTS');
+      assert.equal(created.status,201);
+      assert.equal((await created.json()).organization.verification_status,'unverified');
       const logout=await fetch(base+'/v1/auth/logout',{method:'POST',headers,body:'{}'});
       assert.equal(logout.status,204);
       const login=await fetch(base+'/v1/auth/login',{method:'POST',headers:{...headers,cookie},body:JSON.stringify({email:input.email,password:input.password,device_id:randomUUID()})});
