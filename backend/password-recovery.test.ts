@@ -9,7 +9,8 @@ const db=new pg.Pool({connectionString:process.env.DATABASE_URL});
 const admin=new pg.Pool({connectionString:process.env.TEST_ADMIN_URL});
 const messages=new Map<string,{id:string;email:string;code:string|null;purpose?:string}>();
 const mail:MailPort={async send(message){messages.set(message.email,{...message});}};
-const auth=new WebAuth(db,randomBytes(32),mail,{async lookup(){return null;}});
+const claimedInn='9'+String(Date.now()%1000000000).padStart(9,'0');
+const auth=new WebAuth(db,randomBytes(32),mail,{async lookup(){return null;},async suggest(){return [{inn:claimedInn,legal_name:'ООО Проверка',legal_address:'Москва'}];}});
 const profile={first_name:'Анна',last_name:'Иванова',phone:'+79261234567',password:'starting-long-password-123'};
 const actor=async()=>({browser:await auth.browser(),requestId:randomUUID(),access:undefined as string|undefined,refresh:undefined as string|undefined});
 const codeOf=(error:unknown,name:string)=>error instanceof Error&&'code' in error&&error.code===name;
@@ -24,6 +25,19 @@ test('password reset: generic request, one-time code, password change, session r
  const verified=await auth.verify(ctx,{challenge_id:(reg.body as any).challenge_id,code:confirmation.code});
  ctx.access=verified.cookies!.access;
  ctx.refresh=verified.cookies!.refresh;
+ // A claimed verified INN is exposed as a boolean to the authenticated picker.
+ // An unverified record with the same INN must not create a lock by itself.
+ const firstOrg=randomUUID();
+ await admin.query(
+   'INSERT INTO control.organizations(id,max_calls,inn,legal_name,verification_status) VALUES($1,1,$2,$3,$4)',
+   [firstOrg,claimedInn,'ООО Проверка','unverified'],
+ );
+ const available=await auth.suggestOrganizations(ctx,{query:claimedInn.slice(0,4)});
+ assert.equal((available.body as any).items[0].verified,false);
+ await admin.query("UPDATE control.organizations SET verification_status='verified' WHERE id=$1",[firstOrg]);
+ const claimed=await auth.suggestOrganizations(ctx,{query:claimedInn.slice(0,4)});
+ assert.equal((claimed.body as any).items[0].verified,true);
+ await admin.query('DELETE FROM control.organizations WHERE id=$1',[firstOrg]);
  const unknown=await actor();
  const nonexistent=await auth.requestPasswordReset(unknown,{email:randomUUID()+'@example.test'});
  assert.equal(nonexistent.status,202);
