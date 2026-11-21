@@ -701,80 +701,80 @@ input::placeholder {
 }
 
 /* SashaTel auth refinements: quiet focus, consistent soft corners, flag selector. */
-body:not(.in-workspace) input:not([type="checkbox"]),
-body:not(.in-workspace) select,
-body:not(.in-workspace) .button,
-body:not(.in-workspace) .secondary,
-body:not(.in-workspace) .icon-button {
+body:not(.platform) input:not([type="checkbox"]),
+body:not(.platform) select,
+body:not(.platform) .button,
+body:not(.platform) .secondary,
+body:not(.platform) .icon-button {
   border-radius: 10px;
 }
-body:not(.in-workspace) .phone-row {
+body:not(.platform) .phone-row {
   border-radius: 10px;
   overflow: hidden;
 }
-body:not(.in-workspace) .phone-row:focus-within {
+body:not(.platform) .phone-row:focus-within {
   border-color: #66666e;
   box-shadow: 0 0 0 1px #66666e;
 }
-body:not(.in-workspace) .phone-row input,
-body:not(.in-workspace) .phone-row input:focus,
-body:not(.in-workspace) .phone-row input:focus-visible {
+body:not(.platform) .phone-row input,
+body:not(.platform) .phone-row input:focus,
+body:not(.platform) .phone-row input:focus-visible {
   border: 0;
   border-radius: 0;
   outline: none;
   box-shadow: none;
 }
-body:not(.in-workspace) #country-button {
+body:not(.platform) #country-button {
   font: 500 14px/1 var(--font);
   border-radius: 0;
   min-width: 93px;
   justify-content: space-between;
 }
-body:not(.in-workspace) #country-button:focus-visible {
+body:not(.platform) #country-button:focus-visible {
   outline: 2px solid #8a8a94;
   outline-offset: -3px;
 }
-body:not(.in-workspace) #country-code {
+body:not(.platform) #country-code {
   white-space: nowrap;
 }
-body:not(.in-workspace) #country-picker {
+body:not(.platform) #country-picker {
   border-radius: 12px;
   top: calc(100% + 8px);
 }
-body:not(.in-workspace) .country-option {
+body:not(.platform) .country-option {
   border-radius: 8px;
   align-items: center;
 }
-body:not(.in-workspace) .country-option-name {
+body:not(.platform) .country-option-name {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
 }
-body:not(.in-workspace) .country-flag {
+body:not(.platform) .country-flag {
   font: 21px/1 system-ui, sans-serif;
   flex: none;
 }
-body:not(.in-workspace) .country-dial {
+body:not(.platform) .country-dial {
   color: var(--sub);
   font-family: var(--mono);
   flex: none;
 }
-body:not(.in-workspace) .country-option-name > span:last-child {
+body:not(.platform) .country-option-name > span:last-child {
   color: var(--fg);
   font-family: var(--font);
 }
 
 /* Neutral auth focus: the yellow emphasis belongs to editorial headings, not form fields. */
-body:not(.in-workspace) input:focus-visible,
-body:not(.in-workspace) select:focus-visible,
-body:not(.in-workspace) .button:focus-visible,
-body:not(.in-workspace) .text-button:focus-visible {
+body:not(.platform) input:focus-visible,
+body:not(.platform) select:focus-visible,
+body:not(.platform) .button:focus-visible,
+body:not(.platform) .text-button:focus-visible {
   outline: 2px solid #81818b;
   outline-offset: 2px;
 }
-body:not(.in-workspace) .phone-row:focus-within input:focus-visible {
+body:not(.platform) .phone-row:focus-within input:focus-visible {
   outline: none;
 }
-body:not(.in-workspace) .check input { accent-color: #f5f5f7; }
-body:not(.in-workspace) .legal-term { color: var(--fg); text-decoration: underline; text-decoration-color: #777780; text-underline-offset: 3px; }
+body:not(.platform) .check input { accent-color: #f5f5f7; }
+body:not(.platform) .legal-term { color: var(--fg); text-decoration: underline; text-decoration-color: #777780; text-underline-offset: 3px; }
