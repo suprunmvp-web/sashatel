@@ -48,8 +48,10 @@ export function openTestCall({trunk={},organization={},startCall=null,onCallComp
   form.querySelector('[data-call-phase]').textContent='Соединение';hang.hidden=false;startedAt=Date.now();
   try{
    // Transport owns authenticated signalling, allowed Caller ID selection, recording and termination.
-   session=await startCall({trunkId:trunk.id,phone,stream,onState:state=>{
-    if(dialog.open){form.querySelector('[data-call-phase]').textContent=state==='connected'?'Разговор':state==='ringing'?'Вызов абонента':'Соединение';}
+   session=await startCall({trunkId:trunk.id,phone,stream,onRemoteStream:remote=>{const audio=dialog.querySelector('#ux-remote-audio');if(dialog.open&&audio){audio.srcObject=remote;audio.play().catch(()=>{hint.textContent='Для воспроизведения голоса собеседника разрешите звук в браузере.';});}},onState:state=>{
+    if(!dialog.open)return;
+    form.querySelector('[data-call-phase]').textContent=state==='connected'?'Разговор':state==='ringing'?'Вызов абонента':state==='ended'?'Завершено':state==='failed'?'Не удалось соединиться':'Соединение';
+    if(state==='ended'||state==='failed'){phase='idle';hang.hidden=true;if(state==='ended'){hint.textContent='Разговор завершён. История обновится после обработки звонка.';onCallComplete?.();}else{hint.textContent='Не удалось установить соединение.';notify('Соединение завершилось с ошибкой','error');}release();}
    }});
    phase='active';ticker=setInterval(()=>{if(dialog.open)form.querySelector('[data-call-duration]').textContent=Math.floor((Date.now()-startedAt)/1000)+' c';},1000);
   }catch(err){phase='idle';hang.hidden=true;form.querySelector('.ux-call-session').hidden=true;hint.textContent='Не удалось совершить звонок. Попробуйте ещё раз.';notify('Не удалось установить соединение. '+(err?.message||''),'error');sync();}
