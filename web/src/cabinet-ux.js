@@ -7,7 +7,7 @@ const hint=(title,description,cta='')=>'<div class="ux-empty"><div class="ux-emp
 const shell=(body)=>'<div class="ux-page">'+body+'</div>';
 const row=(cells)=>'<tr>'+cells.map((c,i)=>'<td'+(i?' class="ux-num"':'')+'>'+c+'</td>').join('')+'</tr>';
 const table=(headers,rows,emptyText)=>'<div class="ux-table-viewport"><table class="ux-table"><thead><tr>'+headers.map(h=>'<th>'+escape(h)+'</th>').join('')+'</tr></thead><tbody>'+ (rows.length?rows.map(row).join(''):'<tr><td colspan="'+headers.length+'" class="ux-table-empty">'+escape(emptyText)+'</td></tr>')+'</tbody></table></div>';
-const calendar='<button type="button" class="ux-date" data-ux="calendar" aria-label="Выбрать период"><span aria-hidden="true">▦</span> <span>Выбрать период</span> <span aria-hidden="true">⌄</span></button>';
+const calendar='<div class="ux-date-wrap"><button type="button" class="ux-date" data-ux="calendar" aria-expanded="false" aria-controls="ux-date-panel"><span aria-hidden="true">▦</span> <span class="ux-date-label">Выбрать период</span> <span aria-hidden="true">⌄</span></button><form id="ux-date-panel" class="ux-date-panel" hidden><label>С даты<input type="date" name="from" required></label><label>По дату<input type="date" name="to" required></label><button class="ux-button" type="submit">Применить</button></form></div>';
 const strip='<div class="ux-kpis">'+[['Минуты','0'],['Инициации','0'],['Ответы','0'],['Дозвон','—']].map(([name,value])=>'<div class="ux-kpi"><span>'+name+'</span><strong>'+value+'</strong></div>').join('')+'</div>';
 const statuses=['Дозвон','Автоответчик','Недозвон','Отклонено','Ошибка','Не распознано'];
 const swatches=['#3c9880','#b99555','#858c9b','#bc836f','#bd6a70','#7887b2'];
@@ -57,5 +57,8 @@ export function wireSectionUI(){
   document.querySelectorAll('[data-ux-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
   document.querySelector('#ux-breakdown-table').innerHTML=table([next==='regions'?'Регион':'Сотрудник','Инициации','Ответы','Дозвон'],[],'За выбранный период звонков пока нет');
  }));
- document.querySelectorAll('[data-ux="calendar"]').forEach(b=>b.addEventListener('click',()=>{b.blur();const input=document.querySelector('#ux-date-range');if(input){input.hidden=!input.hidden;input.focus();}else{const el=document.createElement('input');el.id='ux-date-range';el.type='date';el.className='ux-native-date';b.after(el);el.focus();el.showPicker?.();}}));
+ document.querySelectorAll('[data-ux="calendar"]').forEach(b=>b.addEventListener('click',()=>{const panel=document.querySelector('#ux-date-panel');const open=panel.hidden;panel.hidden=!open;b.setAttribute('aria-expanded',String(open));if(open)panel.querySelector('input')?.focus();}));
+ const dateForm=document.querySelector('#ux-date-panel');
+ if(dateForm)dateForm.addEventListener('submit',event=>{event.preventDefault();const from=dateForm.elements.namedItem('from')?.value,to=dateForm.elements.namedItem('to')?.value;if(!from||!to)return;if(from>to){dateForm.elements.namedItem('to').setCustomValidity('Дата окончания должна быть позже даты начала');dateForm.reportValidity();return;}dateForm.elements.namedItem('to').setCustomValidity('');const format=d=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short'});document.querySelectorAll('.ux-date-label').forEach(el=>el.textContent=format(from)+' — '+format(to));dateForm.hidden=true;document.querySelector('[data-ux="calendar"]')?.setAttribute('aria-expanded','false');});
+ dateForm?.querySelector('[name=to]')?.addEventListener('input',event=>event.target.setCustomValidity(''));
 }
