@@ -1,5 +1,4 @@
-# Publish reviewed internal organization verification Backend (merge f953952), no rollout.
-# Release trigger: password recovery and verified-INN suggestions; publication only, no runtime rollout.
+# Publish verified SashaTel Backend on changes to the Backend source; no runtime rollout.
 name: SashaTel Backend — staging image
 
 on:
@@ -9,6 +8,7 @@ on:
       - feature/web-auth-production-20261121
     paths:
       - '.github/workflows/yc-staging-backend-image.yml'
+      - 'backend/**'
   workflow_dispatch:
 
 permissions:
