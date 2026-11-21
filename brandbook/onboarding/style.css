@@ -778,3 +778,50 @@ body:not(.platform) .phone-row:focus-within input:focus-visible {
 }
 body:not(.platform) .check input { accent-color: #f5f5f7; }
 body:not(.platform) .legal-term { color: var(--fg); font-weight: 500; }
+
+/* Auth viewport rhythm: keep registration usable at laptop heights and on small screens. */
+body:not(.platform) .topbar { height: 64px; margin-inline: 20px; }
+body:not(.platform) main:not(.workspace) {
+  width: min(100% - 32px, 440px);
+  margin: clamp(14px, 3.5vh, 34px) auto 48px;
+}
+body:not(.platform) .greeting { font-size: clamp(30px, 3.4vw, 38px); }
+body:not(.platform) .auth-switch { margin-bottom: 20px; }
+body:not(.platform) form { gap: 14px; }
+body:not(.platform) label { gap: 6px; }
+body:not(.platform) input:not([type="checkbox"]) { height: 44px; }
+body:not(.platform) .phone-row { min-height: 44px; }
+body:not(.platform) #country-button { min-height: 44px; }
+body:not(.platform) .consents { gap: 10px; margin-top: 2px; }
+body:not(.platform) .check { gap: 10px; font-size: 12px; line-height: 1.45; }
+body:not(.platform) .check input { accent-color: #dedee2; }
+body:not(.platform) .legal-link {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: #777780;
+  text-underline-offset: 3px;
+}
+body:not(.platform) .legal-link:hover { text-decoration-color: currentColor; }
+body:not(.platform) .legal-note {
+  margin: 2px 0 0;
+  color: var(--sub);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+body:not(.platform) .legal-page { padding-block: 44px; }
+body:not(.platform) .legal-page h1 { font-size: clamp(26px, 4vw, 36px); }
+body:not(.platform) .legal-page p { max-width: 38rem; }
+body:not(.platform) .legal-page a { text-underline-offset: 4px; }
+body:not(.platform) .legal-eyebrow { font: 11px/1.4 var(--mono); letter-spacing: .05em; }
+@media (max-width: 390px) {
+  body:not(.platform) .name-row { grid-template-columns: 1fr; gap: 14px; }
+  body:not(.platform) .greeting { font-size: 30px; }
+}
+@media (max-height: 760px) and (min-width: 391px) {
+  body:not(.platform) main:not(.workspace) { margin-top: 12px; }
+  body:not(.platform) .topbar { height: 56px; }
+  body:not(.platform) .greeting { font-size: 32px; }
+  body:not(.platform) .auth-switch { margin-bottom: 12px; }
+  body:not(.platform) form { gap: 12px; }
+}
