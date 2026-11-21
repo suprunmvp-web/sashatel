@@ -58,7 +58,7 @@ test('Resend generates branded reset email with distinct purpose and 6-digit OTP
       const body=JSON.parse(String(init?.body));
       assert.equal(body.from,'SashaTel <auth@example.test>');
       assert.equal(body.subject,'Сброс пароля SashaTel');
-      assert.match(body.html,/sashatel-symbol\\.svg/);
+      assert(body.html.includes('sashatel-symbol.svg'));
       assert.match(body.html,/SashaTel/);
       assert.match(body.html,/123456/);
       assert.match(body.text,/123456/);
