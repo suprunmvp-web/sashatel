@@ -527,7 +527,7 @@ body.auth-lookup:not(.platform) main:not(.workspace) {
   background: #dceaff;
   color: #2467ed;
 }
-.lookup-emblem svg { width: 32px; height: 32px; }
+.lookup-emblem svg { width: 42px; height: 42px; }
 .lookup-screen .eyebrow {
   color: #a9a9b2;
   font-size: 10px;
