@@ -13,6 +13,8 @@ for(const width of [1440,1024,768,390]){
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base,{waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'Статистика'}).waitFor();
+  const assertIcons=async()=>assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('[data-icon]')].filter(el=>!el.querySelector('svg')).map(el=>el.dataset.icon)),[],'all referenced icons must render');
+  await assertIcons();
   const overflow=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth, offenders:[...document.querySelectorAll('body *')].map(el=>({el,rect:el.getBoundingClientRect()})).filter(o=>o.rect.right>innerWidth+2||o.rect.left< -2).slice(0,15).map(o=>({tag:o.el.tagName,cls:o.el.className?.baseVal||o.el.className,right:Math.round(o.rect.right),left:Math.round(o.rect.left)}))}));
   if(overflow.overflow)console.error('OVERFLOW DIAGNOSTICS',width,theme,JSON.stringify(overflow.offenders));
   await page.screenshot({path:dir+'/'+width+'-'+theme+'-first-frame.png',fullPage:true});
@@ -57,6 +59,7 @@ for(const width of [1440,1024,768,390]){
    await page.locator('[data-nav=employees]').click();
    await page.locator('[data-employee-index="0"]').click();
    await page.getByRole('heading',{name:'Управление доступом'}).waitFor();
+   await assertIcons();
    await page.screenshot({path:dir+'/employee-access.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('[data-action=invite]').click();
@@ -80,6 +83,7 @@ for(const width of [1440,1024,768,390]){
    await page.locator('[data-ux-open=trunk]').first().click();
    await page.getByRole('button',{name:'Тестовый звонок'}).click();
    await page.getByRole('heading',{name:'Тестовый звонок'}).waitFor();
+   await assertIcons();
    await page.getByLabel('Номер для звонка').fill('+7 999 111 22 33');
    await page.getByRole('button',{name:'Позвонить'}).isDisabled().then(v=>assert.equal(v,true,'no backend call must not be enabled'));
    await page.screenshot({path:dir+'/web-test-call-dialog.png',fullPage:true});
