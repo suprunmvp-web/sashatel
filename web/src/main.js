@@ -1,5 +1,6 @@
 import {api,isPreview} from './session.js';
 import {sectionUI,wireSectionUI} from './cabinet-ux.js';
+import {openInvite} from './interaction-flows.js';
 import {notify} from './notifications.js';
 import {esc,icon,link,button,table,empty,missing,tabs,metrics,range,hydrate} from './components.js';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -52,7 +53,7 @@ function workspaceSwitcher(){
 function render(){
  document.body.className='platform'+(collapsed?' sidebar-collapsed':'');document.documentElement.dataset.theme=savedTheme();
  document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar"><div class="organization-head">'+workspaceSwitcher()+'<button class="icon-button" data-action="sidebar" aria-label="'+(collapsed?'Развернуть':'Свернуть')+' меню" aria-pressed="'+collapsed+'">'+icon(collapsed?'panel-left-open':'panel-left-close')+'</button></div><nav aria-label="Основная навигация">'+nav.map(([id,glyph,label])=>link(url(id),icon(glyph)+'<span>'+label+'</span>',page===id).replace('<a ','<a aria-label="'+label+'" title="'+label+'" ')).join('')+'</nav>'+'</aside><div class="platform-body"><header class="platform-top"><div class="ux-breadcrumb"><span>SashaTel</span><span class="ux-crumb-separator">/</span><strong>'+esc(title())+'</strong></div><div class="top-controls"><button class="icon-button" data-action="theme" aria-label="Сменить тему" title="Сменить тему">'+icon(savedTheme()==='dark'?'sun':'moon')+'</button><details class="profile-menu"><summary>'+esc(account?.first_name||'Аккаунт')+' '+icon('chevron-down')+'</summary><div>'+link((org?'/'+org.id+'/profile/':'/login/')+previewSuffix,'Профиль')+link((org?'/'+org.id+'/security/':'/login/')+previewSuffix,'Безопасность')+(org?link('/'+org.id+'/organization/'+previewSuffix,'Организация'):'')+'<button class="text-button" data-action="logout">Выйти</button></div></details></div></header>'+(service?'<div class="service-banner">Служебный доступ · '+esc(account.first_name+' '+account.last_name)+' · '+link('/admin/?preview=1','Вернуться в обзор')+'</div>':'')+'<main id="content" tabindex="-1"><div class="page-heading"><div><h1 tabindex="-1">'+esc(title())+'</h1>'+(!admin&&org.verification_status!=='verified'?'<span class="status-label">Организация не верифицирована · телефония выключена</span>':'')+'</div></div><div id="page-content">'+(admin?adminPage():org.role==='employee'?empty('Кабинет организации','Управление доступно Владельцу и Администратору. Звонки — в Desktop.'):clientPage())+'</div><p id="platform-error" class="error" role="alert" tabindex="-1" hidden></p></main></div><dialog aria-labelledby="dialog-title" id="operation-dialog"></dialog>';
- hydrate();document.querySelector('h1')?.focus();wire();wireSectionUI();
+ hydrate();document.querySelector('h1')?.focus();wire();wireSectionUI({organization:org||{},trunk:null});
 }
 // Section navigation stays inside the cabinet. Auth bootstrap is required only on initial load.
 function cabinetPath(pathname){
@@ -107,6 +108,7 @@ function wire(){
  if(action==='sidebar'){collapsed=!collapsed;try{localStorage.setItem('sashatel.web.sidebar',collapsed?'collapsed':'expanded');}catch{}render();return;}
  if(action==='theme'){const value=savedTheme()==='dark'?'light':'dark';try{localStorage.setItem('sashatel.web.theme',value);}catch{}render();return;}
  if(action==='logout'){el.disabled=true;try{await api.logout();location.assign('/login/');}catch(e){el.disabled=false;showError(e.message);}return;}
+ if(action==='invite'){openInvite({organization:org||{}});return;}
  operation(action);
  });
  const filter=document.querySelector('#organization-filter');if(filter)filter.oninput=()=>{document.querySelectorAll('tbody tr').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(filter.value.toLowerCase());});};
