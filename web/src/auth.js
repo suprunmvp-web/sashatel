@@ -284,7 +284,7 @@ async function requestCompanySuggestions(query,sequence,controller) {
     }
     dropdown.hidden=false;
     dropdown.innerHTML=lookupSuggestions.map((item,index)=>
-      `<button type="button" class="inn-result${item.verified?' inn-result--verified':''}" data-action="select-inn" data-index="${index}" role="option" aria-disabled="${item.verified?'true':'false'}" ${item.verified?'disabled':''}><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(item.legal_name))}</strong><small>ИНН ${esc(item.inn)}${item.verified?' · Уже верифицирована в SashaTel':''}</small></span>${icon("lock")}</button>`
+      `<button type="button" class="inn-result${item.verified?' inn-result--verified':''}" data-action="select-inn" data-index="${index}" role="option" aria-disabled="${item.verified?'true':'false'}" ${item.verified?'disabled':''}><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(item.legal_name))}</strong><small>ИНН ${esc(item.inn)}${item.verified?' · Уже верифицирована в SashaTel':''}</small></span>${icon(item.verified?"lock":"arrow-right")}</button>`
     ).join("");
     window.renderSashaIcons?.(dropdown);
   }catch(error){
