@@ -55,6 +55,20 @@ test('Web onboarding with real PostgreSQL',async t=>{
     await assert.rejects(auth.verify(ctx,{challenge_id:id,code:messages.get(id)!.code}),code('CODE_INVALID_OR_EXPIRED'));
     assert.equal((await admin.query('SELECT attempts FROM web_auth.challenges WHERE id=$1',[id])).rows[0].attempts,5);
   });
+  await t.test('expired access cookie triggers refresh rather than anonymous onboarding',async()=>{
+    const {ctx}=await registered();
+    const refreshCookie=ctx.refresh;
+    ctx.access=undefined; // Browser removes five-minute access cookie, keeps seven-day refresh.
+    await assert.rejects(auth.bootstrap(ctx),code('ACCESS_EXPIRED'));
+    const renewed=await auth.refresh(ctx);
+    assert.equal(renewed.status,200);
+    assert.equal((renewed.body as any).account.email_verified,true);
+    ctx.access=renewed.cookies!.access;
+    ctx.refresh=renewed.cookies!.refresh;
+    const resumed=await auth.bootstrap(ctx);
+    assert.ok((resumed.body as any).account);
+    assert.notEqual(ctx.refresh,refreshCookie);
+  });
   await t.test('one verify wins, lost response restores same family and logout fences receipt',async()=>{
     const ctx=await actor(),email=randomUUID()+'@example.test';
     const result=await auth.register(ctx,{...profile,email},randomUUID());
