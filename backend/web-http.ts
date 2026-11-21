@@ -42,7 +42,19 @@ export function webHandler(auth:WebAuth,origin:string) {
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
-        else if(path==='/v1/internal/organizations') send(await auth.internalOrganizations(ctx));
+        else if(path==='/v1/internal/organizations') {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+          if([...query.keys()].some(key=>!['offset','limit'].includes(key)) ||
+             [...query.keys()].some(key=>query.getAll(key).length!==1))
+            throw new ApiError(422,'INVALID_PAGE');
+          const value=(name:string)=>{
+            const input=query.get(name);
+            if(input===null)return undefined;
+            if(!/^(?:0|[1-9][0-9]{0,5})$/.test(input)) throw new ApiError(422,'INVALID_PAGE');
+            return Number(input);
+          };
+          send(await auth.internalOrganizations(ctx,{offset:value('offset'),limit:value('limit')}));
+        }
         else if(path.startsWith('/v1/organizations/creation-status/')) send(await auth.creationStatus(ctx,path.split('/').at(-1)!));
         else if(path.startsWith('/v1/auth/email/challenges/')) send(await auth.tx(ctx,async db=>({status:200,body:await auth.challengeStatus(db,ctx,path.split('/').at(-1)!,true)})));
         else throw new ApiError(404,'RESOURCE_NOT_FOUND');
