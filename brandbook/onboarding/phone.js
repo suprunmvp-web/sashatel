@@ -34,7 +34,7 @@ export function setupPhone() {
     if(raw.trim().startsWith("+")&&digits.startsWith(selected.dial)&&digits.length>selected.dial.length+5){
       removed=selected.dial.length;
       digits=digits.slice(removed);
-    }else if((selected.code==="RU"||selected.code==="KZ")&&digits.length===11&&digits.startsWith("8")){
+    }else if((selected.code==="RU"||selected.code==="KZ")&&digits.length===11&&(digits.startsWith("8")||digits.startsWith("7"))){
       removed=1;
       digits=digits.slice(1);
     }
@@ -71,7 +71,7 @@ export function setupPhone() {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "country-option";
-      button.setAttribute("aria-selected", String(country.code === selected.code));
+      button.setAttribute("aria-pressed", String(country.code === selected.code));
       if (country.code === selected.code) button.classList.add("selected");
       const nameGroup = document.createElement("span");
       nameGroup.className = "country-option-name";
