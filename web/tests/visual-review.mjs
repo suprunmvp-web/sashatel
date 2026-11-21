@@ -13,7 +13,10 @@ for(const width of [1440,1024,768,390]){
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base,{waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'Статистика'}).waitFor();
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'horizontal overflow '+width+' '+theme);
+  const overflow=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth, offenders:[...document.querySelectorAll('body *')].map(el=>({el,rect:el.getBoundingClientRect()})).filter(o=>o.rect.right>innerWidth+2||o.rect.left< -2).slice(0,15).map(o=>({tag:o.el.tagName,cls:o.el.className?.baseVal||o.el.className,right:Math.round(o.rect.right),left:Math.round(o.rect.left)}))}));
+  if(overflow.overflow)console.error('OVERFLOW DIAGNOSTICS',width,theme,JSON.stringify(overflow.offenders));
+  await page.screenshot({path:dir+'/'+width+'-'+theme+'-first-frame.png',fullPage:true});
+  assert.equal(overflow.overflow,false,'horizontal overflow '+width+' '+theme);
   if(theme==='dark')await page.locator('#theme').click();
   await page.screenshot({path:dir+'/'+width+'-'+theme+'-empty.png',fullPage:true});
   await page.locator('#state').click();
