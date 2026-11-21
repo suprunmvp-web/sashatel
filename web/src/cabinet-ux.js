@@ -33,10 +33,15 @@ function chart(days=[]){
 }
 function breakdownTable(kind,data={}){
  const rows=kind==='regions'?data.regions||[]:data.employees||[];
- return table([kind==='regions'?'Регион':'Сотрудник','Инициации','Ответы','Дозвон'],rows.map(o=>[escape(o.name),int(o.attempts),int(o.answers),number(o.attempts)?(number(o.answers)/number(o.attempts)*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%':'—']), 'За выбранный период звонков пока нет');
+ return table([kind==='regions'?'Регион':'Сотрудник','Инициации','Ответы','Дозвон'],rows.map(o=>[escape(o.name),int(o.attempts),int(o.answers),number(o.attempts)?(number(o.answers)/number(o.attempts)*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%':'—']), 'Данных за выбранный период пока нет');
 }
-function stats(data={}){
- return shell('<div class="ux-headline"><div><p class="ux-subtitle">Обзор исходящих звонков организации</p></div>'+calendar+'</div>'+metrics(data)+chart(data.days||[])+'<div class="ux-two">'+donut(data.counts||[])+'<section class="ux-section ux-breakdown"><div class="ux-section-title ux-breakdown-header"><h2>Детализация</h2><div class="ux-segment" role="group" aria-label="Группировать статистику"><button data-ux-tab="employees" aria-pressed="true" type="button">По сотрудникам</button><button data-ux-tab="regions" aria-pressed="false" type="button">По регионам</button></div></div><div id="ux-breakdown-table">'+breakdownTable('employees',data)+'</div><script type="application/json" id="ux-breakdown-data">'+JSON.stringify({employees:data.employees||[],regions:data.regions||[]}).replace(/</g,'\\u003c')+'</script></section></div>');
+function stats(data){
+ const known=data!==null&&data!==undefined;
+ const records=data||{};
+ const kpis=known?metrics(records):'<div class="ux-kpis">'+['Минуты','Инициации','Ответы','Дозвон'].map(label=>'<div class="ux-kpi"><span>'+label+'</span><strong>—</strong></div>').join('')+'</div>';
+ const graph=known?chart(records.days||[]):chart([]).replace('График появится после первых звонков','Здесь появится динамика дозвона');
+ const outcomes=known?donut(records.counts||[]):donut([]).replace('<strong>0</strong>','<strong>—</strong>');
+ return shell('<div class="ux-headline"><div><p class="ux-subtitle">Обзор исходящих звонков организации</p></div>'+calendar+'</div>'+kpis+graph+'<div class="ux-two">'+outcomes+'<section class="ux-section ux-breakdown"><div class="ux-section-title ux-breakdown-header"><h2>Детализация</h2><div class="ux-segment" role="group" aria-label="Группировать статистику"><button data-ux-tab="employees" aria-pressed="true" type="button">По сотрудникам</button><button data-ux-tab="regions" aria-pressed="false" type="button">По регионам</button></div></div><div id="ux-breakdown-table">'+breakdownTable('employees',records)+'</div><script type="application/json" id="ux-breakdown-data">'+JSON.stringify({employees:records.employees||[],regions:records.regions||[]}).replace(/</g,'\\u003c')+'</script></section></div>');
 }
 function listPage(label,info,headers,emptyTitle,emptyText,actionLabel,actionId){
  return shell('<div class="ux-headline"><p class="ux-subtitle">'+escape(info)+'</p>'+ (actionLabel?action(actionLabel,actionId,true):'')+'</div><section class="ux-section ux-list">'+heading(label,'')+table(headers,[],emptyTitle)+hint(emptyTitle,emptyText)+'</section>');
