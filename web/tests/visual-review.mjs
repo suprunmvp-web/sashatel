@@ -35,6 +35,20 @@ for(const width of [1440,1024,768,390]){
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'overflow '+section+' '+width);
    if(width===1440&&theme==='light')await page.screenshot({path:dir+'/'+section+'.png',fullPage:true});
   }
+  if(width===1440&&theme==='light'){
+   await page.locator('[data-nav=history]').click();
+   await page.locator('[data-ux-open=call]').first().click();
+   await page.getByRole('heading',{name:'+7 999 123-45-67'}).waitFor();
+   await page.getByRole('tab',{name:'Детали'}).click();
+   await page.getByText('SIP-код').waitFor();
+   await page.screenshot({path:dir+'/call-detail.png',fullPage:true});
+   await page.locator('.ux-backlink').click();
+   await page.locator('[data-nav=trunks]').click();
+   await page.locator('[data-ux-open=trunk]').first().click();
+   await page.getByRole('tab',{name:'Номера'}).click();
+   await page.getByText('+7 999 888-22-11').waitFor();
+   await page.screenshot({path:dir+'/trunk-detail.png',fullPage:true});
+  }
   await page.locator('.ux-switcher summary').click();
   await page.locator('[data-admin]').click();
   await page.getByRole('heading',{name:'Обзор'}).waitFor();
