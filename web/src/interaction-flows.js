@@ -25,7 +25,7 @@ export function openTestCall({trunk={},organization={},startCall=null,onCallComp
  const eligible=organization.verification_status==='verified'&&trunk.active===true&&trunk.registration==='Зарегистрирован'&&trunk.ready==='Готов'&&(trunk.numbers||[]).some(n=>(n.status||'active')==='active');
  const contents='<div class="ux-flow-ready">'+renderIcon('headphones')+' <span>Разговор будет проходить прямо в браузере</span></div><form id="ux-call-form" class="ux-flow-form"><label>Номер для звонка<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 999 123-45-67" required></label><div class="ux-mic-row"><span>'+renderIcon('mic')+' Микрофон браузера</span><button type="button" class="ux-inline-action" data-mic-check>Проверить</button></div><p class="ux-mic-status" role="status">Перед звонком потребуется разрешить доступ к микрофону.</p><div class="ux-call-session" hidden><span class="ux-call-indicator"></span><strong data-call-phase>Подготовка вызова</strong><span data-call-duration></span></div><p class="ux-flow-hint" role="status" data-preflight>'+(eligible?'Номер Caller ID выбирается автоматически из карусели.':'Вызов доступен после верификации организации и готовности транка.')+'</p><div class="ux-flow-footer"><button type="button" class="ux-button ux-button-secondary" data-cancel>Отмена</button><button type="submit" class="ux-button" data-call-submit disabled>'+renderIcon('phone-call')+' Позвонить</button><button type="button" class="ux-button ux-button-danger" data-hangup hidden>Завершить</button></div></form>';
  const dialog=modal('Тестовый звонок',h(trunk.name||'Проверка работы телефонии'),contents),form=dialog.querySelector('form');
- let stream=null,session=null,phase='idle',ticker=null,startedAt=0;
+ let stream=null,session=null,phase='idle',ticker=null,connectedAt=0;
  const submit=form.querySelector('[data-call-submit]'),status=form.querySelector('.ux-mic-status'),hint=form.querySelector('[data-preflight]'),mic=form.querySelector('[data-mic-check]'),hang=form.querySelector('[data-hangup]');
  const release=()=>{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}if(ticker)clearInterval(ticker);ticker=null;};
  const close=()=>{if(session?.hangup&&phase!=='idle')Promise.resolve(session.hangup()).catch(()=>{});release();};
@@ -45,15 +45,16 @@ export function openTestCall({trunk={},organization={},startCall=null,onCallComp
   e.preventDefault();if(!eligible||!startCall||!stream)return;
   const phone=cleanPhone(form.elements.phone.value);if(!phone){form.elements.phone.setCustomValidity('Проверьте номер телефона');form.reportValidity();return;}
   form.elements.phone.setCustomValidity('');phase='connecting';sync();hint.textContent='Устанавливаем соединение…';form.querySelector('.ux-call-session').hidden=false;
-  form.querySelector('[data-call-phase]').textContent='Соединение';hang.hidden=false;startedAt=Date.now();
+  form.querySelector('[data-call-phase]').textContent='Соединение';hang.hidden=false;
   try{
    // Transport owns authenticated signalling, allowed Caller ID selection, recording and termination.
    session=await startCall({trunkId:trunk.id,phone,stream,onRemoteStream:remote=>{const audio=dialog.querySelector('#ux-remote-audio');if(dialog.open&&audio){audio.srcObject=remote;audio.play().catch(()=>{hint.textContent='Для воспроизведения голоса собеседника разрешите звук в браузере.';});}},onState:state=>{
     if(!dialog.open)return;
     form.querySelector('[data-call-phase]').textContent=state==='connected'?'Разговор':state==='ringing'?'Вызов абонента':state==='ended'?'Завершено':state==='failed'?'Не удалось соединиться':'Соединение';
+    if(state==='connected'&&!connectedAt){connectedAt=Date.now();ticker=setInterval(()=>{if(dialog.open)form.querySelector('[data-call-duration]').textContent=Math.floor((Date.now()-connectedAt)/1000)+' c';},1000);}
     if(state==='ended'||state==='failed'){phase='idle';hang.hidden=true;if(state==='ended'){hint.textContent='Разговор завершён. История обновится после обработки звонка.';onCallComplete?.();}else{hint.textContent='Не удалось установить соединение.';notify('Соединение завершилось с ошибкой','error');}release();}
    }});
-   phase='active';ticker=setInterval(()=>{if(dialog.open)form.querySelector('[data-call-duration]').textContent=Math.floor((Date.now()-startedAt)/1000)+' c';},1000);
+   phase='active';
   }catch(err){phase='idle';hang.hidden=true;form.querySelector('.ux-call-session').hidden=true;hint.textContent='Не удалось совершить звонок. Попробуйте ещё раз.';notify('Не удалось установить соединение. '+(err?.message||''),'error');sync();}
  });
  hang.addEventListener('click',async()=>{
