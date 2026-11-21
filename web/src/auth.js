@@ -253,28 +253,36 @@ async function enter(result) {
   state.organizations=available;
   go(available.length ? "organizations" : "welcome");
 }
-// Locally generated test-only organizations. Never shown as real registry results.
-function sampleInn(prefix, i) {
-  if (!/^\d{1,12}$/.test(prefix)) return null;
-  if (prefix.length === 10 || prefix.length === 12) return prefix;
-  const width = 9 - prefix.length;
-  const base = width > 0 ? prefix + String(i).padStart(width, "0").slice(-width) : prefix;
-  const weights = [2,4,10,3,5,9,4,6,8];
-  const checksum = (weights.reduce((sum, weight, ix) => sum + Number(base[ix])*weight, 0) % 11) % 10;
-  return base + checksum;
+// Lookup results must come from the authenticated Backend/DaData API, never fixtures.
+let lookupSequence=0;
+let lookupTimer=null;
+let lookupSuggestion=null;
+function setLookupMessage(dropdown, message) {
+  dropdown.hidden = !message;
+  dropdown.innerHTML = message ? `<div class="inn-lookup-status" role="status">${esc(message)}</div>` : "";
 }
-function companyCandidates(prefix) {
-  if (!/^\d{1,12}$/.test(prefix) || prefix.length === 11) return [];
-  const result = [], seen = new Set();
-  if (prefix === "7707083893") result.push({inn:prefix,name:'ООО «Пример организации»'});
-  for (let i = 1; i <= 200 && result.length < 20; i++) {
-    const inn = sampleInn(prefix, i);
-    if (!inn || seen.has(inn) || result.some(x=>x.inn===inn)) continue;
-    seen.add(inn);
-    const suffix = inn.slice(5,9);
-    result.push({inn,name:`ООО «Компания ${suffix}»`});
+async function requestCompanySuggestion(inn, sequence) {
+  try {
+    const result = await api.lookup({inn});
+    if (sequence !== lookupSequence || state.page !== "lookup") return;
+    const current = root.querySelector('[name="inn"]');
+    if (!current || current.value !== inn) return;
+    const dropdown = root.querySelector("#inn-suggestions");
+    if (!dropdown) return;
+    if (!result?.lookup_id || !result?.legal_name) {
+      setLookupMessage(dropdown, "Организация не найдена.");
+      return;
+    }
+    lookupSuggestion = result;
+    dropdown.hidden = false;
+    dropdown.innerHTML = `<button type="button" class="inn-result" data-action="select-inn" role="option"><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(result.legal_name))}</strong><small>ИНН ${esc(result.inn || inn)}</small></span>${icon("arrow-right")}</button>`;
+    window.renderSashaIcons?.(dropdown);
+  } catch (error) {
+    if (sequence !== lookupSequence || state.page !== "lookup") return;
+    const dropdown = root.querySelector("#inn-suggestions");
+    if (!dropdown) return;
+    setLookupMessage(dropdown, error.code === "INN_INVALID" || error.code === "RESOURCE_NOT_FOUND" ? "Организация не найдена." : "Не удалось проверить ИНН. Попробуйте ещё раз.");
   }
-  return result;
 }
 root.addEventListener("input", (event) => {
   if (state.page === "lookup" && event.target.name === "inn") {
@@ -289,11 +297,13 @@ root.addEventListener("input", (event) => {
       root.querySelector(".company-complete").hidden = true;
       // A selected suggestion or Enter triggers lookup.
     }
-    const options = !state.lookup ? companyCandidates(inn) : [];
-    dropdown.hidden = options.length === 0;
-    if (!dropdown.hidden) {
-      dropdown.innerHTML = options.map(({inn: value,name}) => `<button type="button" class="inn-result" data-action="select-inn" data-inn="${esc(value)}" role="option"><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(name)}</strong><small>ИНН ${esc(value)}</small></span>${icon("arrow-right")}</button>`).join('');
-      window.renderSashaIcons?.(dropdown);
+    clearTimeout(lookupTimer);
+    const sequence = ++lookupSequence;
+    lookupSuggestion = null;
+    setLookupMessage(dropdown, "");
+    if (!state.lookup && /^(?:\\d{10}|\\d{12})$/.test(inn)) {
+      setLookupMessage(dropdown, "Ищем организацию…");
+      lookupTimer = setTimeout(() => { void requestCompanySuggestion(inn, sequence); }, 350);
     }
   }
   if (event.target.name === "password" && state.page === "register") {
@@ -392,6 +402,10 @@ root.addEventListener("submit", (event) => {
       );
       break;
     case "lookup":
+      // Enter also resolves only a real, full INN via Backend.
+      clearTimeout(lookupTimer);
+      ++lookupSequence;
+      lookupSuggestion = null;
       void run(
         () => api.lookup({ inn: values.inn }),
         (result) => {
@@ -435,11 +449,13 @@ root.addEventListener("click", (event) => {
   }
   if (action === "select-inn") {
     const form = root.querySelector('form[data-form="lookup"]');
-    const choice = event.target.closest('[data-inn]');
-    if (form && choice) {
-      form.elements.namedItem('inn').value = choice.dataset.inn;
-      root.querySelector('#inn-suggestions').hidden = true;
-      form.requestSubmit();
+    if (form && lookupSuggestion && form.elements.namedItem('inn').value === String(lookupSuggestion.inn)) {
+      clearTimeout(lookupTimer);
+      ++lookupSequence;
+      state.lookup = lookupSuggestion;
+      lookupSuggestion = null;
+      state.createKey = crypto.randomUUID();
+      go("lookup");
     }
     return;
   }
