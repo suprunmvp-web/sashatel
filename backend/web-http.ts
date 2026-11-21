@@ -61,8 +61,12 @@ export function webHandler(auth:WebAuth,origin:string) {
       try {body=JSON.parse(raw);if(!body||Array.isArray(body)||typeof body!=='object') throw Error();}
       catch {throw new ApiError(400,'INVALID_REQUEST');}
       if(['/v1/auth/email/complete','/v1/auth/refresh','/v1/auth/logout'].includes(path)&&Object.keys(body).length) throw new ApiError(400,'INVALID_REQUEST');
+      // A reverse proxy may multiplex many different visitors over one socket.
+      // Do not rate-limit legitimate customers by req.socket.remoteAddress.
+      // Account/email limits are enforced in WebAuth; this additional browser
+      // limit dampens repeated attempts from the same preauth identity.
       if(['/v1/auth/register','/v1/auth/login'].includes(path)) {
-        await auth.tx(ctx,db=>auth.limit(db,'ip:'+path+':'+req.socket.remoteAddress,20,3600));
+        await auth.tx(ctx,db=>auth.limit(db,'browser:'+path+':'+browser,20,3600));
       }
       const key=typeof req.headers['idempotency-key']==='string'?req.headers['idempotency-key']:'';
       let result:WebResult;
