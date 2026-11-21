@@ -32,3 +32,33 @@ ALTER TABLE web_auth.internal_staff
 ALTER TABLE web_auth.internal_staff
  ADD CONSTRAINT internal_staff_role_check
  CHECK(role IN ('owner','admin','reviewer'));
+
+-- Paginated internal list, same security gate as the initial 200-item endpoint.
+-- The extra row lets the API indicate there is another page without COUNT(*).
+CREATE FUNCTION web_auth.internal_organizations_page(
+ actor uuid, p_offset integer, p_limit integer
+)
+RETURNS TABLE (
+ id uuid, inn text, legal_name text, legal_address text,
+ verification_status text, active boolean, created_owner_email text
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+BEGIN
+ IF p_offset<0 OR p_offset>100000 OR p_limit<1 OR p_limit>200 THEN
+  RAISE EXCEPTION 'INVALID_PAGE' USING ERRCODE='22023';
+ END IF;
+ IF NOT EXISTS (
+  SELECT 1 FROM web_auth.internal_staff s
+  JOIN control.users u ON u.id=s.user_id
+  WHERE s.user_id=actor AND s.active AND u.active AND u.email_verified_at IS NOT NULL
+ ) THEN RAISE EXCEPTION 'INTERNAL_ACCESS_DENIED' USING ERRCODE='42501'; END IF;
+ RETURN QUERY
+ SELECT o.id,o.inn,o.legal_name,o.legal_address,o.verification_status,o.active,u.login
+ FROM control.organizations o
+ LEFT JOIN control.memberships m ON m.organization_id=o.id AND m.id=o.owner_membership_id
+ LEFT JOIN control.users u ON u.id=m.user_id
+ ORDER BY (o.verification_status='unverified') DESC,o.id
+ LIMIT p_limit+1 OFFSET p_offset;
+END $$;
+REVOKE ALL ON FUNCTION web_auth.internal_organizations_page(uuid,integer,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION web_auth.internal_organizations_page(uuid,integer,integer) TO control_runtime;
