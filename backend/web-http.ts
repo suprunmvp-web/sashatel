@@ -9,6 +9,7 @@ export function webHandler(auth:WebAuth,origin:string) {
     const path=req.url?.split('?')[0]??'';
     if(!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
+    res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
     res.setHeader('cache-control','no-store');
     const parsed:Record<string,string>={};
@@ -111,6 +112,13 @@ export function webHandler(auth:WebAuth,origin:string) {
       }
       send(result);
     } catch(error) {
+      if(!(error instanceof ApiError)) {
+        // No request bodies, credentials, email addresses or database query text.
+        const pgCode=(error as {code?:unknown})?.code;
+        console.error(JSON.stringify({event:'web_api_failure',request_id:requestId,
+          route:path,kind:error instanceof Error?error.name:'unknown',
+          db_code:typeof pgCode==='string'&&/^[A-Z0-9]{5}$/.test(pgCode)?pgCode:null}));
+      }
       const api=error instanceof ApiError?error:new ApiError(503,'AUTH_UNAVAILABLE');
       if(api.status===429) res.setHeader('retry-after','60');
       send({status:api.status,body:{code:api.code,message:api.message,request_id:requestId,...(api.status===429?{retry_after_seconds:60}:{})}});
