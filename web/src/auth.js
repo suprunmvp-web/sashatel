@@ -140,7 +140,7 @@ function render() {
         <p class="lookup-intro">Укажите ИНН — мы найдём и заполним реквизиты.</p>
         <form novalidate data-form="lookup" class="company-lookup-form">
           <div class="inn-control">
-            ${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="Введите ИНН" aria-controls="inn-suggestions" aria-autocomplete="list"')}
+            ${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="7707083893" aria-controls="inn-suggestions" aria-autocomplete="list"')}
             <div id="inn-suggestions" class="inn-suggestions" role="listbox" aria-label="Результаты поиска" hidden></div>
           </div>
           <div class="company-form-fields">
