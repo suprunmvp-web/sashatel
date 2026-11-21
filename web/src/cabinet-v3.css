@@ -161,3 +161,17 @@
 .platform .ux-modal-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;border-top:1px solid var(--line)}
 .platform .ux-modal-footer span{font:11px/1.5 var(--font);color:var(--sub)}
 .platform .ux-modal-footer button{min-height:35px;padding:8px 13px;border-radius:7px}
+
+/* Mobile dashboard: readable outcomes and a tooltip that never covers the plotted line. */
+@media(max-width:520px){
+ .platform .ux-chart-interactive{height:auto;min-height:0}
+ .platform .ux-chart-interactive svg{height:150px}
+ .platform .ux-day-tooltip{position:relative;inset:auto;width:100%;max-width:none;margin:9px 0 8px;pointer-events:none;box-shadow:none}
+ .platform .ux-results-body{flex-direction:column;align-items:stretch;gap:16px}
+ .platform .ux-donut{width:132px;height:132px;flex-basis:132px;align-self:center}
+ .platform .ux-legend{width:100%;max-width:none;gap:11px}
+ .platform .ux-legend-row{font-size:11px}
+ .platform .ux-legend-row .ux-legend-name{font-size:11px}
+ .platform .ux-breakdown-header{align-items:flex-start;gap:10px}
+ .platform .ux-segment button{padding:7px 8px}
+}
