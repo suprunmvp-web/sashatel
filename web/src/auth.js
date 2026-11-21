@@ -284,7 +284,7 @@ async function requestCompanySuggestions(query,sequence,controller) {
     }
     dropdown.hidden=false;
     dropdown.innerHTML=lookupSuggestions.map((item,index)=>
-      `<button type="button" class="inn-result" data-action="select-inn" data-index="${index}" role="option"><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(item.legal_name))}</strong><small>ИНН ${esc(item.inn)}</small></span>${icon("arrow-right")}</button>`
+      `<button type="button" class="inn-result${item.verified?' inn-result--verified':''}" data-action="select-inn" data-index="${index}" role="option" aria-disabled="${item.verified?'true':'false'}" ${item.verified?'disabled':''}><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(item.legal_name))}</strong><small>ИНН ${esc(item.inn)}${item.verified?' · Уже верифицирована в SashaTel':''}</small></span>${icon("lock")}</button>`
     ).join("");
     window.renderSashaIcons?.(dropdown);
   }catch(error){
@@ -464,7 +464,7 @@ root.addEventListener("click", (event) => {
     const index=selected?Number(selected.dataset.index):-1;
     const item=Number.isInteger(index)?lookupSuggestions[index]:null;
     const form=root.querySelector('form[data-form="lookup"]');
-    if(item&&form) {
+    if(item&&!item.verified&&form) {
       clearTimeout(lookupTimer);
       lookupController?.abort();
       ++lookupSequence;
