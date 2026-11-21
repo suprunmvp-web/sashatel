@@ -1,5 +1,6 @@
 import {sectionUI,wireSectionUI} from './cabinet-ux.js';
 import {hydrate} from './components.js';
+import {openInvite} from './interaction-flows.js';
 const sections=[['statistics','Статистика','activity'],['history','История звонков','history'],['trunks','Транки','server'],['employees','Сотрудники','users'],['integrations','Интеграции','plug'],['billing','Биллинг','credit-card']];
 let page='statistics',mode='client',scenario='empty',theme='light',org='ООО «Альфа»',sidebar=false,detail=null;
 const sample={days:[{date:'2026-11-15',reach:25,minutes:94,attempts:112,answers:28},{date:'2026-11-16',reach:31.2,minutes:140,attempts:154,answers:48},{date:'2026-11-17',reach:27.7,minutes:102,attempts:130,answers:36},{date:'2026-11-18',reach:34.2,minutes:245,attempts:382,answers:131},{date:'2026-11-19',reach:39.1,minutes:330,attempts:279,answers:109},{date:'2026-11-20',reach:33.7,minutes:290,attempts:326,answers:110},{date:'2026-11-21',reach:42.1,minutes:180,attempts:190,answers:80}],counts:[542,110,780,80,30,31],employees:[{name:'Анна Иванова',attempts:610,answers:210},{name:'Павел Сидоров',attempts:420,answers:140},{name:'Елена Петрова',attempts:543,answers:192}],regions:[{name:'Москва',attempts:780,answers:280},{name:'Санкт-Петербург',attempts:550,answers:180},{name:'Краснодарский край',attempts:243,answers:82}]};
@@ -65,9 +66,9 @@ function render(){
  document.querySelector('#theme').onclick=()=>{theme=theme==='light'?'dark':'light';render()};
  document.querySelector('#collapse').onclick=()=>{sidebar=!sidebar;render()};
  document.querySelectorAll('[data-view]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();page=link.dataset.view;detail=null;render();}));
- document.querySelectorAll('[data-action]').forEach(btn=>btn.addEventListener('click',()=>reviewAction(btn.dataset.action)));
+ document.querySelectorAll('[data-action]').forEach(btn=>btn.addEventListener('click',()=>btn.dataset.action==='invite'?openInvite({organization:{legal_name:org}}):reviewAction(btn.dataset.action)));
  document.querySelectorAll('[data-ux-open]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();detail=link.dataset.uxOpen;render()}));
  document.querySelectorAll('.ux-backlink').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();detail=null;render()}));
- hydrate(document.querySelector('#review-root'));wireSectionUI();
+ hydrate(document.querySelector('#review-root'));wireSectionUI({trunk:detail==='trunk'?demo.trunkDetail:null,organization:{verification_status:'verified'}});
 }
 render();
