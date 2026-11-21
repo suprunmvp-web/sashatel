@@ -39,32 +39,44 @@ function stats(data={}){
 function listPage(label,info,headers,emptyTitle,emptyText,actionLabel,actionId){
  return shell('<div class="ux-headline"><p class="ux-subtitle">'+escape(info)+'</p>'+ (actionLabel?action(actionLabel,actionId,true):'')+'</div><section class="ux-section ux-list">'+heading(label,'')+table(headers,[],emptyTitle)+hint(emptyTitle,emptyText)+'</section>');
 }
-function trunks(){
- return shell('<div class="ux-headline"><p class="ux-subtitle">Подключения операторов и маршрутизация исходящих звонков</p>'+action('Создать транк','trunk',true)+'</div><section class="ux-section ux-list">'+table(['Транк','Регистрация','Готовность','Статус'],[],'Транков пока нет')+hint('Подключите первый SIP-транк','После подключения здесь появятся транки, их номера и состояние соединения.')+'</section>');
+const pill=(label,tone='neutral')=>'<span class="ux-pill ux-pill-'+tone+'">'+escape(label)+'</span>';
+const sectionHeading=(subtitle,cta='')=>'<div class="ux-headline"><p class="ux-subtitle">'+subtitle+'</p>'+cta+'</div>';
+function trunks(data=[]){
+ const rows=data.map(t=>[escape(t.name),pill(t.registration||'Нет данных',t.registration==='Зарегистрирован'?'success':'neutral'),pill(t.ready||'Нет данных',t.ready==='Готов'?'success':'neutral'),pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')]);
+ return shell(sectionHeading('Подключения операторов и маршрутизация исходящих звонков',action('Создать транк','trunk',true))+'<section class="ux-section ux-list">'+table(['Транк','Регистрация','Готовность','Статус'],rows,'Транков пока нет')+(rows.length?'':hint('Подключите первый SIP-транк','После подключения здесь появятся транки, их номера и состояние соединения.'))+'</section>');
 }
-function employees(){
- return shell('<div class="ux-headline"><p class="ux-subtitle">Управление доступом и рабочими местами сотрудников</p>'+action('Пригласить сотрудника','invite',true)+'</div><section class="ux-section ux-list">'+table(['Сотрудник','Email','Роль','Присутствие'],[],'Сотрудников пока нет')+hint('Пригласите команду','Сотрудники смогут войти в Desktop и совершать звонки с назначенным транком.')+'</section>');
+function employees(data=[]){
+ const rows=data.map(e=>[escape(e.name),escape(e.email),pill(e.role||'Сотрудник'),pill(e.presence||'Не в сети',e.presence==='В сети'?'success':e.presence==='На линии'?'warning':'neutral')]);
+ return shell(sectionHeading('Управление доступом и рабочими местами сотрудников',action('Пригласить сотрудника','invite',true))+'<section class="ux-section ux-list">'+table(['Сотрудник','Email','Роль','Присутствие'],rows,'Сотрудников пока нет')+(rows.length?'':hint('Пригласите команду','Сотрудники смогут войти в Desktop и совершать звонки с назначенным транком.'))+'</section>');
 }
-function integrations(){
- return shell('<div class="ux-headline"><p class="ux-subtitle">Передача результатов звонков в CRM и внешние сервисы</p>'+action('Создать интеграцию','integration',true)+'</div><div class="ux-connectors">'+[['amoCRM','CRM'],['Битрикс24','CRM'],['Webhook / API','Для разработчиков']].map(([name,type])=>'<div class="ux-connector"><div class="ux-connector-symbol">'+escape(name[0])+'</div><div><strong>'+escape(name)+'</strong><span>'+escape(type)+'</span></div><span class="ux-connector-tail">Не подключено</span></div>').join('')+'</div><p class="ux-footnote">Интеграции необязательны для совершения звонков. Подключение станет доступно после интеграции API.</p>');
+function integrations(data=[]){
+ const integrations=[['amoCRM','CRM'],['Битрикс24','CRM'],['Webhook / API','Для разработчиков']];
+ return shell(sectionHeading('Передача результатов звонков в CRM и внешние сервисы',action('Создать интеграцию','integration',true))+'<div class="ux-connectors">'+integrations.map(([name,type])=>{const connected=data.find(d=>d.type===name);return '<div class="ux-connector"><div class="ux-connector-symbol">'+escape(name[0])+'</div><div class="ux-connector-info"><strong>'+escape(name)+'</strong><span>'+escape(type)+'</span></div>'+pill(connected?'Подключено':'Не подключено',connected?'success':'neutral')+'</div>';}).join('')+'</div><p class="ux-footnote">Интеграции необязательны для работы телефонии. Звонки совершаются из Desktop, а результаты передаются после завершения.</p>');
 }
-function billing(){
- return shell('<div class="ux-headline"><p class="ux-subtitle">Начисления за подтверждённые разговоры и расчётные документы</p></div><div class="ux-kpis ux-kpis-three">'+[['Начислено за период','—'],['Подтверждённые платежи','—'],['К оплате','—']].map(([k,v])=>'<div class="ux-kpi"><span>'+k+'</span><strong>'+v+'</strong></div>').join('')+'</div><section class="ux-section ux-list">'+heading('Документы и начисления','Постоплата за фактически оказанные услуги')+table(['Документ','Период','Сумма','Статус'],[],'Документов пока нет')+'</section><p class="ux-footnote">Тариф SashaTel: 3 ₽ за тарифицируемую минуту подтверждённого разговора с человеком. Расчёты стороннего оператора ведутся отдельно.</p>');
+function billing(data={}){
+ const known=typeof data.accrued==='number';
+ const summary=[['Начислено за период',known?int(data.accrued)+' ₽':'—'],['Подтверждённые платежи',typeof data.paid==='number'?int(data.paid)+' ₽':'—'],['К оплате',typeof data.due==='number'?int(data.due)+' ₽':'—']];
+ const rows=(data.documents||[]).map(d=>[escape(d.name),escape(d.period),escape(d.amount),pill(d.status,d.status==='Оплачен'?'success':'neutral')]);
+ return shell(sectionHeading('Начисления за подтверждённые разговоры и расчётные документы')+'<div class="ux-kpis ux-kpis-three">'+summary.map(([k,val])=>'<div class="ux-kpi"><span>'+k+'</span><strong>'+val+'</strong></div>').join('')+'</div><section class="ux-section ux-list">'+heading('Документы и начисления','Постоплата за фактически оказанные услуги')+table(['Документ','Период','Сумма','Статус'],rows,'Документов пока нет')+'</section><p class="ux-footnote">Тариф SashaTel: 3 ₽ за тарифицируемую минуту подтверждённого разговора с человеком. Расчёты стороннего оператора ведутся отдельно.</p>');
 }
-function history(){
- return shell('<div class="ux-headline"><p class="ux-subtitle">Подробности, записи и результаты отдельных вызовов</p>'+calendar+'</div><section class="ux-section ux-list">'+table(['Дата и время','Сотрудник','Абонент','Транк','Длительность','Результат'],[],'За выбранный период звонков нет')+hint('История звонков пока пуста','После первых вызовов здесь появятся записи, результаты соединений и подробности разговоров.')+'</section>');
+function history(data=[]){
+ const rows=data.map(c=>[escape(c.date),escape(c.employee),escape(c.phone),escape(c.trunk),escape(c.duration),pill(c.status,c.status==='Дозвон'?'success':c.status==='Ошибка'?'error':'neutral')]);
+ return shell(sectionHeading('Подробности, записи и результаты отдельных вызовов',calendar)+'<section class="ux-section ux-list">'+table(['Дата и время','Сотрудник','Абонент','Транк','Длительность','Результат'],rows,'За выбранный период звонков нет')+(rows.length?'':hint('История звонков пока пуста','После первых вызовов здесь появятся записи, результаты соединений и подробности разговоров.'))+'</section>');
 }
-function adminOverview(){
- return shell('<div class="ux-headline"><p class="ux-subtitle">Внутреннее управление организациями SashaTel</p></div><div class="ux-kpis ux-kpis-three">'+[['Организации','—'],['Сотрудники','—'],['Общие минуты','—']].map(([k,v])=>'<div class="ux-kpi"><span>'+k+'</span><strong>'+v+'</strong></div>').join('')+'</div><section class="ux-section ux-list">'+heading('Организации','Организации с доступом к платформе')+table(['Организация','ИНН','Верификация','Ответственный'],[],'Нет доступных организаций')+'</section>');
+function adminOverview(data={}){
+ const companies=data.organizations||[];
+ const summary=[['Организации',companies.length?int(companies.length):'—'],['Сотрудники',typeof data.employees==='number'?int(data.employees):'—'],['Общие минуты',typeof data.minutes==='number'?int(data.minutes):'—']];
+ const rows=companies.map(o=>[escape(o.name),escape(o.inn),pill(o.verified?'Верифицирована':'Не верифицирована',o.verified?'success':'neutral'),escape(o.manager||'—')]);
+ return shell(sectionHeading('Внутреннее управление организациями SashaTel')+'<div class="ux-kpis ux-kpis-three">'+summary.map(([k,val])=>'<div class="ux-kpi"><span>'+k+'</span><strong>'+val+'</strong></div>').join('')+'</div><section class="ux-section ux-list">'+heading('Организации','Организации с доступом к платформе')+table(['Организация','ИНН','Верификация','Ответственный'],rows,'Нет доступных организаций')+'</section>');
 }
 export function sectionUI(page,ctx={}){
- if(ctx.admin)return page==='overview'?adminOverview():page==='employees'?listPage('Команда SashaTel','Управление внутренними сотрудниками',['Сотрудник','Email','Роль'],'Сотрудников пока нет','Назначения появятся после подключения внутреннего API.','',''):null;
+ if(ctx.admin)return page==='overview'?adminOverview(ctx.adminData):page==='employees'?listPage('Команда SashaTel','Управление внутренними сотрудниками',['Сотрудник','Email','Роль'],'Сотрудников пока нет','Назначения появятся после подключения внутреннего API.','',''):null;
  if(page==='statistics')return stats(ctx.stats);
- if(page==='history'&&!ctx.details)return history();
- if(page==='trunks'&&!ctx.details)return trunks();
- if(page==='employees')return employees();
- if(page==='integrations')return integrations();
- if(page==='billing')return billing();
+ if(page==='history'&&!ctx.details)return history(ctx.history);
+ if(page==='trunks'&&!ctx.details)return trunks(ctx.trunks);
+ if(page==='employees')return employees(ctx.employees);
+ if(page==='integrations')return integrations(ctx.integrations);
+ if(page==='billing')return billing(ctx.billing);
  return null;
 }
 export function wireSectionUI(){
