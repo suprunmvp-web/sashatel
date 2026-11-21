@@ -764,3 +764,17 @@ body:not(.in-workspace) .country-option-name > span:last-child {
   color: var(--fg);
   font-family: var(--font);
 }
+
+/* Neutral auth focus: the yellow emphasis belongs to editorial headings, not form fields. */
+body:not(.in-workspace) input:focus-visible,
+body:not(.in-workspace) select:focus-visible,
+body:not(.in-workspace) .button:focus-visible,
+body:not(.in-workspace) .text-button:focus-visible {
+  outline: 2px solid #81818b;
+  outline-offset: 2px;
+}
+body:not(.in-workspace) .phone-row:focus-within input:focus-visible {
+  outline: none;
+}
+body:not(.in-workspace) .check input { accent-color: #f5f5f7; }
+body:not(.in-workspace) .legal-term { color: var(--fg); text-decoration: underline; text-decoration-color: #777780; text-underline-offset: 3px; }
