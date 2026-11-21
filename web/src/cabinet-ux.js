@@ -11,14 +11,26 @@ const calendar='<div class="ux-date-wrap"><button type="button" class="ux-date" 
 const strip='<div class="ux-kpis">'+[['Минуты','0'],['Инициации','0'],['Ответы','0'],['Дозвон','—']].map(([name,value])=>'<div class="ux-kpi"><span>'+name+'</span><strong>'+value+'</strong></div>').join('')+'</div>';
 const statuses=['Дозвон','Автоответчик','Недозвон','Отклонено','Ошибка','Не распознано'];
 const swatches=['#3c9880','#b99555','#858c9b','#bc836f','#bd6a70','#7887b2'];
-function donut(){
- return '<section class="ux-section ux-results"><div class="ux-section-title"><h2>Результаты набора</h2></div><div class="ux-results-body"><div class="ux-donut"><svg viewBox="0 0 176 176" role="img" aria-label="Нет результатов вызовов"><circle cx="88" cy="88" r="67" stroke="currentColor" stroke-opacity=".095" stroke-width="17" fill="none"/></svg><div class="ux-donut-label"><strong>0</strong><small>звонков</small></div></div><div class="ux-legend">'+statuses.map((name,i)=>'<div class="ux-legend-row"><span class="ux-legend-name"><i style="background:'+swatches[i]+'"></i>'+name+'</span><span class="ux-legend-value">—</span></div>').join('')+'</div></div></section>';
+const number=v=>Number.isFinite(Number(v))?Number(v):0;
+const int=v=>Math.max(0,Math.round(number(v))).toLocaleString('ru-RU');
+function donut(counts=[]){
+ const values=statuses.map((_,i)=>Math.max(0,number(counts[i])));
+ const total=values.reduce((a,b)=>a+b,0);
+ const r=67,c=2*Math.PI*r;let offset=0;
+ const slices=values.map((v,i)=>{const len=v/Math.max(total,1)*c,part='<circle cx="88" cy="88" r="'+r+'" fill="none" stroke="'+swatches[i]+'" stroke-width="17" stroke-dasharray="'+len+' '+(c-len)+'" stroke-dashoffset="'+(-offset)+'" transform="rotate(-90 88 88)"/> ';offset+=len;return v?part:'';}).join('');
+ return '<section class="ux-section ux-results"><div class="ux-section-title"><h2>Результаты набора</h2></div><div class="ux-results-body"><div class="ux-donut"><svg viewBox="0 0 176 176" role="img" aria-label="Распределение результатов вызовов"><circle cx="88" cy="88" r="67" stroke="currentColor" stroke-opacity=".095" stroke-width="17" fill="none"/>'+slices+'</svg><div class="ux-donut-label"><strong>'+int(total)+'</strong><small>звонков</small></div></div><div class="ux-legend">'+statuses.map((name,i)=>'<div class="ux-legend-row"><span class="ux-legend-name"><i style="background:'+swatches[i]+'"></i>'+name+'</span><span class="ux-legend-value">'+(total?int(values[i])+' · '+(values[i]/total*100).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%':'—')+'</span></div>').join('')+'</div></div></section>';
 }
-function chart(){
- return '<section class="ux-section ux-chart"><div class="ux-section-title"><h2>Динамика дозвона</h2><span class="ux-note">Дозвон, %</span></div><div class="ux-chart-canvas" role="img" aria-label="Пока нет данных для графика дозвона"><div class="ux-chart-scale"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span></div><div class="ux-chart-lines"><div class="ux-chart-grid"></div><div class="ux-chart-caption">График появится после первых звонков</div><div class="ux-chart-dates"><span>Начало периода</span><span>Конец периода</span></div></div></div></section>';
+function chart(days=[]){
+ const valid=days.filter(d=>d&&/^\\d{4}-\\d{2}-\\d{2}$/.test(d.date));
+ if(!valid.length)return '<section class="ux-section ux-chart"><div class="ux-section-title"><h2>Динамика дозвона</h2><span class="ux-note">Дозвон, %</span></div><div class="ux-chart-canvas" role="img" aria-label="Пока нет данных для графика дозвона"><div class="ux-chart-scale"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span></div><div class="ux-chart-lines"><div class="ux-chart-grid"></div><div class="ux-chart-caption">График появится после первых звонков</div><div class="ux-chart-dates"><span>Начало периода</span><span>Конец периода</span></div></div></div></section>';
+ const x=i=>30+i*840/Math.max(valid.length-1,1),y=d=>168-(Math.max(0,Math.min(100,number(d.reach)))*1.42);
+ const points=valid.map((d,i)=>x(i)+','+y(d)).join(' ');
+ const markers=valid.map((d,i)=>'<circle class="ux-point" cx="'+x(i)+'" cy="'+y(d)+'" r="6" tabindex="0" role="button" aria-label="'+escape(d.date)+', дозвон '+number(d.reach)+'%" data-ux-day="'+i+'"/>').join('');
+ const labels=valid.map(d=>[d.date,number(d.reach),number(d.minutes),number(d.attempts),number(d.answers)]);
+ return '<section class="ux-section ux-chart"><div class="ux-section-title"><h2>Динамика дозвона</h2><span class="ux-note">Дозвон, %</span></div><div class="ux-chart-interactive"><svg viewBox="0 0 900 190" role="img" aria-label="Динамика дозвона по дням"><g class="ux-grid-svg">'+[26,61.5,97,132.5,168].map(t=>'<line x1="30" y1="'+t+'" x2="870" y2="'+t+'"/>').join('')+'</g><polyline class="ux-line" points="'+points+'"/>'+markers+'</svg><div class="ux-day-tooltip" role="status" hidden></div></div><div class="ux-chart-dates"><span>'+escape(valid[0].date)+'</span><span>'+escape(valid[valid.length-1].date)+'</span></div><script type="application/json" id="ux-chart-data">'+JSON.stringify(labels).replace(/</g,'\\u003c')+'</script></section>';
 }
-function stats(){
- return shell('<div class="ux-headline"><div><p class="ux-eyebrow">АНАЛИТИКА</p><p class="ux-subtitle">Обзор исходящих звонков организации</p></div>'+calendar+'</div>'+strip+chart()+'<div class="ux-two">'+donut()+'<section class="ux-section ux-breakdown"><div class="ux-section-title ux-breakdown-header"><h2>Детализация</h2><div class="ux-segment" role="group" aria-label="Группировать статистику"><button data-ux-tab="employees" aria-pressed="true" type="button">По сотрудникам</button><button data-ux-tab="regions" aria-pressed="false" type="button">По регионам</button></div></div><div id="ux-breakdown-table">'+table(['Сотрудник','Инициации','Ответы','Дозвон'],[],'За выбранный период звонков пока нет')+'</div></section></div>');
+function stats(data={}){
+ return shell('<div class="ux-headline"><div><p class="ux-eyebrow">АНАЛИТИКА</p><p class="ux-subtitle">Обзор исходящих звонков организации</p></div>'+calendar+'</div>'+strip+chart(data.days||[])+'<div class="ux-two">'+donut(data.counts||[])+'<section class="ux-section ux-breakdown"><div class="ux-section-title ux-breakdown-header"><h2>Детализация</h2><div class="ux-segment" role="group" aria-label="Группировать статистику"><button data-ux-tab="employees" aria-pressed="true" type="button">По сотрудникам</button><button data-ux-tab="regions" aria-pressed="false" type="button">По регионам</button></div></div><div id="ux-breakdown-table">'+table(['Сотрудник','Инициации','Ответы','Дозвон'],[],'За выбранный период звонков пока нет')+'</div></section></div>');
 }
 function listPage(label,info,headers,emptyTitle,emptyText,actionLabel,actionId){
  return shell('<div class="ux-headline"><p class="ux-subtitle">'+escape(info)+'</p>'+ (actionLabel?action(actionLabel,actionId,true):'')+'</div><section class="ux-section ux-list">'+heading(label,'')+table(headers,[],emptyTitle)+hint(emptyTitle,emptyText)+'</section>');
@@ -43,7 +55,7 @@ function adminOverview(){
 }
 export function sectionUI(page,ctx={}){
  if(ctx.admin)return page==='overview'?adminOverview():page==='employees'?listPage('Команда SashaTel','Управление внутренними сотрудниками',['Сотрудник','Email','Роль'],'Сотрудников пока нет','Назначения появятся после подключения внутреннего API.','',''):null;
- if(page==='statistics')return stats();
+ if(page==='statistics')return stats(ctx.stats);
  if(page==='history'&&!ctx.details)return history();
  if(page==='trunks'&&!ctx.details)return trunks();
  if(page==='employees')return employees();
@@ -52,6 +64,12 @@ export function sectionUI(page,ctx={}){
  return null;
 }
 export function wireSectionUI(){
+ const chartData=document.querySelector('#ux-chart-data');
+ if(chartData){
+  const days=JSON.parse(chartData.textContent),tip=document.querySelector('.ux-day-tooltip');
+  const show=i=>{const [date,reach,minutes,attempts,answers]=days[i];tip.hidden=false;tip.innerHTML='<strong>'+escape(new Date(date+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}))+'</strong><div>Дозвон <b>'+reach.toLocaleString('ru-RU',{maximumFractionDigits:1})+'%</b></div><div>Минут <b>'+int(minutes)+'</b></div><div>Инициаций <b>'+int(attempts)+'</b></div><div>Ответов <b>'+int(answers)+'</b></div>';};
+  document.querySelectorAll('[data-ux-day]').forEach(el=>{el.addEventListener('pointerenter',()=>show(Number(el.dataset.uxDay)));el.addEventListener('focus',()=>show(Number(el.dataset.uxDay)));el.addEventListener('pointerleave',()=>tip.hidden=true);el.addEventListener('blur',()=>tip.hidden=true);});
+ }
  document.querySelectorAll('[data-ux-tab]').forEach(button=>button.addEventListener('click',()=>{
   const next=button.dataset.uxTab;
   document.querySelectorAll('[data-ux-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
