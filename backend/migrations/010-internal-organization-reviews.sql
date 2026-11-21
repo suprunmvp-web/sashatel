@@ -48,6 +48,16 @@ ALTER TABLE control.organizations DROP CONSTRAINT IF EXISTS organizations_verifi
 ALTER TABLE control.organizations ADD CONSTRAINT organizations_verification_status_check
  CHECK (verification_status IN ('unverified','verified','rejected'));
 
+-- Internal role is derived only from DBA-managed staff membership.
+CREATE FUNCTION web_auth.internal_staff_role(actor uuid) RETURNS text
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $
+ SELECT s.role FROM web_auth.internal_staff s
+ JOIN control.users u ON u.id=s.user_id
+ WHERE s.user_id=actor AND s.active AND u.active AND u.email_verified_at IS NOT NULL
+$;
+REVOKE ALL ON FUNCTION web_auth.internal_staff_role(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION web_auth.internal_staff_role(uuid) TO control_runtime;
+
 -- A privileged function only reveals the *minimum* administrative dataset after
 -- confirming a verified server-side user ID against DBA-maintained staff records.
 CREATE FUNCTION web_auth.internal_organizations(actor uuid)
