@@ -104,8 +104,10 @@ function savedTheme() {
 }
 function render() {
   root.classList.toggle("workspace", state.page === "cabinet");
+  document.body.classList.toggle("auth-shell", state.page !== "cabinet");
   document.body.classList.toggle("auth-verifying", state.page === "verify");
   document.body.classList.toggle("auth-welcome", state.page === "welcome");
+  document.body.classList.toggle("auth-waiting", state.page === "waiting");
   document.body.classList.toggle("auth-lookup", state.page === "lookup");
   document.body.classList.toggle("auth-confirm", state.page === "confirm");
   document.body.classList.toggle("in-workspace", state.page === "cabinet");
@@ -114,25 +116,45 @@ function render() {
   let html;
   switch (state.page) {
     case "register":
-      html = `<h1 class="greeting" tabindex="-1">Давайте <em>познакомимся.</em></h1><div class="auth-switch">Уже есть аккаунт? <button class="text-button" data-action="login">Войти</button></div><form novalidate data-form="register"><div class="name-row">${field("Имя", "display_name", state.name, 'autocomplete="given-name" maxlength="80" placeholder="Иван"')}${field("Фамилия", "surname", state.surname, 'autocomplete="family-name" maxlength="80" placeholder="Иванов"')}</div>${field("Почта", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.com"')}<div class="phone-field"><label for="phone">Номер телефона</label><div class="phone-row"><button type="button" id="country-button" aria-label="Код страны" aria-expanded="false" aria-controls="country-picker"><span id="country-code" class="country-flag" aria-hidden="true">🇷🇺</span>${icon("chevron-down")}</button><div class="phone-entry"><span id="phone-prefix">+7</span><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="18" placeholder="999 123-45-67" required></div></div><div id="country-picker" hidden><label class="country-search">Страна или код<input id="country-search" type="search" autocomplete="off" placeholder="Поиск страны"></label><div id="country-options" role="group" aria-label="Страны"></div></div></div>${password("new-password")}${confirmPassword()}<div class="consents"><label class="check"><input type="checkbox" name="news"><span>Получать новости и обновления SashaTel</span></label><label class="check"><input type="checkbox" name="terms" required><span>Я принимаю <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и даю согласие на обработку персональных данных в соответствии с <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политикой обработки персональных данных</a>.</span></label></div><button class="button" type="submit">Зарегистрироваться</button></form>`;
+      html = `<h1 class="greeting" tabindex="-1">Давайте <em>познакомимся.</em></h1><div class="auth-switch">Уже есть аккаунт? <button class="text-button" data-action="login">Войти</button></div><form novalidate data-form="register"><div class="name-row">${field("Имя", "display_name", state.name, 'autocomplete="given-name" maxlength="80" placeholder="Иван"')}${field("Фамилия", "surname", state.surname, 'autocomplete="family-name" maxlength="80" placeholder="Иванов"')}</div>${field("Почта", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.ru"')}<div class="phone-field"><label for="phone">Номер телефона</label><div class="phone-row"><button type="button" id="country-button" aria-label="Код страны" aria-expanded="false" aria-controls="country-picker"><span id="country-code" class="country-flag" aria-hidden="true">🇷🇺</span>${icon("chevron-down")}</button><div class="phone-entry"><span id="phone-prefix">+7</span><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="18" placeholder="999 123-45-67" required></div></div><div id="country-picker" hidden><label class="country-search">Страна или код<input id="country-search" type="search" autocomplete="off" placeholder="Поиск страны"></label><div id="country-options" role="group" aria-label="Страны"></div></div></div>${password("new-password")}${confirmPassword()}<div class="consents"><label class="check"><input type="checkbox" name="news"><span>Получать новости и обновления SashaTel</span></label><label class="check"><input type="checkbox" name="terms" required><span>Я принимаю <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и даю согласие на обработку персональных данных в соответствии с <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политикой обработки персональных данных</a>.</span></label></div><button class="button" type="submit">Зарегистрироваться</button></form>`;
       break;
     case "login":
-      html = `<h1 class="greeting" tabindex="-1">Добро <em>пожаловать.</em></h1><div class="auth-switch">Впервые в SashaTel? <button class="text-button" data-action="register">Создать аккаунт</button></div><form novalidate data-form="login">${field("Email", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.com"')}${password("current-password")}<a href="/recovery/">Забыли пароль?</a><button class="button" type="submit">Войти</button><p class="legal-note">Продолжая, вы можете ознакомиться с документами: <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политика обработки персональных данных</a>.</p></form>`;
+      html = `<h1 class="greeting" tabindex="-1">Добро <em>пожаловать.</em></h1><div class="auth-switch">Впервые в SashaTel? <button class="text-button" data-action="register">Создать аккаунт</button></div><form novalidate data-form="login">${field("Email", "email", state.email, 'type="email" autocomplete="username" maxlength="254" placeholder="m@example.ru"')}${password("current-password")}<a href="/recovery/${preview?"?preview=1":""}">Забыли пароль?</a><button class="button" type="submit">Войти</button><p class="legal-note">Продолжая, вы можете ознакомиться с документами: <a class="legal-link" href="/legal/terms/" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a> и <a class="legal-link" href="/legal/privacy/" target="_blank" rel="noopener noreferrer">Политика обработки персональных данных</a>.</p></form>`;
       break;
     case "verify":
-      html = `<section class="verify-screen" aria-labelledby="verify-heading"><button type="button" class="verify-back" data-action="verify-back" aria-label="Назад к регистрации"><span aria-hidden="true">←</span> Назад</button><div class="verify-emblem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></div><h1 id="verify-heading" tabindex="-1">Подтвердите вашу почту</h1><p class="verify-intro">Мы отправили 6-значный код на <strong class="email">${esc(state.email)}</strong>.<br>Введите его ниже для подтверждения.</p><form novalidate data-form="verify" class="verify-form"><div class="otp-field"><label class="otp-label" for="verify-code">Код подтверждения</label><div class="otp-box" id="otp-box"><div class="otp-cells" aria-hidden="true">${Array.from({length:6},(_,i)=>`<span class="otp-cell" data-otp-cell="${i}"></span>`).join("")}</div><input class="otp-input" id="verify-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-label="Шестизначный код подтверждения" required></div></div><button class="button" type="submit">Подтвердить</button></form><div class="verify-actions"><p id="expiry" class="verify-expiry" aria-live="off"></p><p>Не получили код? <button class="verify-link" id="resend" data-action="resend" type="button">Отправить повторно</button></p><p>Ввели не ту почту? <button class="verify-link" data-action="edit-email" type="button">Изменить email</button></p><p>Аккаунт уже создан? <button class="verify-link" data-action="login" type="button">Войти с паролем</button></p></div><p class="verify-delivery" id="delivery-state" role="status"></p></section>`;
+      html = `<section class="verify-screen" aria-labelledby="verify-heading"><div class="verify-emblem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></div><h1 id="verify-heading" tabindex="-1">Подтвердите вашу почту</h1><p class="verify-intro">Мы отправили 6-значный код на <strong class="email">${esc(state.email)}</strong>.<br>Введите его для подтверждения.</p><form novalidate data-form="verify" class="verify-form"><div class="otp-field"><label class="otp-label" for="verify-code">Код подтверждения</label><div class="otp-box" id="otp-box"><div class="otp-cells" aria-hidden="true">${Array.from({length:6},(_,i)=>`<span class="otp-cell" data-otp-cell="${i}"></span>`).join("")}</div><input class="otp-input" id="verify-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-label="Шестизначный код подтверждения" required></div></div><button class="button" type="submit">Подтвердить</button></form><div class="verify-actions"><p>Не получили код? <button class="verify-link" id="resend" data-action="resend" type="button">Отправить повторно</button></p><p>Не та почта? <button class="verify-link" data-action="edit-email" type="button">Изменить email</button></p></div><p class="verify-delivery" id="delivery-state" role="status"></p></section>`;
       break;
     case "organizations":
       html = '<h1 tabindex="-1">Выберите организацию</h1><div class="actions">'+state.organizations.map(org=>'<button class="button secondary" data-org="'+esc(org.id)+'">'+esc(org.legal_name)+'</button>').join('')+'</div>'+button("Создать организацию","lookup",true)+'<button class="text-button" data-action="logout">Выйти</button>';
       break;
     case "welcome":
-      html = `<section class="welcome-screen" aria-labelledby="welcome-heading"><div class="welcome-head"><p class="welcome-kicker">EMAIL ПОДТВЕРЖДЁН</p><h1 id="welcome-heading" class="serif" tabindex="-1">Добро пожаловать,<br><em>${esc(state.name)}!</em></h1><p class="welcome-description">Вы зарегистрировались в SashaTel. Создайте организацию, чтобы настроить телефонию и пригласить команду.</p></div><section class="welcome-primary" aria-labelledby="welcome-create-heading"><div class="welcome-card-icon" aria-hidden="true">${icon("building-2")}</div><h2 id="welcome-create-heading">Создайте свою организацию</h2><p>Укажите ИНН — найдём реквизиты и подготовим кабинет для вашей команды.</p><button class="button welcome-create" type="button" data-action="lookup">Создать организацию</button><p class="welcome-card-caption">Сначала проверим данные компании. Подключение телефонии — следующий шаг.</p></section><div class="welcome-invite"><div class="welcome-invite-copy"><span aria-hidden="true">${icon("mail")}</span><p><strong>Вас пригласили в команду?</strong><br>Если владелец пригласит вас на <span class="email">${esc(state.email)}</span>, создавать свою организацию не понадобится.</p></div><button class="text-button welcome-invite-action" data-action="waiting">Ожидать приглашения</button></div><button class="text-button welcome-logout" data-action="logout">Выйти из аккаунта</button></section>`;
+      html = `<section class="welcome-screen" aria-labelledby="welcome-heading"><div class="welcome-head"><h1 id="welcome-heading" class="serif" tabindex="-1">Добро пожаловать, <em>${esc(state.name)}!</em></h1><p class="welcome-description">Как хотите начать работу с SashaTel?</p></div><div class="playground-welcome-choices"><section class="playground-choice" aria-labelledby="choice-create"><div class="playground-choice-icon">${icon("building-2")}</div><h2 id="choice-create">Создать организацию</h2><p>Настройте кабинет для своей команды.</p><button type="button" class="button" data-action="lookup">Создать организацию</button></section><section class="playground-choice" aria-labelledby="choice-join"><div class="playground-choice-icon">${icon("users")}</div><h2 id="choice-join">Присоединиться к команде</h2><p>Вас приглашают в существующую организацию?</p><button type="button" class="button secondary" data-action="waiting">Ожидать приглашения</button></section></div><button class="text-button welcome-logout" data-action="logout">Выйти из аккаунта</button></section>`;
       break;
     case "waiting":
-      html = `<div class="eyebrow">ПРИСОЕДИНЕНИЕ К КОМАНДЕ</div><h1 tabindex="-1">Ожидайте приглашения</h1><p>Попросите владельца организации отправить приглашение на <span class="email">${esc(state.email)}</span>.</p><div class="warning">Приглашений пока нет.</div>${button("Создать свою организацию", "lookup")}<button class="text-button" data-action="welcome">Назад</button>`;
+      html = `<section class="playground-waiting"><div class="lookup-emblem">${icon("mail")}</div><h1>Ожидаем приглашения</h1><p>Попросите владельца организации пригласить вас на <strong class="email">${esc(state.email)}</strong>.</p><button class="button" data-action="welcome">Вернуться к выбору</button><button class="text-button" data-action="logout">Выйти</button></section>`;
       break;
     case "lookup":
-      html = `<section class="lookup-screen" aria-labelledby="lookup-heading"><div class="lookup-emblem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-3v17M12 8l7 3v10M8 10h1M8 13h1M8 16h1M15 13h1M15 16h1"/></svg></div><p class="eyebrow">НОВАЯ ОРГАНИЗАЦИЯ</p><h1 id="lookup-heading" tabindex="-1">Найдём вашу компанию</h1><p class="lookup-intro">Введите ИНН организации или ИП. Реквизиты проверим перед созданием кабинета.</p><form novalidate data-form="lookup">${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="7707083893" aria-describedby="inn-hint"')}<span class="hint" id="inn-hint">10 цифр для организации, 12 — для ИП</span><button class="button" type="submit">Найти организацию</button></form><button class="text-button lookup-back" data-action="welcome">Назад</button></section>`;
+      html = `<section class="lookup-screen" aria-labelledby="lookup-heading">
+        <div class="lookup-emblem" aria-hidden="true">${icon("building-2")}</div>
+        <h1 id="lookup-heading" class="serif" tabindex="-1">Добавьте <em>организацию.</em></h1>
+        <p class="lookup-intro">Укажите ИНН — мы найдём и заполним реквизиты.</p>
+        <form novalidate data-form="lookup" class="company-lookup-form">
+          <div class="inn-control">
+            ${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="Введите ИНН" aria-controls="inn-suggestions" aria-autocomplete="list"')}
+            <div id="inn-suggestions" class="inn-suggestions" role="listbox" aria-label="Результаты поиска" hidden></div>
+          </div>
+          <div class="company-form-fields">
+            <label class="company-locked-field">Название организации<span class="company-locked-input"><input type="text" name="legal_name" value="${esc(state.lookup?displayLegalName(state.lookup.legal_name):'')}" disabled><img src="/assets/lock.svg" class="company-lock-icon" alt="" aria-hidden="true" width="20" height="20"></span></label>
+            <label class="company-locked-field">Юридический адрес<span class="company-locked-input"><textarea name="legal_address" rows="2" disabled>${esc(state.lookup?.legal_address??'')}</textarea><img src="/assets/lock.svg" class="company-lock-icon" alt="" aria-hidden="true" width="20" height="20"></span></label>
+          </div>
+
+        </form>
+        <div class="company-complete" ${state.lookup?'':'hidden'}>
+          <label class="check playground-consent"><input type="checkbox" id="company-consent"><span>Подтверждаю, что уполномочен действовать от имени организации</span></label>
+          <button type="button" class="button" data-action="create" id="company-create" disabled>Создать организацию</button>
+        </div>
+        <button class="text-button lookup-back" data-action="welcome">Вернуться к выбору</button>
+      </section>`;
       break;
     case "confirm":
       html = `<section class="confirm-screen" aria-labelledby="confirm-heading"><div class="confirm-heading"><p class="confirm-step">ПОЧТИ ГОТОВО</p><h1 id="confirm-heading" class="serif" tabindex="-1">Подтвердите<br><em>организацию.</em></h1><p class="confirm-intro">Проверьте данные перед созданием кабинета.</p></div><section class="confirm-card" aria-label="Реквизиты организации"><div class="confirm-identity"><span class="confirm-company-label">ВАША ОРГАНИЗАЦИЯ</span><h2>${esc(displayLegalName(state.lookup.legal_name))}</h2></div><dl class="confirm-details"><div><dt>ИНН</dt><dd class="mono">${esc(state.lookup.inn)}</dd></div><div><dt>Юридический адрес</dt><dd>${esc(state.lookup.legal_address)}</dd></div></dl></section><p class="confirm-owner-note">Вы станете владельцем кабинета. Телефонию подключим отдельно после проверки организации.</p><div class="confirm-actions">${button("Создать организацию", "create")}<button type="button" class="text-button" data-action="lookup">Изменить ИНН</button></div></section>`;
@@ -155,7 +177,9 @@ function render() {
     root.querySelector(".otp-input")?.focus({preventScroll:true});
     syncOtp();
   }
+
   setupPhone();
+
   tick();
 }
 function syncOtp() {
@@ -176,14 +200,9 @@ function tick() {
   if (!resend) return;
   const seconds = Math.max(0, Math.ceil((state.resendAt - Date.now()) / 1000));
   resend.disabled = state.busy || seconds > 0;
-  resend.textContent = seconds
-    ? `Отправить через ${seconds} с`
-    : "Отправить повторно";
+  resend.textContent = seconds ? `Отправить повторно (${seconds})` : "Отправить повторно";
   const remaining = Math.ceil((state.expiresAt - Date.now()) / 1000);
-  root.querySelector("#expiry").textContent =
-    remaining > 0
-      ? `Код действителен ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
-      : "Срок действия кода истёк. Запросите новый.";
+  // No visible validity countdown; expiry is enforced by the server.
 }
 async function run(action, success) {
   if (state.busy) return;
@@ -234,7 +253,49 @@ async function enter(result) {
   state.organizations=available;
   go(available.length ? "organizations" : "welcome");
 }
+// Locally generated test-only organizations. Never shown as real registry results.
+function sampleInn(prefix, i) {
+  if (!/^\d{1,12}$/.test(prefix)) return null;
+  if (prefix.length === 10 || prefix.length === 12) return prefix;
+  const width = 9 - prefix.length;
+  const base = width > 0 ? prefix + String(i).padStart(width, "0").slice(-width) : prefix;
+  const weights = [2,4,10,3,5,9,4,6,8];
+  const checksum = (weights.reduce((sum, weight, ix) => sum + Number(base[ix])*weight, 0) % 11) % 10;
+  return base + checksum;
+}
+function companyCandidates(prefix) {
+  if (!/^\d{1,12}$/.test(prefix) || prefix.length === 11) return [];
+  const result = [], seen = new Set();
+  if (prefix === "7707083893") result.push({inn:prefix,name:'ООО «Пример организации»'});
+  for (let i = 1; i <= 200 && result.length < 20; i++) {
+    const inn = sampleInn(prefix, i);
+    if (!inn || seen.has(inn) || result.some(x=>x.inn===inn)) continue;
+    seen.add(inn);
+    const suffix = inn.slice(5,9);
+    result.push({inn,name:`ООО «Компания ${suffix}»`});
+  }
+  return result;
+}
 root.addEventListener("input", (event) => {
+  if (state.page === "lookup" && event.target.name === "inn") {
+    const field = event.target;
+    const inn = field.value.replace(/\D/g, "").slice(0,12);
+    if (field.value !== inn) field.value = inn;
+    const dropdown = root.querySelector("#inn-suggestions");
+    if (state.lookup && state.lookup.inn !== inn) {
+      state.lookup = null;
+      root.querySelector('[name="legal_name"]').value = "";
+      root.querySelector('[name="legal_address"]').value = "";
+      root.querySelector(".company-complete").hidden = true;
+      // A selected suggestion or Enter triggers lookup.
+    }
+    const options = !state.lookup ? companyCandidates(inn) : [];
+    dropdown.hidden = options.length === 0;
+    if (!dropdown.hidden) {
+      dropdown.innerHTML = options.map(({inn: value,name}) => `<button type="button" class="inn-result" data-action="select-inn" data-inn="${esc(value)}" role="option"><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(name)}</strong><small>ИНН ${esc(value)}</small></span>${icon("arrow-right")}</button>`).join('');
+      window.renderSashaIcons?.(dropdown);
+    }
+  }
   if (event.target.name === "password" && state.page === "register") {
     const confirmation = root.querySelector("#confirm-password");
     if (confirmation && event.target.value && confirmation.hidden) {
@@ -289,7 +350,7 @@ root.addEventListener("submit", (event) => {
   const phoneInput=form.querySelector("#phone");
   const phoneNumber=phoneInput ? "+"+(phoneInput.dataset.dial||"7")+String(values.phone).replace(/\D/g,"") : null;
   const passwordField = form.querySelector("[name=password]");
-  if (values.password && form.dataset.form==="register" && ([...values.password].length<8 || [...values.password].length>128 || new TextEncoder().encode(values.password).length>512)){announceError("Пароль: от 8 до 128 символов, не более 512 байт.");return;}
+  if (values.password && form.dataset.form==="register" && ((!preview && [...values.password].length<8) || [...values.password].length>128 || new TextEncoder().encode(values.password).length>512)){announceError("Пароль: от 8 до 128 символов, не более 512 байт.");return;}
   if (form.dataset.form === "register" && values.password !== values.repeat_password) {
     announceError("Пароли не совпадают.");
     return;
@@ -336,10 +397,23 @@ root.addEventListener("submit", (event) => {
         (result) => {
           state.lookup = result;
           state.createKey = crypto.randomUUID();
-          go("confirm");
+          go("lookup");
         },
       );
       break;
+  }
+});
+root.addEventListener("change", event => {
+  if (event.target.id === "company-consent") {
+    const create = root.querySelector("#company-create");
+    if (create) create.disabled = !event.target.checked;
+  }
+});
+
+root.addEventListener("change", (event) => {
+  if (event.target.id === "company-consent") {
+    const create = root.querySelector("#company-create");
+    if (create) create.disabled = !event.target.checked;
   }
 });
 root.addEventListener("click", (event) => {
@@ -357,6 +431,16 @@ root.addEventListener("click", (event) => {
     const control = root.querySelector("[data-action=theme]");
     control.innerHTML = icon(theme === "dark" ? "sun" : "moon");
     window.renderSashaIcons?.(root);
+    return;
+  }
+  if (action === "select-inn") {
+    const form = root.querySelector('form[data-form="lookup"]');
+    const choice = event.target.closest('[data-inn]');
+    if (form && choice) {
+      form.elements.namedItem('inn').value = choice.dataset.inn;
+      root.querySelector('#inn-suggestions').hidden = true;
+      form.requestSubmit();
+    }
     return;
   }
   if (action === "password") {
@@ -378,6 +462,7 @@ root.addEventListener("click", (event) => {
       () => api.resend({ challenge_id: state.challengeId }),
       (result) => {
         challenge(result);
+        notify("Новый код отправлен", "success");
         root.querySelector("[name=code]").value = "";
         tick();
         root.querySelector("[name=code]").focus();
@@ -451,7 +536,7 @@ async function bootstrap() {
     }
     if (result?.account) {
       setAccount(result.account);
-      if(result.pendingCreate?.lookup){state.lookup=result.pendingCreate.lookup;state.createKey=result.pendingCreate.key;go("confirm");return;}
+      if(result.pendingCreate?.lookup){state.lookup=result.pendingCreate.lookup;state.createKey=result.pendingCreate.key;go("lookup");return;}
       const route = location.pathname.match(/^\/([0-9a-f-]{36})\//i);
       if (route) {
         await enter({ ...result, organization: { id: route[1] } });

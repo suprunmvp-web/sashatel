@@ -3,7 +3,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 const root=resolve(new URL('./dist',import.meta.url).pathname),upstream=process.env.WEB_API_UPSTREAM;
 if(upstream&&!['http:','https:'].includes(new URL(upstream).protocol))throw Error('Invalid API upstream');
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.ttf':'font/ttf'};
+const mime={'.svg':'image/svg+xml','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.ttf':'font/ttf'};
 createServer(async(req,res)=>{
  const url=new URL(req.url,'http://localhost');res.setHeader('x-content-type-options','nosniff');res.setHeader('referrer-policy','no-referrer');
  if(url.pathname.startsWith('/v1/')||['/live','/ready'].includes(url.pathname)){
