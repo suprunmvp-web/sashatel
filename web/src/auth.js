@@ -33,7 +33,7 @@ const button = (text, action, secondary = false) =>
 const field = (label, name, value = "", attributes = "") =>
   `<label>${label}<input name="${name}" value="${esc(value)}" ${attributes} required></label>`;
 const password = (autocomplete) =>
-  `<label>Пароль<div class="password-row"><input name="password" type="password" autocomplete="${autocomplete}" required ${autocomplete === "new-password" ? 'minlength="12"' : ""} maxlength="256" placeholder="Не менее 12 символов"><button type="button" class="icon-button" data-action="password" aria-label="Показать пароль">${icon("eye")}</button></div></label>`;
+  `<label>Пароль<div class="password-row"><input name="password" type="password" autocomplete="${autocomplete}" required ${autocomplete === "new-password" ? 'minlength="12"' : ""} maxlength="256" placeholder="********"><button type="button" class="icon-button" data-action="password" aria-label="Показать пароль">${icon("eye")}</button></div></label>`;
 function accountTitle() {
   return `<h1 class="serif" tabindex="-1">Добро пожаловать,<br><em>${esc(state.name)}!</em></h1>`;
 }
