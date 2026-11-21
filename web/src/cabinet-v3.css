@@ -147,3 +147,17 @@
 .platform .ux-dialog-footer{border-top:1px solid var(--line);margin-top:23px;padding-top:16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .platform .ux-dialog-footer>span{font:11px/1.5 var(--font);color:var(--sub);max-width:220px}
 @media(max-width:520px){.platform .ux-preview-form{padding:20px}.platform .ux-dialog-footer{align-items:flex-start;flex-direction:column}}
+
+.platform dialog#operation-dialog{width:min(460px,calc(100vw - 32px));max-height:calc(100svh - 32px);border:1px solid var(--line);border-radius:13px;padding:0;background:var(--surface);color:var(--fg);box-shadow:0 18px 70px #0003}
+.platform #operation-dialog::backdrop{background:#0007;backdrop-filter:blur(2px)}
+.platform #operation-dialog form{padding:24px;display:grid;gap:19px}
+.platform #operation-dialog header{align-items:center;margin:0 0 2px}
+.platform #operation-dialog h2{font:600 19px/1.35 var(--font);letter-spacing:-.035em}
+.platform #operation-dialog header .icon-button{width:29px;height:29px;border:1px solid var(--line);border-radius:7px}
+.platform #operation-dialog .dialog-fields{gap:14px}
+.platform #operation-dialog .dialog-fields label{display:grid;gap:7px;font:500 12px var(--font)}
+.platform #operation-dialog input,.platform #operation-dialog select{min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:13px}
+.platform #operation-dialog>form>p{color:var(--sub);font:11px/1.6 var(--font);margin:0}
+.platform .ux-modal-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;border-top:1px solid var(--line)}
+.platform .ux-modal-footer span{font:11px/1.5 var(--font);color:var(--sub)}
+.platform .ux-modal-footer button{min-height:35px;padding:8px 13px;border-radius:7px}
