@@ -119,3 +119,11 @@
 .ux-day-tooltip strong{display:block;font-size:12px;margin-bottom:9px}
 .ux-day-tooltip>div{display:flex;justify-content:space-between;gap:12px;margin-top:6px;color:var(--sub)}
 .ux-day-tooltip b{font-weight:600;color:var(--fg);font-variant-numeric:tabular-nums}
+
+.ux-pill{display:inline-flex;align-items:center;width:max-content;max-width:100%;border-radius:6px;padding:4px 8px;font:500 11px/1.3 var(--font);color:var(--sub);background:var(--hover);white-space:nowrap}
+.ux-pill-success{color:#2f8972;background:rgba(64,157,125,.105)}
+.ux-pill-warning{color:#b6873d;background:rgba(191,144,64,.11)}
+.ux-pill-error{color:#b96768;background:rgba(202,89,94,.105)}
+.ux-connector .ux-pill{margin-left:auto;font-size:10px}
+.ux-table .ux-pill{font-size:11px}
+.ux-connector-info{min-width:0}
