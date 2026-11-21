@@ -13,6 +13,16 @@ const deadline = (seconds: number) => new Date(Date.now()+seconds*1000);
 export interface MailPort {
   send(message: {id:string;email:string;code:string|null}): Promise<void>;
 }
+// Provider failures that must not be retried (invalid sender, forbidden API key, etc.).
+// Network timeouts and unknown outcomes remain retryable.
+export class MailDeliveryError extends Error {
+  readonly retryable:boolean;
+  constructor(retryable:boolean) {
+    super(retryable?'MAIL_TRANSIENT_FAILURE':'MAIL_PERMANENT_FAILURE');
+    this.name='MailDeliveryError';
+    this.retryable=retryable;
+  }
+}
 export interface LookupPort {
   lookup(inn:string): Promise<{legal_name:string;legal_address:string}|null>;
 }
@@ -43,7 +53,7 @@ function profile(input:Record<string,unknown>) {
     return result;
   };
   if(typeof input.email!=='string'||input.email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) throw new ApiError(422,'INVALID_EMAIL');
-  if(typeof input.password!=='string'||[...input.password].length<12||[...input.password].length>128||Buffer.byteLength(input.password)>512) throw new ApiError(422,'INVALID_PASSWORD');
+  if(typeof input.password!=='string'||[...input.password].length<8||[...input.password].length>128||Buffer.byteLength(input.password)>512) throw new ApiError(422,'INVALID_PASSWORD');
   if(typeof input.phone!=='string'||!/^\+[0-9 ()-]+$/.test(input.phone)||input.phone.length>40) throw new ApiError(422,'INVALID_PHONE');
   const phone=parsePhoneNumberFromString(input.phone.replace(/[ ()-]/g,''));
   if(!phone?.isValid()) throw new ApiError(422,'INVALID_PHONE');
@@ -259,6 +269,10 @@ export class WebAuth {
   async bootstrap(ctx:Context) {
     return this.tx(ctx,async db=>{
       const {rows:[browser]}=await db.query('SELECT *,completion_expires>clock_timestamp() AS valid FROM web_auth.browsers WHERE hash=$1',[hash(ctx.browser)]);
+      // Browsers remove the short-lived access cookie after five minutes.
+      // A remaining refresh cookie means this is an expiring session, not an anonymous visitor.
+      // Signal the client to rotate credentials rather than showing onboarding again.
+      if(!ctx.access&&ctx.refresh) throw new ApiError(401,'ACCESS_EXPIRED');
       if(ctx.access) {
         const {family,user}=await this.identity(db,ctx);
         await this.closeCompletion(db,ctx);
@@ -425,29 +439,120 @@ export class WebAuth {
       return {status:201,body:{organization:await this.organization(db,user.id,id)}};
     });
   }
+  
   async deliverOne() {
-    const db=await this.pool.connect();
+    const leaseToken = randomUUID();
+
+    // Atomic claim: only one worker owns this job.
+    const { rows: [job] } = await this.pool.query(`
+      WITH candidate AS (
+        SELECT j.challenge_id
+        FROM web_auth.mail_jobs j
+        WHERE j.completed_at IS NULL
+          AND j.available_at <= clock_timestamp()
+          AND (
+            j.lease_until IS NULL
+            OR j.lease_until <= clock_timestamp()
+          )
+        ORDER BY j.available_at
+        LIMIT 1
+        FOR UPDATE OF j SKIP LOCKED
+      )
+      UPDATE web_auth.mail_jobs j
+      SET lease_token = $1,
+          lease_until = clock_timestamp() + interval '30 seconds'
+      FROM candidate, web_auth.challenges c, web_auth.browsers b
+      WHERE j.challenge_id = candidate.challenge_id
+        AND c.id = j.challenge_id
+        AND b.hash = c.browser_hash
+      RETURNING
+        j.challenge_id,
+        j.envelope,
+        j.attempts,
+        c.expires_at,
+        c.consumed_at,
+        b.challenge_id AS active_challenge_id,
+        EXISTS (
+          SELECT 1
+          FROM control.users u
+          WHERE lower(u.login) = c.email
+        ) AS existing
+    `, [leaseToken]);
+
+    if (!job) return;
+
+    const current =
+      !job.consumed_at &&
+      job.challenge_id === job.active_challenge_id &&
+      new Date(job.expires_at).getTime() > Date.now();
+
+    if (!current) {
+      await this.pool.query(`
+        UPDATE web_auth.mail_jobs
+        SET completed_at = clock_timestamp(),
+            envelope = NULL,
+            lease_token = NULL,
+            lease_until = NULL
+        WHERE challenge_id = $1
+          AND lease_token = $2
+      `, [job.challenge_id, leaseToken]);
+      return;
+    }
+
     try {
-      await db.query('BEGIN');
-      const {rows:[job]}=await db.query(`SELECT j.*,c.email,c.expires_at,c.consumed_at,
-        EXISTS(SELECT 1 FROM control.users u WHERE lower(u.login)=c.email) AS existing
-        FROM web_auth.mail_jobs j JOIN web_auth.challenges c ON c.id=j.challenge_id
-        WHERE j.completed_at IS NULL AND j.available_at<=clock_timestamp() ORDER BY j.available_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED`);
-      if(!job) {await db.query('COMMIT');return;}
-      if(job.consumed_at||new Date(job.expires_at).getTime()<=Date.now()) {
-        await db.query('UPDATE web_auth.mail_jobs SET completed_at=clock_timestamp(),envelope=NULL WHERE challenge_id=$1',[job.challenge_id]);
-      } else {
-        try {
-          const message=this.open(job.envelope);
-          await this.mail.send({id:job.challenge_id,email:message.email,code:job.existing?null:message.code});
-          await db.query("UPDATE web_auth.challenges SET delivery='accepted' WHERE id=$1",[job.challenge_id]);
-          await db.query('UPDATE web_auth.mail_jobs SET completed_at=clock_timestamp(),envelope=NULL WHERE challenge_id=$1',[job.challenge_id]);
-        } catch {
-          await db.query("UPDATE web_auth.challenges SET delivery='failed' WHERE id=$1",[job.challenge_id]);
-          await db.query("UPDATE web_auth.mail_jobs SET attempts=attempts+1,available_at=clock_timestamp()+interval '60 seconds' WHERE challenge_id=$1",[job.challenge_id]);
-        }
-      }
-      await db.query('COMMIT');
-    } catch(error) {await db.query('ROLLBACK');throw error;} finally {db.release();}
+      // No PostgreSQL transaction is open during network I/O.
+      const message = this.open(job.envelope);
+
+      await this.mail.send({
+        id: job.challenge_id,
+        email: message.email,
+        code: job.existing ? null : message.code,
+      });
+
+      await this.pool.query(`
+        WITH finished AS (
+          UPDATE web_auth.mail_jobs
+          SET completed_at = clock_timestamp(),
+              envelope = NULL,
+              lease_token = NULL,
+              lease_until = NULL
+          WHERE challenge_id = $1
+            AND lease_token = $2
+          RETURNING challenge_id
+        )
+        UPDATE web_auth.challenges c
+        SET delivery = 'accepted'
+        FROM finished
+        WHERE c.id = finished.challenge_id
+      `, [job.challenge_id, leaseToken]);
+    } catch (error) {
+      const permanent=error instanceof MailDeliveryError && !error.retryable;
+      await this.pool.query(`
+        WITH failed AS (
+          UPDATE web_auth.mail_jobs
+          SET attempts = attempts + 1,
+              available_at = clock_timestamp() +
+                (make_interval(secs => LEAST(240,60*power(2,LEAST(attempts,2)))::int)
+                 + make_interval(secs => floor(random()*10)::int)),
+              completed_at = CASE
+                WHEN $3::boolean OR attempts >= 4 THEN clock_timestamp()
+                ELSE NULL
+              END,
+              envelope = CASE
+                WHEN $3::boolean OR attempts >= 4 THEN NULL
+                ELSE envelope
+              END,
+              lease_token = NULL,
+              lease_until = NULL
+          WHERE challenge_id = $1
+            AND lease_token = $2
+          RETURNING challenge_id
+        )
+        UPDATE web_auth.challenges c
+        SET delivery = 'failed'
+        FROM failed
+        WHERE c.id = failed.challenge_id
+      `, [job.challenge_id, leaseToken, permanent]);
+    }
   }
 }

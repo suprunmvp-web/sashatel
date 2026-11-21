@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node server.ts",
     "typecheck": "tsc --noEmit --strict --skipLibCheck --module nodenext --target es2024 --allowImportingTsExtensions *.ts",
-    "test": "node --test --test-concurrency=1 integration.test.ts web-auth.test.ts migration.test.ts server.test.ts ari-client.test.ts",
+    "test": "node --test --test-concurrency=1 resend-mail.test.ts mail-queue.test.ts integration.test.ts web-auth.test.ts migration.test.ts server.test.ts ari-client.test.ts",
     "test:ari": "node --test ari-client.test.ts",
     "smoke:ari": "node ari-smoke.ts"
   },

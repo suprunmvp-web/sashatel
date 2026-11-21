@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/backend-integration-v11-20261119
+      - feature/web-auth-production-20261121
     paths:
       - '.github/workflows/yc-staging-backend-image.yml'
   workflow_dispatch:
@@ -18,7 +19,7 @@ concurrency:
 jobs:
   verify:
     name: Verify backend on PostgreSQL 17
-    if: github.ref == 'refs/heads/feature/backend-integration-v11-20261119'
+    if: github.ref == 'refs/heads/feature/backend-integration-v11-20261119' || github.ref == 'refs/heads/feature/web-auth-production-20261121'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -45,7 +46,7 @@ jobs:
       - name: Initialize disposable PostgreSQL schema
         run: |
           psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE control_runtime LOGIN PASSWORD 'disposable-ci-runtime' NOSUPERUSER NOBYPASSRLS"
-          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql -f migrations/002-uis.sql -f migrations/003-operator.sql -f migrations/004-web.sql -f migrations/005-trunk-routing.sql -f migrations/006-global-carousel.sql
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql -f migrations/002-uis.sql -f migrations/003-operator.sql -f migrations/004-web.sql -f migrations/005-trunk-routing.sql -f migrations/006-global-carousel.sql -f migrations/007-mail-lease.sql
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
@@ -53,6 +54,7 @@ jobs:
   publish:
     name: Push immutable staging image (NO deploy)
     needs: verify
+    if: github.ref == 'refs/heads/feature/backend-integration-v11-20261119' || github.ref == 'refs/heads/feature/web-auth-production-20261121'
     runs-on: ubuntu-latest
     permissions:
       contents: read
