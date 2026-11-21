@@ -166,11 +166,12 @@ export function setupPhone() {
     },
     { signal: lifecycle.signal },
   );
-  trigger.closest("form").addEventListener("focusout", () => {
-    queueMicrotask(() => {
-      if (!document.activeElement?.closest?.(".phone-field")) close();
-    });
-  });
+  // Do not close the picker on a focusout microtask: pointerdown on a
+  // country option moves focus before its click event, causing a lost selection.
+  // A focusin *outside* the widget is safe and also covers keyboard navigation.
+  document.addEventListener("focusin", (event) => {
+    if (!event.target.closest?.(".phone-field")) close();
+  }, {signal:lifecycle.signal});
 }
 let lifecycle = new AbortController();
 // Each render replaces the phone DOM; release its document listener first.
