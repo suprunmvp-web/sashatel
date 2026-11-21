@@ -76,6 +76,16 @@ function wire(){
  const filter=document.querySelector('#organization-filter');if(filter)filter.oninput=()=>{document.querySelectorAll('tbody tr').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(filter.value.toLowerCase());});};
 }
 async function start(){
+ const legalPages={
+   '/legal/terms/':'Пользовательское соглашение',
+   '/legal/privacy/':'Политика обработки персональных данных'
+ };
+ const legalTitle=legalPages[location.pathname];
+ if(legalTitle){
+   document.title=legalTitle+' — SashaTel';
+   document.querySelector('main').innerHTML='<section class="legal-page"><p class="legal-eyebrow">ЮРИДИЧЕСКИЕ ДОКУМЕНТЫ</p><h1>'+esc(legalTitle)+'</h1><p>Документ готовится к публикации. Здесь будет размещена его действующая редакция.</p><a href="/register/">Вернуться к регистрации</a></section>';
+   return;
+ }
  if(location.pathname.startsWith('/recovery')){document.querySelector('main').innerHTML='<h1>Восстановление пароля</h1><p>Восстановление временно недоступно: API ещё не подключён.</p><a href="/login/">Вернуться ко входу</a>';return;}
  if(isPreview&&(admin||uuid.test(parts[0]||''))){account=fixtureActor;org=fixtureOrg;organizations=[fixtureOrg];render();return;}
  try{
