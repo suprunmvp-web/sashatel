@@ -62,3 +62,43 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION web_auth.internal_organizations_page(uuid,integer,integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION web_auth.internal_organizations_page(uuid,integer,integer) TO control_runtime;
+
+-- Reviewers can make initial decisions. Reopening a mistaken rejection is an
+-- elevated owner/admin action with a durable reason; no automatic approval.
+ALTER TABLE web_auth.organization_reviews
+ DROP CONSTRAINT IF EXISTS organization_reviews_outcome_check;
+ALTER TABLE web_auth.organization_reviews
+ ADD CONSTRAINT organization_reviews_outcome_check
+ CHECK(outcome IN ('verified','rejected','reopened'));
+
+CREATE FUNCTION web_auth.reopen_organization_review(
+ actor uuid, org_id uuid, evidence text, explanation text, review_id uuid
+) RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE current_inn text; current_status text;
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1 FROM web_auth.internal_staff s
+  JOIN control.users u ON u.id=s.user_id
+  WHERE s.user_id=actor AND s.active AND s.role IN ('owner','admin')
+    AND u.active AND u.email_verified_at IS NOT NULL
+ ) THEN RAISE EXCEPTION 'INTERNAL_ACCESS_DENIED' USING ERRCODE='42501'; END IF;
+ IF length(trim(evidence))<5 OR length(trim(explanation))<8 OR
+    length(evidence)>500 OR length(explanation)>2000
+ THEN RAISE EXCEPTION 'INVALID_REVIEW' USING ERRCODE='22023'; END IF;
+ SELECT o.inn INTO current_inn FROM control.organizations o WHERE o.id=org_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'ORGANIZATION_NOT_FOUND' USING ERRCODE='P0002'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(current_inn,0));
+ SELECT o.verification_status INTO current_status
+ FROM control.organizations o WHERE o.id=org_id FOR UPDATE;
+ IF current_status<>'rejected' THEN
+  RAISE EXCEPTION 'REOPEN_REQUIRES_REJECTED' USING ERRCODE='23514';
+ END IF;
+ UPDATE control.organizations SET verification_status='unverified' WHERE id=org_id;
+ INSERT INTO web_auth.organization_reviews
+  (id,organization_id,reviewer_user_id,outcome,evidence_reference,explanation)
+ VALUES (review_id,org_id,actor,'reopened',evidence,explanation);
+ RETURN 'unverified';
+END $$;
+REVOKE ALL ON FUNCTION web_auth.reopen_organization_review(uuid,uuid,text,text,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION web_auth.reopen_organization_review(uuid,uuid,text,text,uuid) TO control_runtime;
