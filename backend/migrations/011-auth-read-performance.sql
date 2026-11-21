@@ -24,3 +24,11 @@ CREATE INDEX IF NOT EXISTS memberships_active_account_organizations
  ON control.memberships(user_id,organization_id) WHERE active;
 CREATE INDEX IF NOT EXISTS organizations_pending_review
  ON control.organizations(id) WHERE verification_status='unverified';
+
+-- The internal SashaTel owner is distinct from the customer organization owner.
+-- Membership is provisioned only by an authorized DBA; never inferred from email.
+ALTER TABLE web_auth.internal_staff
+ DROP CONSTRAINT IF EXISTS internal_staff_role_check;
+ALTER TABLE web_auth.internal_staff
+ ADD CONSTRAINT internal_staff_role_check
+ CHECK(role IN ('owner','admin','reviewer'));
