@@ -94,7 +94,15 @@ async function start(){
   if(!account){await import('./auth.js');return;}
   if(admin){render();return;}
   if(uuid.test(parts[0]||'')){org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;render();return;}
+  // Authenticated users never stay on /login/ or /register/.
+  // Prefer the last server-selected organization, otherwise enter the only available one.
   if(session.organization){location.replace('/'+session.organization.id+'/');return;}
+  if(organizations.length===1){
+    const selected=await api.openOrganization(organizations[0].id);
+    location.replace('/'+selected.organization.id+'/');
+    return;
+  }
+  // Multiple organizations need an explicit choice; zero organizations go to onboarding.
   await import('./auth.js');
  }catch(e){document.querySelector('main').innerHTML='<h1>Не удалось открыть платформу</h1><p role="alert">'+esc(e.message)+'</p><button class="button" id="retry">Повторить</button><a href="/login/">Ко входу</a>';document.querySelector('#retry').onclick=()=>location.reload();}
 }
