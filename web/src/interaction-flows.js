@@ -78,3 +78,26 @@ export function openEmployeeAccess({employee={},updateRole=null,revokeSessions=n
  form.onsubmit=async e=>{e.preventDefault();if(!updateRole||isOwner)return;const b=form.querySelector('[type=submit]');b.disabled=true;try{await updateRole({employeeId:employee.id,role:form.elements.role.value});notify('Права сотрудника обновлены','success');dialog.close();}catch(err){b.disabled=false;notify(err?.message||'Не удалось изменить права','error');}};
  return dialog;
 }
+
+export function openNumberPreparation(){
+ const body='<div class="ux-flow-ready">'+renderIcon('file-spreadsheet')+'<span>Подготовьте список номеров для маркировки</span></div><div class="ux-flow-form"><label>CSV-файл с номерами<input id="ux-csv-numbers" type="file" accept=".csv,text/csv,text/plain"></label><div class="ux-csv-summary" role="status">Номера не загружены</div><div class="ux-flow-explanation">'+renderIcon('info')+'<p>Проверка выполняется локально в браузере. Файл не отправляется в Госуслуги или оператору. Передачу и подтверждение маркировки подключим отдельно.</p></div><div class="ux-flow-footer"><button class="ux-button ux-button-secondary" type="button" data-cancel>Закрыть</button></div></div>';
+ const dialog=modal('Подготовка номеров','Первый этап подключения телефонии',body);
+ dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();
+ const input=dialog.querySelector('#ux-csv-numbers'),summary=dialog.querySelector('.ux-csv-summary');
+ input.addEventListener('change',async()=>{
+  const file=input.files?.[0];if(!file)return;
+  if(file.size>512000){summary.textContent='Слишком большой файл. Используйте CSV до 500 КБ.';notify(summary.textContent,'error');return;}
+  try{
+   const text=await file.text(),entries=text.split(/[\r\n;,\t]+/),numbers=new Set(),duplicates=new Set(),invalid=[];
+   for(const entry of entries){
+    const value=entry.trim().replace(/^["']|["']$/g,'').trim();if(!value)continue;
+    const raw=value.replace(/[^\d+]/g,'');
+    if(!/^\+?[78]\d{10}$/.test(raw)){if(/\d/.test(value))invalid.push(value.slice(0,30));continue;}
+    const normalized='+7'+raw.replace(/^\+?[78]/,'');if(numbers.has(normalized))duplicates.add(normalized);numbers.add(normalized);
+   }
+   summary.textContent=numbers.size?'Найдено номеров: '+numbers.size+'. Повторов: '+duplicates.size+'. Строк для проверки: '+invalid.length+'.':'В файле не найдено российских номеров. Проверьте формат.';
+   if(numbers.size)summary.insertAdjacentHTML('beforeend','<p class="ux-flow-hint">Файл проверен только на формат и повторы. Это не подтверждение маркировки.</p>');
+  }catch{summary.textContent='Не удалось прочитать CSV. Проверьте кодировку и содержимое.';notify(summary.textContent,'error');}
+ });
+ return dialog;
+}
