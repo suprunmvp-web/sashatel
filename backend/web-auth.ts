@@ -104,11 +104,16 @@ export class WebAuth {
     await this.pool.query('INSERT INTO web_auth.browsers(hash,expires_at) VALUES($1,$2)',[hash(value),deadline(86400)]);
     return value;
   }
-  async tx<T>(ctx:Context,fn:(db:PoolClient)=>Promise<T>) {
+  async tx<T>(ctx:Context,fn:(db:PoolClient)=>Promise<T>,readOnly=false) {
     const db=await this.pool.connect();
     try {
       await db.query('BEGIN');
-      const locked=await db.query('SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp() FOR UPDATE',[hash(ctx.browser)]);
+      // Read-only views must not serialize behind one shared browser row.
+      // Mutations retain the exclusive lock to protect challenges and refresh.
+      const statement=readOnly
+        ? 'SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp()'
+        : 'SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp() FOR UPDATE';
+      const locked=await db.query(statement,[hash(ctx.browser)]);
       if(!locked.rowCount) throw new ApiError(401,'SESSION_REVOKED');
       const value=await fn(db);await db.query('COMMIT');return value;
     } catch(error) {
@@ -139,13 +144,13 @@ export class WebAuth {
     await db.query('INSERT INTO web_auth.audit(actor_user_id,organization_id,action,target_id,request_id,changes) VALUES($1,$2,$3,$4,$5,$6)',
       [user,org,action,target,ctx.requestId,changes]);
   }
-  async identity(db:PoolClient,ctx:Context) {
+  async identity(db:PoolClient,ctx:Context,readOnly=false) {
     if(!ctx.access) throw new ApiError(401,'SESSION_REVOKED');
     const {rows:[family]}=await db.query(`SELECT *,access_expires>clock_timestamp() AS fresh FROM web_auth.families
-      WHERE access_hash=$1 AND browser_hash=$2 FOR UPDATE`,[hash(ctx.access),hash(ctx.browser)]);
+      WHERE access_hash=$1 AND browser_hash=$2 ${readOnly?'':'FOR UPDATE'}`,[hash(ctx.access),hash(ctx.browser)]);
     if(!family||family.revoked_at) throw new ApiError(401,'SESSION_REVOKED');
     if(!family.fresh) throw new ApiError(401,'ACCESS_EXPIRED');
-    const {rows:[user]}=await db.query('SELECT * FROM control.users WHERE id=$1 FOR UPDATE',[family.user_id]);
+    const {rows:[user]}=await db.query('SELECT * FROM control.users WHERE id=$1 '+(readOnly?'':'FOR UPDATE'),[family.user_id]);
     if(!user?.active) throw new ApiError(403,'USER_REVOKED');
     if(!user.email_verified_at) throw new ApiError(403,'EMAIL_UNVERIFIED');
     return {family,user};
