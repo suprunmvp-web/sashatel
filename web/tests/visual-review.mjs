@@ -19,9 +19,12 @@ for(const width of [1440,1024,768,390]){
   assert.equal(overflow.overflow,false,'horizontal overflow '+width+' '+theme);
   if(width===1440&&theme==='light'){
    await page.locator('[data-nav=trunks]').click();
-   await page.getByText('Транков пока нет').first().waitFor();
-   await page.locator('[data-action=trunk]').click();
-   await page.getByRole('heading',{name:'Создать SIP-транк'}).waitFor();
+   await page.getByRole('heading',{name:'Подготовим исходящие звонки'}).waitFor();
+   await page.locator('[data-action=prepare-numbers]').click();
+   await page.getByRole('heading',{name:'Подготовка номеров'}).waitFor();
+   await page.locator('#ux-csv-numbers').setInputFiles({name:'numbers.csv',mimeType:'text/csv',buffer:Buffer.from('phone\\n89991234567\\n+79991234568\\n89991234567')});
+   await page.getByText(/Найдено номеров: 2/).waitFor();
+   await page.screenshot({path:dir+'/first-time-number-setup.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('[data-nav=statistics]').click();
    await page.getByText('График появится после первых звонков').waitFor();
@@ -52,6 +55,10 @@ for(const width of [1440,1024,768,390]){
    await page.screenshot({path:dir+'/create-trunk-dialog.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('[data-nav=employees]').click();
+   await page.locator('[data-employee-index="0"]').click();
+   await page.getByRole('heading',{name:'Управление доступом'}).waitFor();
+   await page.screenshot({path:dir+'/employee-access.png',fullPage:true});
+   await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.locator('[data-action=invite]').click();
    await page.getByRole('heading',{name:'Пригласить сотрудника'}).waitFor();
    await page.screenshot({path:dir+'/invite-employee-dialog.png',fullPage:true});
@@ -71,6 +78,12 @@ for(const width of [1440,1024,768,390]){
    await page.locator('.ux-backlink').click();
    await page.locator('[data-nav=trunks]').click();
    await page.locator('[data-ux-open=trunk]').first().click();
+   await page.getByRole('button',{name:'Тестовый звонок'}).click();
+   await page.getByRole('heading',{name:'Тестовый звонок'}).waitFor();
+   await page.getByLabel('Номер для звонка').fill('+7 999 111 22 33');
+   await page.getByRole('button',{name:'Позвонить'}).isDisabled().then(v=>assert.equal(v,true,'no backend call must not be enabled'));
+   await page.screenshot({path:dir+'/web-test-call-dialog.png',fullPage:true});
+   await page.getByRole('button',{name:'Закрыть'}).first().click();
    await page.getByRole('tab',{name:'Номера'}).click();
    await page.getByText('+7 999 888-22-11').waitFor();
    await page.screenshot({path:dir+'/trunk-detail.png',fullPage:true});
