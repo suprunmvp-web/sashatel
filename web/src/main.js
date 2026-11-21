@@ -2,9 +2,6 @@ import {api,isPreview} from './session.js';
 import {notify} from './notifications.js';
 import {esc,icon,link,button,table,empty,missing,tabs,metrics,range,hydrate} from './components.js';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const fixtureId='279a66cd-c1cc-4d19-9c09-3490e9049d0a';
-const fixtureOrg={id:fixtureId,legal_name:'ООО «Пример организации»',inn:'7707083893',role:'owner',status:'active',verification_status:'unverified'};
-const fixtureActor={first_name:'Иван',last_name:'Иванов',email:'review@example.test',phone:'+79261234567',phone_verified:false};
 const query=new URLSearchParams(location.search),previewSuffix=isPreview?'?preview=1'+(query.get('role')?'&role='+encodeURIComponent(query.get('role')):''):'';
 let parts=location.pathname.split('/').filter(Boolean);const admin=parts[0]==='admin';
 let account=null,org=null,organizations=[],internalRole=isPreview?(query.get('role')||'owner'):null;
@@ -39,7 +36,7 @@ function adminPage(){
  if(!internalRole)return empty('Служебный доступ недоступен','Backend ещё не предоставляет подтверждённую identity и scope сотрудника SashaTel. Клиентская сессия не даёт внутренних полномочий.',true);
  if(page==='employees')return '<div class="page-actions">'+button('Пригласить сотрудника SashaTel','internal-invite',internalRole==='manager')+'</div>'+table(['Имя и фамилия','Email','Телефон','Роль','Ответственные организации'],[])+missing('внутренних сотрудников');
  if(page!=='overview')return empty('Страница не найдена','Выберите раздел в меню.');
- const rows=isPreview?[[link('/'+fixtureId+'/?preview=1&service=1',esc(fixtureOrg.legal_name)),esc(fixtureOrg.inn),'Назначенный менеджер','—','—','—','—','—','<button class="text-button" data-action="admin-actions" aria-label="Действия организации">'+icon('ellipsis')+'</button>']]:[];
+ const rows=[];
  return '<div class="page-actions">'+button(icon('plus')+' Создать клиента','client')+'</div><div class="filters">'+filters()+'</div>'+metrics(['Общие минуты','Инициации','Ответы','Дозвон'])+'<section class="chart-empty"><h2>Минуты за период</h2><p>Нет данных за выбранный период</p></section>'+table(['Организация','ИНН','Ответственный','Минуты','Инициации','Ответы','Дозвон','Баланс','Действия'],rows)+missing('внутреннего обзора');
 }
 function render(){
@@ -85,7 +82,7 @@ function operation(action){
  if(action==='integration'){name='Создать интеграцию';fields='<label>Тип<select><option>amoCRM</option><option>Битрикс24</option><option>Webhook/API</option></select></label>';warning='Авторизация CRM и секреты требуют защищённого Backend API.';}
  if(action==='invoice'){name='Счёт на пополнение';fields=field('Сумма, ₽','amount','number');warning='Формирование счёта не зачисляет деньги. Баланс меняется после фактического поступления.';}
  if(action==='client'){name='Создать клиента';fields=field('ИНН','inn')+'<label>Ответственный менеджер<select disabled><option>Список недоступен</option></select></label>';warning='Организация создаётся неверифицированной. Владелец клиента может отсутствовать до назначения.';}
- if(action==='admin-actions'){name='Действия организации';fields='<label>Операция<select id="admin-operation"><option value="credit">Пополнить баланс</option><option value="debit">Списать баланс</option><option value="limit">Установить кредитный лимит</option><option value="remove-limit">Удалить кредитный лимит</option>'+ (internalRole==='manager'?'':'<option value="payment-date">Изменить дату оплаты</option>')+'<option value="verify">Верифицировать</option><option value="unverify">Снять верификацию</option></select></label>'+field('Положительная сумма, ₽ / день оплаты','amount','number')+field('Основание','reason');warning='Изменение влияет на доступность новых звонков или расчёты. Уже выставленные документы не пересчитываются. Снятие верификации запретит активацию транков. Текущие разговоры не прерываются.';}
+ if(action==='admin-actions'){name='Действия организации';fields='<label>Операция<select id="admin-operation"><option value="credit">Пополнить баланс</option><option value="debit">Списать баланс</option>'+ (internalRole==='manager'?'':'<option value="payment-date">Изменить дату оплаты</option>')+'<option value="verify">Верифицировать</option><option value="unverify">Снять верификацию</option></select></label>'+field('Положительная сумма, ₽ / день оплаты','amount','number')+field('Основание','reason');warning='Изменение влияет на доступность новых звонков или расчёты. Уже выставленные документы не пересчитываются. Снятие верификации запретит активацию транков. Текущие разговоры не прерываются.';}
  if(action==='organizations'){name='Выберите организацию';fields=organizations.map(o=>'<button type="button" class="button secondary" data-select-org="'+esc(o.id)+'">'+esc(o.legal_name)+'</button>').join('');warning=organizations.length?'Выбор проверяется сервером.':'Доступных организаций нет.';}
  dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header><div class="dialog-fields">'+fields+'</div><p>'+esc(warning)+'</p>'+(action==='organizations'?'':'<label class="check"><input type="checkbox"><span>Понимаю последствия операции</span></label><p class="warning">Операция недоступна: соответствующий API ещё не подключён.</p><button class="button" disabled>Подтвердить</button>')+'</form>';
  hydrate(dialog);dialog.showModal();dialog.querySelector('[name=secret]')?.setAttribute('autocomplete','new-password');
@@ -115,8 +112,7 @@ async function start(){
    document.querySelector('main').innerHTML='<section class="legal-page"><p class="legal-eyebrow">ЮРИДИЧЕСКИЕ ДОКУМЕНТЫ</p><h1>'+esc(legalTitle)+'</h1><p>Документ готовится к публикации. Здесь будет размещена его действующая редакция.</p><a href="/register/">Вернуться к регистрации</a></section>';
    return;
  }
- if(location.pathname.startsWith('/recovery')){document.querySelector('main').innerHTML='<h1>Восстановление пароля</h1><p>Восстановление временно недоступно: API ещё не подключён.</p><a href="/login/">Вернуться ко входу</a>';return;}
- if(isPreview&&(admin||uuid.test(parts[0]||''))){account=fixtureActor;org=fixtureOrg;organizations=[fixtureOrg];render();return;}
+ if(location.pathname.startsWith('/recovery')){await import('./recovery.js');return;}
  try{
   const session=await api.resume();account=session?.account;organizations=session?.organizations||[];
   if(!account){await import('./auth.js');return;}
@@ -132,7 +128,10 @@ async function start(){
   }
   // Multiple organizations need an explicit choice; zero organizations go to onboarding.
   await import('./auth.js');
- }catch(e){document.querySelector('main').innerHTML='<h1>Не удалось открыть платформу</h1><p role="alert">'+esc(e.message)+'</p><button class="button" id="retry">Повторить</button><a href="/login/">Ко входу</a>';document.querySelector('#retry').onclick=()=>location.reload();}
+ }catch(e){const code=Number(e.status)||({'PERMISSION_DENIED':403,'USER_REVOKED':403,'RESOURCE_NOT_FOUND':404,'ACCESS_EXPIRED':401,'AUTH_UNAVAILABLE':503,'NETWORK_UNKNOWN':503}[e.code]||503);
+ const label=({401:'Требуется авторизация',403:'Доступ запрещён',404:'Страница не найдена',429:'Слишком много запросов',500:'Внутренняя ошибка сервера',503:'Сервис временно недоступен'})[code]||'Не удалось выполнить запрос';
+ const desc=({401:'Войдите в аккаунт, чтобы продолжить.',403:'У вас нет доступа к этой странице.',404:'Проверьте адрес страницы.',429:'Попробуйте повторить запрос позже.',500:'Произошла ошибка. Повторите попытку позже.',503:'Сервис временно недоступен. Повторите попытку позже.'})[code]||'Попробуйте повторить запрос позже.';
+ document.querySelector('main').innerHTML='<section class="platform-error-page" role="alert"><div class="platform-error-copy"><p class="platform-error-kicker">Код ошибки: '+esc(code)+'</p><h1>'+esc(label)+'</h1><p>'+esc(desc)+'</p></div><div class="platform-error-code" aria-hidden="true">'+esc(code)+'</div></section>';}
 }
 addEventListener('pageshow',e=>{if(e.persisted&&!isPreview)location.reload();});
 addEventListener('visibilitychange',async()=>{if(document.hidden||isPreview||!account)return;try{await api.resume();}catch(e){document.querySelector('#page-content')?.replaceChildren();showError(e.message);}});

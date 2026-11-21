@@ -162,7 +162,7 @@ export function createPreviewApi(scenario) {
           "ORGANIZATION_LOOKUP_UNAVAILABLE",
           "Сервис реквизитов недоступен. Повторите поиск позже.",
         );
-      if (scenario() === "lookup-missing" || inn !== "7707083893")
+      if (scenario() === "lookup-missing")
         throw new ApiError(
           "RESOURCE_NOT_FOUND",
           "Организация не найдена. Проверьте ИНН и повторите поиск.",
@@ -170,8 +170,8 @@ export function createPreviewApi(scenario) {
       data.lookup = {
         lookup_id: crypto.randomUUID(),
         inn,
-        legal_name: "ООО «Тестовая организация SashaTel»",
-        legal_address: "Тестовые реквизиты для проверки интерфейса",
+        legal_name: inn === "7707083893" ? "ООО «Пример организации»" : `ООО «Компания ${inn.slice(5,9)}»`,
+        legal_address: "г. Москва, ул. Примерная, д. 1",
         expires_at: new Date(Date.now() + 900000).toISOString(),
       };
       save();

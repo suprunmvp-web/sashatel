@@ -635,3 +635,321 @@ body.auth-confirm:not(.platform) main:not(.workspace) {
 .verify-back:hover { color: #f2f2f5; }
 .verify-back:focus-visible { outline: 2px solid #e8c547; outline-offset: 5px; border-radius: 4px; }
 .verify-actions p:last-child { margin-top: 12px; }
+
+/* Design Playground: inline organization confirmation */
+.playground-company {
+  margin-top: 22px;
+  padding: 22px;
+  background: #151517;
+  border: 1px solid #37373d;
+  border-radius: 12px;
+  text-align: left;
+}
+.playground-caption {
+  color: #92929d;
+  font-size: 11px;
+  letter-spacing: .06em;
+  margin: 0 0 12px;
+}
+.playground-company h2 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0 0 20px;
+}
+.playground-detail {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 17px;
+  font-size: 13px;
+}
+.playground-detail span { color: #92929d; }
+.playground-detail strong { font-weight: 500; }
+.playground-consent { margin: 20px 0; }
+.playground-company .button { width: 100%; }
+.playground-company .button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+
+/* Design Playground v2: clean full onboarding */
+body.auth-verifying:not(.platform) main:not(.workspace){width:min(calc(100% - 32px),460px);margin:clamp(40px,9vh,100px) auto 48px}
+.verify-screen{max-width:460px;margin-inline:auto}
+.verify-back{display:none!important}
+.verify-emblem{background:#dceafe;color:#2563eb;width:58px;height:58px;margin-bottom:26px}
+.verify-emblem svg{width:27px;height:27px}
+.verify-screen h1{font-size:clamp(27px,4vw,32px);letter-spacing:-.04em;margin-bottom:13px}
+.verify-intro{font-size:14px;line-height:1.65;max-width:430px;margin-bottom:29px}
+.verify-form{gap:27px}
+.verify-form .otp-field{width:min(100%,268px)}
+.verify-form .otp-box{height:48px;border-color:#38383e;border-radius:10px}
+.verify-form .otp-cell{font-size:19px}
+.verify-form .button{width:min(100%,340px);min-height:47px}
+.verify-actions{gap:15px;margin-top:24px;font-size:13px}
+.verify-actions p:last-child{margin-top:0}
+.verify-delivery:empty{display:none}
+body.auth-welcome:not(.platform) main:not(.workspace){width:min(calc(100% - 40px),850px);margin:clamp(30px,6vh,65px) auto 60px}
+.welcome-head{margin-bottom:27px}
+.welcome-screen .serif{font-size:clamp(39px,5vw,55px)}
+.welcome-description{font-size:15px}
+.playground-welcome-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.playground-choice{display:flex;flex-direction:column;align-items:flex-start;padding:27px;min-height:273px;border:1px solid #38383e;background:#151518;border-radius:14px}
+.playground-choice-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:#242429;color:#f5f5f7;margin-bottom:23px}
+.playground-choice-icon [data-icon]{width:22px;height:22px}
+.playground-choice h2{color:#f5f5f7;font-size:19px;font-weight:600;margin:0 0 10px}
+.playground-choice p{font-size:13px;line-height:1.6;margin:0 0 28px;color:#aaaab3}
+.playground-choice .button{margin-top:auto;width:100%;font-size:13px;min-height:45px}
+body.auth-lookup:not(.platform) main:not(.workspace){width:min(calc(100% - 32px),480px)}
+.lookup-emblem{background:#232328;color:#f5f5f7;width:58px;height:58px;margin-bottom:24px}
+.lookup-emblem [data-icon]{width:24px;height:24px}
+.lookup-screen h1{font-size:30px}
+.lookup-intro{margin-bottom:23px}
+.lookup-back{margin-top:18px}
+.playground-company{margin-top:19px;padding:23px;border:1px solid #39393f;background:#151518;border-radius:13px;text-align:left}
+.playground-company h2{font-size:18px;font-weight:600;line-height:1.4;margin:0 0 20px}
+.playground-caption{font:500 10px/1.5 var(--mono);letter-spacing:.05em;color:#92929d;margin:0 0 11px}
+.playground-detail{display:grid;gap:4px;margin-bottom:15px;font-size:13px;line-height:1.5}
+.playground-detail span{color:#92929d}.playground-detail strong{font-weight:500;overflow-wrap:anywhere}
+.playground-consent{margin:18px 0}.playground-company .button{width:100%;min-height:46px}
+.playground-company .button:disabled{opacity:.45;cursor:not-allowed}
+.playground-company-warning{margin:13px 0 0;font:400 11px/1.5 var(--font);letter-spacing:normal}
+.playground-waiting{text-align:center}.playground-waiting>h1{font-size:29px}.playground-waiting>p{font-size:14px;line-height:1.7}
+.playground-waiting>.button{width:100%}.playground-waiting>.text-button{margin:12px auto}
+.playground-inline-note{background:#19191d;border:1px solid #36363c;border-radius:11px;color:#aaaab3;padding:15px;font-size:12px;line-height:1.6;margin:23px 0}
+.recovery-screen{max-width:430px;text-align:center}.recovery-emblem{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:#232328;color:#f5f5f7;margin:0 auto 23px}
+.recovery-screen h1{font-size:clamp(26px,4vw,32px);font-weight:600;letter-spacing:-.04em;margin:0 0 15px}
+.recovery-screen>p{color:#aaaab3;font-size:14px;line-height:1.65;margin:0 0 28px}
+.recovery-form{text-align:left;gap:15px}.recovery-form>.button{margin-top:8px}
+.recovery-bottom{display:block;margin:24px auto 0;color:#aaaab3;font-size:13px;text-align:center}
+.recovery-bottom a{color:#f5f5f7;text-underline-offset:3px}
+.recovery-note{margin-top:20px;padding:11px;border:1px solid #37373d;background:#17171a;border-radius:9px;color:#aaaab3;font-size:12px}
+@media(max-width:650px){.playground-welcome-choices{grid-template-columns:1fr}.playground-choice{min-height:225px}.welcome-screen .serif{font-size:38px}}
+
+/* Design Playground v3: single coherent SashaTel visual system */
+body.auth-verifying .verify-emblem,
+body.auth-lookup .lookup-emblem,
+.recovery-screen .recovery-emblem,
+.playground-waiting .lookup-emblem{
+ background:#f8eec7!important;color:#b08008!important;
+}
+.verify-emblem svg,.lookup-emblem svg,.recovery-emblem svg{stroke:currentColor}
+body.auth-welcome:not(.platform) main:not(.workspace){width:min(calc(100% - 40px),1020px)}
+.welcome-head{margin-bottom:28px}
+.welcome-screen .serif{font-size:clamp(31px,4.7vw,52px);white-space:nowrap;letter-spacing:-.055em;line-height:1.16}
+.welcome-screen .serif em,.lookup-screen .serif em{color:var(--accent);font-style:italic;font-weight:400}
+.playground-welcome-choices{gap:18px}
+.playground-choice{min-height:280px}
+.playground-choice-icon{color:#e8c547}
+body.auth-lookup:not(.platform) main:not(.workspace){width:min(calc(100% - 32px),500px);margin:clamp(32px,6vh,70px) auto 48px}
+.lookup-screen .serif{font:400 clamp(35px,5.5vw,45px)/1.13 Georgia,serif;letter-spacing:-.045em;margin:0 0 16px}
+.lookup-intro{margin-bottom:25px;font-size:14px}
+.company-lookup-form{text-align:left;display:grid;gap:16px}
+.company-lookup-form label{display:grid;gap:8px}
+.company-form-fields{display:grid;gap:16px}
+.company-form-fields input[readonly],.company-form-fields textarea[readonly]{background:#151518;border:1px solid #38383f;border-radius:10px;color:#f5f5f7;opacity:1}
+.company-form-fields textarea{font:400 13px/1.5 var(--font);resize:none;min-height:76px;padding:12px}
+.company-form-fields input::placeholder,.company-form-fields textarea::placeholder{color:#696971}
+.inn-control{position:relative}
+.inn-suggestions{position:absolute;z-index:5;top:calc(100% + 6px);left:0;right:0;max-height:192px;overflow-y:auto;background:#1a1a1e;border:1px solid #47474f;border-radius:11px;box-shadow:0 15px 40px #0006}
+.inn-result{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:transparent;padding:13px;color:#f5f5f7;cursor:pointer}
+.inn-result:hover,.inn-result:focus-visible{background:#29292e}
+.inn-result-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:#29292e;color:#e8c547}
+.inn-result-icon [data-icon]{width:18px;height:18px}
+.inn-result>span:nth-child(2){flex:1;display:grid;gap:3px}
+.inn-result strong{font:500 13px/1.35 var(--font)}
+.inn-result small{font:400 12px/1.35 var(--mono);color:#aaaab3}
+.inn-result>[data-icon]{width:18px;height:18px;color:#888890}
+.company-search-submit{width:100%;margin:2px 0 0;min-height:44px}
+.company-complete{margin-top:20px;text-align:left}
+.company-complete .button{width:100%;min-height:46px}
+.company-complete .playground-consent{margin:0 0 18px}
+.lookup-back{display:block;margin:18px auto 0}
+.recovery-screen{max-width:440px}
+.recovery-screen .recovery-emblem{width:56px;height:56px;margin-bottom:23px}
+.recovery-screen h1{font-size:clamp(28px,3.5vw,34px);margin:0 0 10px;letter-spacing:-.035em}
+.recovery-top-link{font-size:14px;color:#aaaab3;margin:8px 0 32px}
+.recovery-top-link a{color:#f5f5f7;text-decoration:underline;text-underline-offset:4px}
+.recovery-form{gap:20px}
+.recovery-form>.button{margin-top:3px;min-height:46px}
+.recovery-screen .recovery-note{display:none}
+@media(max-width:760px){.welcome-screen .serif{white-space:normal;font-size:clamp(35px,8vw,48px)}}
+
+/* Design Playground v4: approved UX refinements */
+.inn-suggestions{max-height:316px;overflow-y:auto;overscroll-behavior:contain}
+.inn-result{border-bottom:1px solid #313138;min-height:61px}
+.inn-result:last-child{border-bottom:0}
+.company-search-submit{display:none!important}
+.company-form-fields input[readonly],.company-form-fields textarea[readonly]{cursor:default;color:#a5a5ad!important;background:#111114!important;border-color:#2e2e35!important}
+.company-form-fields input[readonly]:focus,.company-form-fields textarea[readonly]:focus{outline:none;box-shadow:none;border-color:#2e2e35!important}
+.recovery-otp-form{text-align:center;gap:26px}
+.recovery-otp-form .otp-field{width:min(100%,282px);margin:0 auto}
+.recovery-otp-form .otp-box{position:relative;width:100%;height:51px;background:#151517;border:1px solid #45454e;border-radius:11px;overflow:hidden}
+.recovery-otp-form .otp-cells{display:grid;grid-template-columns:repeat(6,1fr);height:100%;pointer-events:none}
+.recovery-otp-form .otp-cell{display:grid;place-items:center;border-right:1px solid #36363c;font-size:21px;font-weight:600;color:#f5f5f7}
+.recovery-otp-form .otp-cell:last-child{border-right:0}
+.recovery-otp-form .otp-cell--active{background:#27272c}
+.recovery-otp-form .otp-input,.recovery-otp-form .otp-input:focus{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:.01!important;border:0!important;color:transparent!important;caret-color:transparent!important;background:transparent!important;box-shadow:none!important}
+.recovery-resend-line{margin:26px 0 0;color:#a9a9b2;font-size:13px;text-align:center}
+.recovery-resend-line .verify-link{display:inline;background:transparent;border:0;color:#f5f5f7;padding:0;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.recovery-resend-line .verify-link:disabled{color:#72727c;text-decoration:none;cursor:default}
+.recovery-emblem svg{width:25px;height:25px}
+.platform-error-page{min-height:calc(100svh - 200px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:13px;padding:35px 20px}
+.platform-error-code{color:#e8c547;font:italic 400 clamp(110px,20vw,240px)/1 Georgia,serif;letter-spacing:-.08em}
+.platform-error-page h1{font-size:clamp(24px,4vw,39px);font-weight:600;letter-spacing:-.04em;margin:0}
+.platform-error-page p{font-size:14px;color:#aaaab3;max-width:480px;margin:0}
+.platform-error-actions{display:flex;align-items:center;gap:24px;margin-top:18px}
+.platform-error-actions .button{min-width:145px}
+@media(max-width:560px){.platform-error-actions{flex-direction:column;gap:8px}}
+
+/* Design Playground v5 — consistent onboarding and precise empty/error states */
+/* Authentication UI: identical sizing and spacing for both OTP flows. */
+body:not(.platform):has(.recovery-otp-form) .topbar{visibility:hidden;height:28px}
+body:not(.platform):has(.recovery-otp-form) main:not(.workspace){width:min(calc(100% - 32px),480px);margin:clamp(24px,7vh,68px) auto 48px}
+body:not(.platform) .recovery-screen:has(.recovery-otp-form){width:100%;max-width:none;text-align:center}
+body:not(.platform) .recovery-screen:has(.recovery-otp-form) h1{font:600 clamp(27px,4.7vw,34px)/1.2 var(--font);letter-spacing:-.045em;margin:0 0 15px}
+body:not(.platform) .recovery-screen:has(.recovery-otp-form)>p{font:400 15px/1.65 var(--font);max-width:450px;margin:0 auto 32px;color:var(--sub)}
+body:not(.platform) .recovery-screen:has(.recovery-otp-form) .recovery-emblem{width:64px;height:64px;margin:0 auto 27px}
+body:not(.platform) .recovery-otp-form{display:grid;gap:31px;text-align:center}
+body:not(.platform) .recovery-otp-form .otp-label{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}
+body:not(.platform) .recovery-otp-form .otp-field{width:min(100%,290px);margin:0 auto}
+body:not(.platform) .recovery-otp-form .otp-box{height:54px;border-radius:11px}
+body:not(.platform) .recovery-otp-form .otp-cell{font:600 22px/1 var(--font)}
+body:not(.platform) .recovery-otp-form .button{width:min(100%,410px);margin:0 auto;border-radius:11px}
+body:not(.platform) .recovery-resend-line{margin:18px auto 0;line-height:1.55;font-size:14px}
+@media(max-width:480px){body:not(.platform) .recovery-otp-form .otp-field{width:min(100%,282px)}body:not(.platform) .recovery-otp-form{gap:26px}body:not(.platform) .recovery-resend-line{font-size:13px}}
+/* Read-only company data should look and behave locked, without decorative padlock clutter. */
+body:not(.platform) .company-form-fields input:disabled,
+body:not(.platform) .company-form-fields textarea:disabled{
+  color:#8f8f98!important;-webkit-text-fill-color:#8f8f98!important;
+  background:#101013!important;border-color:#29292f!important;
+  opacity:1!important;cursor:not-allowed!important;pointer-events:none!important;
+  user-select:none!important;caret-color:transparent!important;box-shadow:none!important;
+}
+body:not(.platform) .company-form-fields input:disabled::placeholder,
+body:not(.platform) .company-form-fields textarea:disabled::placeholder{color:#62626a!important;-webkit-text-fill-color:#62626a!important}
+/* Error pages: text left, oversized italic yellow status right. No retry/login controls. */
+.platform-error-page{
+  box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.95fr);
+  align-items:center;justify-items:stretch;text-align:left;
+  gap:clamp(30px,5vw,90px);max-width:1120px;width:100%;margin:0 auto;
+  min-height:calc(100svh - 150px);padding:clamp(32px,5vw,80px) 24px;
+}
+.platform-error-copy{min-width:0}
+.platform-error-kicker{color:#a2a2ac!important;letter-spacing:.02em;font-size:14px!important;margin-bottom:22px!important}
+.platform-error-page h1{font:600 clamp(28px,3.3vw,46px)/1.13 var(--font);letter-spacing:-.045em;margin:0 0 18px;text-align:left}
+.platform-error-page .platform-error-copy>p:last-child{color:#aaaab3;font:400 15px/1.65 var(--font);max-width:450px;margin:0;text-align:left}
+.platform-error-code{font:italic 400 clamp(140px,23vw,300px)/.95 Georgia,serif;letter-spacing:-.085em;color:#e8c547;text-align:right;white-space:nowrap}
+.platform-error-actions{display:none!important}
+@media(max-width:700px){.platform-error-page{grid-template-columns:1fr;gap:25px;min-height:calc(100svh - 150px)}.platform-error-code{grid-row:1;text-align:left;font-size:clamp(110px,30vw,200px)}.platform-error-copy{grid-row:2}}
+
+/* Design Playground v6: consistent locked organization fields */
+body:not(.platform) .company-form-fields label {position:relative}
+body:not(.platform) .company-form-fields label::after {
+  content:"";position:absolute;right:15px;bottom:13px;width:20px;height:20px;
+  background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23777780%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%2210%22%20width%3D%2214%22%20height%3D%2211%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M8%2010V7a4%204%200%200%201%208%200v3%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;
+  pointer-events:none;opacity:.85;
+}
+body:not(.platform) .company-form-fields label:has(textarea)::after {bottom:auto;top:42px}
+body:not(.platform) .company-form-fields input:disabled,
+body:not(.platform) .company-form-fields textarea:disabled {
+  appearance:none!important;-webkit-appearance:none!important;
+  border:1px solid #29292f!important;border-radius:10px!important;
+  background:#101013!important;color:#9a9aa3!important;
+  -webkit-text-fill-color:#9a9aa3!important;
+  opacity:1!important;pointer-events:none!important;cursor:default!important;
+  box-shadow:none!important;outline:none!important;
+  padding-right:47px!important;caret-color:transparent!important;
+}
+body:not(.platform) .company-form-fields textarea:disabled {
+  display:block;width:100%;min-height:76px;resize:none;
+  padding:12px 47px 12px 14px!important;
+  font:400 13px/1.5 var(--font);
+}
+
+
+/* SashaTel: locked organization fields */
+body:not(.platform) .company-form-fields input:disabled,
+body:not(.platform) .company-form-fields textarea:disabled {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23777780%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%2210%22%20width%3D%2214%22%20height%3D%2211%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M8%2010V7a4%204%200%200%201%208%200v3%22%2F%3E%3C%2Fsvg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-size: 20px 20px !important;
+  background-position: right 16px top 14px !important;
+  padding-right: 48px !important;
+  border-radius: 10px !important;
+}
+
+/* SASHA_PLAYGROUND_V7 — local design-only UI consistency */
+/* Always show a real lock inside each disabled registry field. */
+body:not(.platform) .company-form-fields input[name="legal_name"]:disabled,
+body:not(.platform) .company-form-fields textarea[name="legal_address"]:disabled{
+  background-color:#101013!important;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238c8c96%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%2210%22%20width%3D%2214%22%20height%3D%2211%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M8%2010V7a4%204%200%200%201%208%200v3%22%2F%3E%3C%2Fsvg%3E")!important;
+  background-repeat:no-repeat!important;
+  background-size:19px 19px!important;
+  background-position:right 16px center!important;
+  border:1px solid #29292f!important;
+  border-radius:10px!important;
+  padding-right:51px!important;
+  color:#aaaab3!important;
+  -webkit-text-fill-color:#aaaab3!important;
+  opacity:1!important;
+  cursor:default!important;
+  pointer-events:none!important;
+  caret-color:transparent!important;
+  box-shadow:none!important;
+}
+body:not(.platform) .company-form-fields textarea[name="legal_address"]:disabled{
+  background-position:right 16px top 16px!important;
+  min-height:76px!important;
+  font:400 13px/1.5 var(--font)!important;
+}
+/* Match the visual midpoint on OTP and invite waiting screens. */
+body.auth-verifying:not(.platform),
+body.auth-waiting:not(.platform),
+body.auth-recovery-code:not(.platform){min-height:100svh}
+body.auth-verifying:not(.platform) main:not(.workspace),
+body.auth-waiting:not(.platform) main:not(.workspace),
+body.auth-recovery-code:not(.platform) main:not(.workspace){
+  flex:0 0 auto!important;
+  margin-top:auto!important;
+  margin-bottom:auto!important;
+  padding-top:16px;
+  padding-bottom:32px;
+}
+body.auth-waiting:not(.platform) main:not(.workspace){
+  width:min(calc(100% - 32px),480px);
+}
+body.auth-waiting .playground-waiting{text-align:center}
+/* Recovery code uses exactly the registration OTP dimensions. */
+body.auth-recovery-code:not(.platform) .topbar{visibility:hidden;height:28px}
+body.auth-recovery-code:not(.platform) main:not(.workspace){width:min(calc(100% - 32px),460px)!important}
+body.auth-recovery-code:not(.platform) .recovery-screen{width:100%;max-width:none;text-align:center}
+body.auth-recovery-code .recovery-emblem{background:#f8eec7!important;color:#b08008!important;width:58px!important;height:58px!important;margin:0 auto 26px!important}
+body.auth-recovery-code .recovery-screen h1{font:600 clamp(27px,4vw,32px)/1.2 var(--font);letter-spacing:-.04em;margin:0 0 13px}
+body.auth-recovery-code .recovery-description{font:400 14px/1.65 var(--font);max-width:430px;margin:0 auto 29px;color:var(--sub)}
+body.auth-recovery-code .recovery-otp-form{display:grid;gap:27px;text-align:center}
+body.auth-recovery-code .recovery-otp-form .otp-field{width:min(100%,268px);margin:0 auto}
+body.auth-recovery-code .recovery-otp-form .otp-box{height:48px;border:1px solid #38383e;border-radius:10px;background:#151517}
+body.auth-recovery-code .recovery-otp-form .otp-cell{font:600 19px/1 var(--font)}
+body.auth-recovery-code .recovery-otp-form .button{width:min(100%,340px);min-height:47px;margin:0 auto;border-radius:10px}
+body.auth-recovery-code .recovery-resend-line{margin:24px auto 0;font-size:13px;line-height:1.55;color:var(--sub)}
+body.auth-recovery-code .recovery-otp-form .otp-label{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important}
+/* Recovery uses single consistent top-of-screen notification. */
+body.auth-recovery .recovery-screen .error{display:none!important}
+.sasha-toast{
+  top:max(18px,env(safe-area-inset-top))!important;
+  background:#350d12!important;
+  border:1px solid #83232d!important;
+  color:#ffb9bf!important;
+  border-radius:10px!important;
+  box-shadow:0 12px 38px rgba(0,0,0,.48)!important;
+}
+.sasha-toast--success{background:#173027!important;border-color:#376b56!important;color:#d1f4dd!important}
+.sasha-toast--error .sasha-toast__icon{color:#ff9ea9!important}
+.sasha-toast--success .sasha-toast__icon{color:#9ae5b5!important}
+.recovery-screen .recovery-top-link{margin-top:18px;color:var(--sub)}
+.recovery-screen .recovery-top-link a{color:var(--fg);text-decoration:underline;text-underline-offset:3px}
+.recovery-screen .recovery-success-cta{margin:28px auto 0;max-width:410px}
+@media(max-width:480px){
+  body.auth-recovery-code .recovery-otp-form .otp-field{width:min(100%,268px)}
+}

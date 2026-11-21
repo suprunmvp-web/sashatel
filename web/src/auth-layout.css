@@ -1,0 +1,28 @@
+/* Unified authentication layout: consistent baseline for registration, OTP, and all recovery steps. */
+body.auth-shell { min-height:100svh; }
+body.auth-shell .topbar { height:64px; min-height:64px; visibility:visible; }
+body.auth-shell #content:not(.workspace) {
+  box-sizing:border-box;
+  width:min(calc(100% - 32px), 440px);
+  max-width:440px;
+  min-height:0;
+  flex:0 0 auto;
+  margin:clamp(36px, 8svh, 80px) auto 64px!important;
+  padding:0!important;
+}
+body.auth-shell .recovery-screen { width:100%; max-width:none; text-align:center; }
+body.auth-shell .recovery-screen .recovery-emblem { width:58px!important; height:58px!important; margin:0 auto 24px!important; background:#f8eec7!important; color:#b08008!important; }
+body.auth-shell .recovery-screen h1 { font:600 clamp(28px,3.5vw,34px)/1.2 var(--font)!important; letter-spacing:-.035em!important; margin:0 0 15px!important; }
+body.auth-shell .recovery-description { margin:0 auto 28px; }
+body.auth-shell .recovery-otp-form { display:grid; gap:27px; }
+body.auth-shell .recovery-otp-form .otp-field { width:min(100%,290px); margin-inline:auto; }
+body.auth-shell .recovery-otp-form .button { width:100%; max-width:none; }
+body.auth-shell .recovery-resend-line { margin:20px auto 0; }
+body.auth-shell .company-form-fields .company-locked-field::after { content:none!important; }
+body.auth-shell .company-locked-input { position:relative; display:block; }
+body.auth-shell .company-locked-input input,
+body.auth-shell .company-locked-input textarea { display:block; width:100%; padding-right:50px!important; background:#101013!important; color:#a2a2ad!important; -webkit-text-fill-color:#a2a2ad!important; opacity:1!important; cursor:default; }
+body.auth-shell .company-locked-input textarea { padding-top:12px; padding-bottom:12px; }
+body.auth-shell .company-lock-icon { position:absolute; right:15px; top:50%; transform:translateY(-50%); width:20px; height:20px; pointer-events:none; opacity:.9; }
+@media(max-height:700px){body.auth-shell #content:not(.workspace){margin-top:26px!important;margin-bottom:32px!important}}
+@media(max-width:600px){body.auth-shell #content:not(.workspace){margin-top:clamp(20px,5svh,48px)!important;margin-bottom:36px!important}}

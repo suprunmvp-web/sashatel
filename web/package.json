@@ -1,1 +1,13 @@
-{"name":"sashatel-web","private":true,"type":"module","scripts":{"build":"node build.mjs","start":"node serve.mjs"},"engines":{"node":">=24.11"}}
+{
+  "name": "sashatel-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node serve.mjs",
+    "test:release": "node build.mjs && node tests/release-source.mjs"
+  },
+  "engines": {
+    "node": ">=24.11"
+  }
+}
