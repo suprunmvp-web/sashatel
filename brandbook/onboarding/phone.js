@@ -38,6 +38,8 @@ export function setupPhone() {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "country-option";
+      button.setAttribute("aria-selected", String(country.code === selected.code));
+      if (country.code === selected.code) button.classList.add("selected");
       const nameGroup = document.createElement("span");
       nameGroup.className = "country-option-name";
       const flagIcon = document.createElement("span");
@@ -53,8 +55,9 @@ export function setupPhone() {
       button.append(nameGroup, code);
       button.addEventListener("click", () => {
         selected = country;
-        document.querySelector("#country-code").textContent =
-          `${flag(country.code)} +${country.dial}`;
+        document.querySelector("#country-code").textContent = flag(country.code);
+        document.querySelector("#phone-prefix").textContent = `+${country.dial}`;
+        trigger.setAttribute("aria-label", `Страна: ${country.name}, код +${country.dial}`);
         input.dataset.dial = country.dial;
         close();
         validate();
@@ -65,7 +68,9 @@ export function setupPhone() {
     if (!list.childElementCount) list.textContent = "Страна не найдена";
   }
   input.dataset.dial = "7";
-  document.querySelector("#country-code").textContent = `${flag("RU")} +7`;
+  document.querySelector("#country-code").textContent = flag("RU");
+  document.querySelector("#phone-prefix").textContent = "+7";
+  trigger.setAttribute("aria-label", "Страна: Россия, код +7");
   input.addEventListener("beforeinput", (e) => {
     if (e.data && /[^\d\s()+-]/.test(e.data)) e.preventDefault();
   });
