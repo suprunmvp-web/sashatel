@@ -593,12 +593,16 @@ export class WebAuth {
       return {status:200,body:{role:role.role}};
     },true);
   }
-  async internalOrganizations(ctx:Context) {
+  async internalOrganizations(ctx:Context,page:{offset?:number;limit?:number}={}) {
+    const offset=page.offset??0,limit=page.limit??200;
+    if(!Number.isSafeInteger(offset)||offset<0||offset>100000||
+       !Number.isSafeInteger(limit)||limit<1||limit>200) throw new ApiError(422,'INVALID_PAGE');
     return this.tx(ctx,async db=>{
       const {user}=await this.identity(db,ctx,true);
       try {
-        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations($1)',[user.id]);
-        return {status:200,body:{items:rows}};
+        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations_page($1,$2,$3)',[user.id,offset,limit]);
+        const more=rows.length>limit;
+        return {status:200,body:{items:rows.slice(0,limit),next_offset:more?offset+limit:null}};
       } catch(error) {
         if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
         throw error;
