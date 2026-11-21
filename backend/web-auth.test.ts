@@ -37,6 +37,11 @@ test('Web onboarding with real PostgreSQL',async t=>{
   await t.test('validation, durable sink error/retry and per-challenge attempts survive failures',async()=>{
     const ctx=await actor(),email=randomUUID()+'@example.test';
     await assert.rejects(auth.register(ctx,{...profile,email,phone:'+123'},randomUUID()),code('INVALID_PHONE'));
+    await assert.rejects(auth.register(ctx,{...profile,email,password:'short7!'},randomUUID()),code('INVALID_PASSWORD'));
+    const eightCharPassword='eight123';
+    const minimum=await auth.register(await actor(),{...profile,email:randomUUID()+'@example.test',password:eightCharPassword},randomUUID());
+    assert.equal(minimum.status,202);
+
     const key=randomUUID();
     const [a,b]=await Promise.all([auth.register(ctx,{...profile,email},key),auth.register(ctx,{...profile,email},key)]);
     assert.deepEqual(a.body,b.body);
