@@ -257,3 +257,138 @@ body:not(.platform) .confirm-password label { display: block; margin-bottom: 6px
 @media(prefers-reduced-motion:reduce) {
   .sasha-toast, body:not(.platform) .confirm-password { transition: none !important; }
 }
+
+/* Email verification: centered six-cell OTP, one accessible autofill input. */
+body.auth-verifying:not(.platform) .topbar { visibility: hidden; height: 28px; }
+body.auth-verifying:not(.platform) main:not(.workspace) {
+  width: min(calc(100% - 32px), 480px);
+  margin: clamp(24px, 7vh, 68px) auto 48px;
+}
+.verify-screen { text-align: center; }
+.verify-emblem {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 27px;
+  background: #dceaff;
+  color: #2467ed;
+}
+.verify-emblem svg { width: 29px; height: 29px; }
+.verify-screen h1 {
+  font: 600 clamp(27px, 4.7vw, 34px)/1.2 var(--font);
+  letter-spacing: -.045em;
+  margin: 0 0 15px;
+}
+.verify-intro {
+  font: 400 15px/1.65 var(--font);
+  color: var(--sub);
+  max-width: 450px;
+  margin: 0 auto 32px;
+}
+.verify-intro .email { color: var(--fg); font-weight: 550; }
+.verify-form { display: grid; gap: 31px; }
+.verify-form .otp-field { width: min(100%, 290px); margin: 0 auto; }
+.verify-form .otp-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.verify-form .otp-box {
+  position: relative;
+  width: 100%;
+  height: 54px;
+  border: 1px solid #424249;
+  border-radius: 11px;
+  background: #151517;
+  overflow: hidden;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.verify-form .otp-box:focus-within {
+  border-color: #9c9ca5;
+  box-shadow: 0 0 0 1px #9c9ca5;
+}
+.verify-form .otp-cells {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.verify-form .otp-cell {
+  display: grid;
+  place-items: center;
+  font: 600 22px/1 var(--font);
+  color: #f5f5f7;
+  border-right: 1px solid #36363c;
+}
+.verify-form .otp-cell:last-child { border-right: 0; }
+.verify-form .otp-cell--active { background: #25252a; }
+.verify-form .otp-input,
+body:not(.platform) .verify-form .otp-input,
+body:not(.platform) .verify-form .otp-input:focus-visible {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  opacity: .01;
+  font-size: 16px;
+  letter-spacing: normal;
+}
+.verify-form .button {
+  width: min(100%, 410px);
+  margin: 0 auto;
+  border-radius: 11px;
+}
+.verify-actions {
+  margin: 18px auto 0;
+  display: grid;
+  gap: 13px;
+  font: 400 14px/1.55 var(--font);
+  color: var(--sub);
+}
+.verify-actions p { margin: 0; }
+.verify-actions .verify-expiry { font-size: 12px; color: #777780; }
+.verify-actions .verify-link {
+  display: inline;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.verify-actions .verify-link:hover { color: #fff; text-decoration-color: #fff; }
+.verify-actions .verify-link:disabled {
+  color: #777780;
+  text-decoration: none;
+  cursor: default;
+}
+.verify-delivery { min-height: 1.2em; margin: 10px 0 0; font: 12px/1.45 var(--font); color: var(--sub); }
+.verify-screen ~ #request-status:empty { display: none; }
+@media(max-width:480px) {
+  .verify-emblem { width: 58px; height: 58px; margin-bottom: 22px; }
+  .verify-intro { font-size: 14px; }
+  .verify-form { gap: 26px; }
+  .verify-form .otp-field { width: min(100%, 282px); }
+  .verify-actions { font-size: 13px; }
+}
