@@ -384,7 +384,6 @@ body:not(.platform) .verify-form .otp-input:focus-visible {
   cursor: default;
 }
 .verify-delivery { min-height: 1.2em; margin: 10px 0 0; font: 12px/1.45 var(--font); color: var(--sub); }
-.verify-screen ~ #request-status:empty { display: none; }
 @media(max-width:480px) {
   .verify-emblem { width: 58px; height: 58px; margin-bottom: 22px; }
   .verify-intro { font-size: 14px; }
