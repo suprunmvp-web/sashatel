@@ -43,7 +43,7 @@ function reviewAction(kind){
  if(!cfg)return;
  const fields=cfg.fields.map(([label,name,type,placeholder])=>'<label class="ux-form-field"><span>'+label+'</span><input name="'+name+'" type="'+type+'" placeholder="'+placeholder+'" autocomplete="off" required></label>').join('');
  const dialog=document.querySelector('#ux-preview-dialog');
- dialog.innerHTML='<form method="dialog" class="ux-preview-form"><div class="ux-dialog-header"><div><h2 id="ux-dialog-title">'+cfg.title+'</h2><p>'+cfg.subtitle+'</p></div><button class="ux-dialog-close" value="cancel" aria-label="Закрыть"><span data-icon="x"></span></button></div><div class="ux-preview-fields">'+fields+'</div><div class="ux-dialog-footer"><span>Предпросмотр интерфейса · без сохранения данных</span><button class="ux-button ux-button-secondary" value="cancel">Закрыть</button></div></form>';
+ dialog.innerHTML='<form method="dialog" class="ux-preview-form"><div class="ux-dialog-header"><div><h2 id="ux-dialog-title">'+cfg.title+'</h2><p>'+cfg.subtitle+'</p></div><button class="ux-dialog-close" value="cancel" formnovalidate aria-label="Закрыть"><span data-icon="x"></span></button></div><div class="ux-preview-fields">'+fields+'</div><div class="ux-dialog-footer"><span>Предпросмотр интерфейса · без сохранения данных</span><button class="ux-button ux-button-secondary" value="cancel" formnovalidate>Закрыть</button></div></form>';
  hydrate(dialog);
  dialog.showModal();
 }
