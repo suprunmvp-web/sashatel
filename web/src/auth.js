@@ -113,7 +113,7 @@ function render() {
       html = `<div class="workspace-header"><div><div class="eyebrow">КАБИНЕТ ОРГАНИЗАЦИИ</div><h1 tabindex="-1">${esc(state.organization.legal_name)}</h1><div class="meta"><span>ИНН <span class="mono">${esc(state.organization.inn)}</span></span><span>${esc(state.name)} · Владелец</span></div></div><div class="workspace-controls"><button class="icon-button" data-action="theme" aria-label="Переключить тему">${icon(document.documentElement.dataset.theme === "dark" ? "sun" : "moon")}</button><button class="text-button" data-action="logout">Выйти</button></div></div><div class="warning">Организация не верифицирована. Телефония выключена.</div><section class="empty"><h2>Здесь начинается работа команды</h2><p>Звонков пока нет. После подключения телефонии и первого звонка здесь появятся данные организации.</p><p class="hint">Подключение телефонии будет доступно на следующем этапе.</p></section>`;
       break;
     default:
-      html = `<h1 tabindex="-1">Проверяем сессию…</h1>`;
+      html = ``;
   }
   root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p><p id="request-status" role="status" class="status"></p>`;
   if(state.page==="verify"&&state.delivery){const notice=document.createElement("p");notice.className="status";notice.id="delivery-state";notice.setAttribute("role","status");notice.textContent=state.delivery.state==="queued"?"Отправляем письмо…":state.delivery.state==="accepted"?"Письмо принято почтовым сервисом.":"Не удалось отправить письмо. Повторите отправку позже.";root.prepend(notice);}
