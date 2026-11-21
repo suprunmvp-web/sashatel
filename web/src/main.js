@@ -109,6 +109,7 @@ function wire(){
  if(action==='theme'){const value=savedTheme()==='dark'?'light':'dark';try{localStorage.setItem('sashatel.web.theme',value);}catch{}render();return;}
  if(action==='logout'){el.disabled=true;try{await api.logout();location.assign('/login/');}catch(e){el.disabled=false;showError(e.message);}return;}
  if(action==='invite'){openInvite({organization:org||{}});return;}
+ if(action==='prepare-numbers')return; // handled by shared client-side CSV preparation, never submitted
  operation(action);
  });
  const filter=document.querySelector('#organization-filter');if(filter)filter.oninput=()=>{document.querySelectorAll('tbody tr').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(filter.value.toLowerCase());});};
