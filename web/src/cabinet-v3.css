@@ -114,3 +114,19 @@
 @media(max-width:768px){.platform{--sidebar:66px}.platform .sidebar{padding:0 7px 14px}.platform .organization-head{justify-content:center}.platform .ux-workspace summary{padding:6px;justify-content:center}.platform .ux-workspace-meta,.platform .ux-workspace summary>[data-icon],.platform .organization-head>.icon-button,.platform .ux-sidebar-footer{display:none}.platform .sidebar nav a{padding:8px 0;justify-content:center}.platform .sidebar nav a>span:not([data-icon]){display:none}.platform .ux-workspace .ux-switcher-menu{left:0}.platform main{padding:27px 23px 85px}.platform .platform-top{height:58px;min-height:58px;padding:0 22px}.platform .ux-two{grid-template-columns:1fr}.platform .ux-connectors{grid-template-columns:1fr}.platform .ux-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.platform .ux-kpi:nth-child(3){border-left:0}.platform .ux-kpi:nth-child(4){border-top:1px solid var(--line)}.platform .ux-kpi:nth-child(2){border-top:0}.platform .ux-kpi:nth-child(3){border-top:1px solid var(--line)}}
 @media(max-width:520px){.platform main{padding:23px 17px 88px}.platform h1{font-size:22px}.platform .ux-breadcrumb{font-size:11px}.platform .ux-kpi{padding:17px 13px}.platform .ux-kpi:not(:first-child){padding-left:13px}.platform .ux-kpi:nth-child(3){padding-left:13px}.platform .ux-kpi strong{font-size:24px}.platform .ux-results-body{flex-direction:row;align-items:center}.platform .ux-donut{width:118px;height:118px;flex-basis:118px}.platform .ux-legend-row{font-size:10px}.platform .ux-chart-interactive,.platform .ux-chart-interactive svg{height:150px;min-height:150px}.platform .ux-table{min-width:520px}.platform .ux-review-dock{bottom:12px;right:10px}.platform .ux-connector{min-height:85px}.platform .ux-call-hero h2{font-size:21px}}
 @media(prefers-reduced-motion:reduce){.platform .sidebar{transition:none}}
+
+/* Review after comparing rendered 1440px screens against Resend. */
+.platform{--ux-page-max:960px}
+.platform .ux-workspace-meta small{font-size:10px}
+.platform .ux-call-hero{padding-bottom:4px}
+.platform .ux-call-hero .ux-title-line{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.platform .ux-call-hero .ux-title-line .ux-pill{margin-top:2px}
+.platform .ux-call-hero .ux-title-line h2{margin:0}
+.platform .ux-call-hero .ux-subtitle{margin-top:6px}
+.platform .ux-page:has(.ux-call-hero){gap:17px}
+.platform .ux-page:has(.ux-call-hero) .ux-detail-panel{padding-top:13px}
+.platform .ux-page:has(.ux-call-hero) .ux-detail-toolbar{margin-bottom:10px}
+.platform .ux-review-dock{left:12px;right:auto;bottom:14px;width:calc(var(--sidebar) - 24px);justify-content:space-between;box-shadow:none;border-radius:8px;padding:6px 8px;gap:7px}
+.platform .ux-review-dock button{padding:6px 8px}
+.platform .ux-review-dock>span{font-size:10px}
+@media(max-width:768px){.platform .ux-review-dock{width:45px;left:10px;padding:5px;justify-content:center}.platform .ux-review-dock>span{display:none}.platform .ux-review-dock button{font-size:0;width:31px;height:29px;padding:0}.platform .ux-review-dock button::after{content:'◉';font-size:13px}}
