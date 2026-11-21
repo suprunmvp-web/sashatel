@@ -2,6 +2,7 @@ import {chromium} from '../../brandbook/onboarding/node_modules/playwright/index
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
+import pg from '../../.integration/backend/node_modules/pg/lib/index.js';
 
 const evidence=process.env.EVIDENCE_DIR||'/tmp/sashatel-web-evidence';
 await mkdir(evidence,{recursive:true});
@@ -124,6 +125,29 @@ try {
   await noOverflow(page);
   results.push('Real auth, verified OTP, 4-digit suggestion threshold, debounce, 2 server results, stale dropdown reset, selected organization lookup, consent, DB persisted org, responsive 1440/1024/768/390');
 
+  // Internal permissions are derived from Backend, never a URL query or a client role.
+  await page.goto(base+'/admin/');
+  await heading(page,'Доступ запрещён');
+  const adminDb=new pg.Pool({connectionString:process.env.TEST_ADMIN_URL});
+  try{
+    await adminDb.query(
+      "INSERT INTO web_auth.internal_staff(user_id,role) SELECT id,'reviewer' FROM control.users WHERE lower(login)=lower($1)",
+      [email]
+    );
+  }finally{await adminDb.end();}
+  await page.goto(base+'/admin/');
+  await heading(page,'Обзор');
+  await page.getByText('ООО «Проверка интеграции»').waitFor();
+  await page.locator('[data-review-org="'+orgId+'"][data-review-decision="verified"]').click();
+  await page.locator('[name=evidence]').fill('Документы, проверенные сотрудником SashaTel');
+  await page.locator('[name=explanation]').fill('Установлено право заявителя представлять компанию');
+  await page.getByRole('button',{name:'Подтвердить организацию'}).click();
+  await page.getByText('Верифицирована',{exact:true}).waitFor();
+  await page.goto(base+'/'+orgId+'/');
+  await heading(page,'Статистика');
+  assert.equal(await page.locator('.status-label').count(),0,'verified org remains marked unverified');
+  results.push('Internal admin 403 for customer, DBA-gated reviewer role, verified organization persisted, customer sees updated status');
+
   await page.goto(base+'/recovery/');
   await heading(page,'Восстановление пароля');
   await viewportMatrix(page,'recovery-email');
@@ -131,9 +155,9 @@ try {
   assert.deepEqual(failures,[]);
   await writeFile(evidence+'/results.json',JSON.stringify({
     ui_sha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),
-    backend_sha:'048a8de72a12479456622804758e66739f1942c9',
+    backend_sha:'f953952b37da3415f19c7bd95f26f8aa5bba2917',
     results,viewports:widths,pageErrors:failures,
-    limitations:['DaData and email providers are test fixtures in this CI; YC real-provider acceptance is separate','Password recovery Backend is not implemented']
+    limitations:['DaData and email providers are test fixtures in this CI; YC real-provider acceptance is separate','Password reset mail delivery uses a test sink, not live Resend']
   },null,2));
   console.log('Real backend/PostgreSQL browser acceptance and DaData suggestions UI passed');
 }finally{await browser.close();}
