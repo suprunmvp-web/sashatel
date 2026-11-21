@@ -1,8 +1,13 @@
-/** Password reset API contract. Backend integration is a separate task.
- * Keep the frontend usable and do not simulate delivery, verification or success.
- * Replace these fail-closed methods only after confirming server endpoints and CSRF semantics.
- */
-const unsupported = () => { throw new Error('Восстановление пароля пока недоступно. Повторите позже.'); };
-export async function requestResetCode(_email) { unsupported(); }
-export async function verifyResetCode(_email, _code) { unsupported(); }
-export async function completePasswordReset(_email, _resetToken, _newPassword) { unsupported(); }
+import {createHttpApi} from './api.js';
+const api=createHttpApi();
+export async function requestResetCode(email) {
+  return api.requestResetCode(email);
+}
+export async function verifyResetCode(email,code) {
+  const result=await api.verifyResetCode(email,code);
+  if(typeof result?.reset_token!=='string')throw new Error('Некорректный ответ сервера. Повторите попытку.');
+  return result.reset_token;
+}
+export async function completePasswordReset(email,resetToken,newPassword) {
+  return api.completePasswordReset(email,resetToken,newPassword);
+}
