@@ -514,13 +514,11 @@ export class WebAuth {
   }
   async organizations(ctx:Context) {
     return this.tx(ctx,async db=>{
-      const {user}=await this.identity(db,ctx);
-      // Narrow SECURITY DEFINER function lists IDs only for this authenticated account.
-      const {rows}=await db.query('SELECT organization_id FROM web_auth.own_organization_ids($1)',[user.id]);
-      const items=[];
-      for(const row of rows) items.push(await this.organization(db,user.id,row.organization_id));
-      return {status:200,body:{items}};
-    });
+      const {user}=await this.identity(db,ctx,true);
+      // One bounded, account-scoped query instead of N tenant-switching queries.
+      const {rows}=await db.query('SELECT * FROM web_auth.account_organizations($1)',[user.id]);
+      return {status:200,body:{items:rows}};
+    },true);
   }
   async selectOrganization(ctx:Context,input:Record<string,unknown>) {
     exact(input,['organization_id','expected_context_epoch']);
@@ -589,15 +587,15 @@ export class WebAuth {
   }
   async internalSession(ctx:Context) {
     return this.tx(ctx,async db=>{
-      const {user}=await this.identity(db,ctx);
+      const {user}=await this.identity(db,ctx,true);
       const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       return {status:200,body:{role:role.role}};
-    });
+    },true);
   }
   async internalOrganizations(ctx:Context) {
     return this.tx(ctx,async db=>{
-      const {user}=await this.identity(db,ctx);
+      const {user}=await this.identity(db,ctx,true);
       try {
         const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations($1)',[user.id]);
         return {status:200,body:{items:rows}};
@@ -605,7 +603,7 @@ export class WebAuth {
         if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
         throw error;
       }
-    });
+    },true);
   }
   async reviewOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
     if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
