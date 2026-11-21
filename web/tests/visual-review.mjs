@@ -24,7 +24,7 @@ for(const width of [1440,1024,768,390]){
    await page.getByRole('heading',{name:'Подготовим исходящие звонки'}).waitFor();
    await page.locator('[data-action=prepare-numbers]').click();
    await page.getByRole('heading',{name:'Подготовка номеров'}).waitFor();
-   await page.locator('#ux-csv-numbers').setInputFiles({name:'numbers.csv',mimeType:'text/csv',buffer:Buffer.from('phone\\n89991234567\\n+79991234568\\n89991234567')});
+   await page.locator('#ux-csv-numbers').setInputFiles({name:'numbers.csv',mimeType:'text/csv',buffer:Buffer.from(['phone','89991234567','+79991234568','89991234567'].join(String.fromCharCode(10)))});
    await page.getByText(/Найдено номеров: 2/).waitFor();
    await page.screenshot({path:dir+'/first-time-number-setup.png',fullPage:true});
    await page.getByRole('button',{name:'Закрыть'}).first().click();
