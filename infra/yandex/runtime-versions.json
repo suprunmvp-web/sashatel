@@ -1,0 +1,10 @@
+{
+  "terraform": "1.11.4",
+  "yandex_provider": "0.244.0",
+  "os": "Ubuntu 24.04 LTS, immutable image_id from authenticated inventory",
+  "backend_node": "24.22.3",
+  "postgres_major": "17",
+  "postgres_minor": "managed security patch captured at authenticated plan and SELECT version()",
+  "asterisk": "22.12.0",
+  "note": "No Backend, PBX or TURN process is installed by this foundation."
+}

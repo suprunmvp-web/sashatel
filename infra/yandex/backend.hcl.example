@@ -1,0 +1,17 @@
+# No credentials in this file. Use dedicated environment credentials.
+bucket = "REPLACE-WITH-EXISTING-STATE-BUCKET"
+key    = "staging/foundation.tfstate"
+region = "ru-central1"
+endpoints = {
+  s3 = "https://storage.yandexcloud.net"
+  dynamodb = "REPLACE-WITH-CREATED-YDB-DOCUMENT-ENDPOINT"
+}
+skip_credentials_validation  = true
+skip_region_validation       = true
+skip_requesting_account_id   = true
+skip_metadata_api_check      = true
+skip_s3_checksum             = true
+dynamodb_table               = "sashatel-state-lock"
+# Deprecated upstream but supported by pinned Terraform 1.11.4.
+# Upgrade requires a separately tested locking migration.
+use_lockfile                 = false

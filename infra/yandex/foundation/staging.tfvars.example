@@ -1,0 +1,14 @@
+# Resolve IDs and capacity using authenticated inventory; never invent them.
+environment = "staging"
+cloud_id = "b1g4eft3gb4r2ag0s57v"
+folder_id = "b1gi9a6fgkr55k6csn9s"
+bucket_prefix = "REPLACE-GLOBALLY-UNIQUE"
+image_id = "REPLACE-REVIEWED-UBUNTU2404-IMAGE"
+ssh_public_key = "REPLACE-ED25519-PUBLIC-KEY"
+zones = { ru-central1-d = "10.60.3.0/24" } # candidate, not verified capacity
+admin_cidrs = []
+enable_admin_bastion = true
+admin_public_cidrs = ["192.0.2.42/32"] # replace with owner-approved real source
+enable_edge = false # second reviewed plan after public certificate is ISSUED
+certificate_id = ""
+postgres_preset = "s3-c2-m8"
