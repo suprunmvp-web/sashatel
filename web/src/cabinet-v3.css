@@ -175,3 +175,44 @@
  .platform .ux-breakdown-header{align-items:flex-start;gap:10px}
  .platform .ux-segment button{padding:7px 8px}
 }
+
+/* Finishing system: test call and secure invitation share onboarding proportions. */
+.platform .ux-call-hero .ux-call-actions{display:flex;align-items:flex-start;flex-direction:column;gap:5px;margin-left:auto;min-width:175px;max-width:230px}
+.platform .ux-test-call-trigger{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;min-height:36px}
+.platform .ux-test-call-trigger [data-icon]{width:16px;height:16px}
+.platform .ux-call-blocker{font:10px/1.5 var(--font);color:var(--sub);margin:0}
+.ux-flow-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100svh - 32px);overflow:auto;border:1px solid var(--line);border-radius:13px;background:var(--surface);color:var(--fg);padding:0;box-shadow:0 20px 70px #0004}
+.ux-flow-dialog::backdrop{background:rgba(0,0,0,.56);backdrop-filter:blur(2px)}
+.ux-flow-shell{padding:26px;display:block}
+.ux-flow-head{display:flex;justify-content:space-between;align-items:start;gap:12px;margin:0 0 23px}
+.ux-flow-head h2{font:600 20px/1.24 var(--font);letter-spacing:-.037em;margin:0 0 7px}
+.ux-flow-head p{font:12px/1.6 var(--font);color:var(--sub);margin:0}
+.ux-flow-icon{width:31px;height:31px;flex:none;display:grid;place-items:center;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--sub)}
+.ux-flow-icon:hover{background:var(--hover);color:var(--fg)}
+.ux-flow-icon [data-icon]{width:17px;height:17px}
+.ux-flow-ready{background:var(--hover);border-radius:9px;padding:11px 12px;display:flex;align-items:center;gap:11px;font:12px/1.45 var(--font);color:var(--fg);margin-bottom:22px}
+.ux-flow-ready [data-icon]{width:18px;height:18px;color:var(--sub)}
+.ux-flow-form{display:grid;gap:17px}
+.ux-flow-form label{font:500 12px/1.5 var(--font);display:grid;gap:8px;color:var(--fg)}
+.ux-flow-form input,.ux-flow-form select{height:43px;width:100%;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:9px;font:13px var(--font);padding:10px 12px;outline:0}
+.ux-flow-form input:focus,.ux-flow-form select:focus{border-color:color-mix(in srgb,var(--fg) 65%,var(--line));box-shadow:0 0 0 2px color-mix(in srgb,var(--fg) 9%,transparent)}
+.ux-mic-row{display:flex;justify-content:space-between;gap:16px;align-items:center;border-top:1px solid var(--line);padding-top:18px;font-size:12px}
+.ux-mic-row>span{display:inline-flex;align-items:center;gap:9px}
+.ux-mic-row [data-icon]{width:17px;height:17px;color:var(--sub)}
+.ux-inline-action{border:1px solid var(--line);background:transparent;border-radius:7px;padding:7px 12px;font:500 11px var(--font)}
+.ux-inline-action:hover{background:var(--hover)}
+.ux-mic-status,.ux-flow-hint{color:var(--sub);font:11px/1.65 var(--font);margin:-10px 0 0}
+.ux-call-session{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--line);border-radius:8px;font-size:12px}
+.ux-call-session strong{font-weight:550}
+.ux-call-indicator{width:8px;height:8px;border-radius:50%;background:#b99555}
+.ux-call-session [data-call-duration]{margin-left:auto;color:var(--sub);font-variant-numeric:tabular-nums}
+.ux-flow-footer{display:flex;justify-content:flex-end;align-items:center;gap:9px;border-top:1px solid var(--line);padding-top:17px;margin-top:6px}
+.ux-flow-footer .ux-button{display:inline-flex;gap:8px;align-items:center;justify-content:center}
+.ux-flow-footer .ux-button [data-icon]{width:16px;height:16px}
+.ux-flow-footer .ux-button:disabled{opacity:.45;cursor:not-allowed}
+.ux-button-danger{background:#a9444b!important;color:#fff!important}
+.ux-flow-explanation{display:flex;align-items:flex-start;gap:10px;background:var(--hover);border-radius:9px;padding:12px}
+.ux-flow-explanation [data-icon]{flex:none;width:18px;height:18px;color:var(--sub)}
+.ux-flow-explanation p{font:11px/1.65 var(--font);color:var(--sub);margin:0}
+@media(max-width:740px){.platform .ux-call-hero{flex-wrap:wrap}.platform .ux-call-hero .ux-call-actions{margin-left:0;max-width:100%;width:100%}.platform .ux-test-call-trigger{max-width:100%}}
+@media(max-width:520px){.ux-flow-shell{padding:20px}.ux-flow-head h2{font-size:19px}.platform .ux-test-call-trigger{width:100%;justify-content:center}}
