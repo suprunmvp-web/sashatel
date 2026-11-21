@@ -51,6 +51,23 @@ test('Resend sends stable request idempotency key with OTP in email subject',asy
   }
 });
 
+test('Resend generates branded reset email with distinct purpose and 6-digit OTP',async()=>{
+  const original=globalThis.fetch;
+  try {
+    globalThis.fetch=async(_input,init)=>{
+      const body=JSON.parse(String(init?.body));
+      assert.equal(body.from,'SashaTel <auth@example.test>');
+      assert.equal(body.subject,'Сброс пароля SashaTel');
+      assert(body.html.includes('sashatel-email-symbol.png'));
+      assert.match(body.html,/SashaTel/);
+      assert.match(body.html,/123456/);
+      assert.match(body.text,/123456/);
+      return Response.json({id:randomUUID()},{status:200});
+    };
+    await provider().send({...msg(),purpose:'password_reset'});
+  }finally{globalThis.fetch=original;}
+});
+
 test('Resend treats invalid successful response as retryable unknown outcome',async()=>{
   const original=globalThis.fetch;
   try {

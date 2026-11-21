@@ -11,7 +11,7 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const token = () => randomBytes(32).toString('hex');
 const deadline = (seconds: number) => new Date(Date.now()+seconds*1000);
 export interface MailPort {
-  send(message: {id:string;email:string;code:string|null}): Promise<void>;
+  send(message: {id:string;email:string;code:string|null;purpose?:'verify'|'password_reset'}): Promise<void>;
 }
 // Provider failures that must not be retried (invalid sender, forbidden API key, etc.).
 // Network timeouts and unknown outcomes remain retryable.
@@ -283,6 +283,151 @@ export class WebAuth {
       return {status:200,body:{account:null,family_id:null,context:null,challenge,verification_completion_available:!!browser.completion&&!!browser.valid}};
     });
   }
+
+  async requestPasswordReset(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['email']);
+    const email=required(input,'email',254).trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(422,'INVALID_EMAIL');
+    return this.tx(ctx,async db=>{
+      // The result is identical whether or not the account exists.
+      await this.limit(db,'password-reset-browser:'+hash(ctx.browser),6,3600);
+      const {rows:[user]}=await db.query(
+        'SELECT id FROM control.users WHERE lower(login)=$1 AND active AND email_verified_at IS NOT NULL',
+        [email],
+      );
+      if(user) {
+        // Silently suppress excessive requests without disclosing account presence.
+        const {rows:[recent]}=await db.query(
+          "SELECT count(*)::int AS total FROM web_auth.password_resets WHERE user_id=$1 AND created_at>clock_timestamp()-interval '1 hour'",
+          [user.id],
+        );
+        if(recent.total<5) {
+          await db.query(
+            'UPDATE web_auth.password_resets SET consumed_at=clock_timestamp(),reset_hash=NULL WHERE user_id=$1 AND consumed_at IS NULL',
+            [user.id],
+          );
+          const id=randomUUID(),code=randomInt(0,1000000).toString().padStart(6,'0');
+          await db.query(
+            'INSERT INTO web_auth.password_resets(id,user_id,browser_hash,email,code_hash,expires_at) VALUES($1,$2,$3,$4,$5,$6)',
+            [id,user.id,hash(ctx.browser),email,this.fingerprint([id,code]),deadline(600)],
+          );
+          await db.query('INSERT INTO web_auth.password_reset_mail_jobs(reset_id,envelope) VALUES($1,$2)',
+            [id,this.seal({email,code})]);
+          await this.audit(db,ctx,'account.password_reset_requested',user.id,null,id);
+        }
+      }
+      return {status:202,body:{accepted:true,resend_after:60}};
+    });
+  }
+  async verifyPasswordReset(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['email','code']);
+    const email=required(input,'email',254).trim().toLowerCase();
+    const code=required(input,'code',6);
+    if(!/^\d{6}$/.test(code)) throw new ApiError(400,'CODE_INVALID_OR_EXPIRED');
+    return this.tx(ctx,async db=>{
+      await this.limit(db,'password-reset-verify:'+hash(ctx.browser),20,3600);
+      const {rows:[row]}=await db.query(
+        `SELECT r.* FROM web_auth.password_resets r
+          WHERE r.email=$1 AND r.browser_hash=$2
+          ORDER BY r.created_at DESC LIMIT 1 FOR UPDATE`,
+        [email,hash(ctx.browser)],
+      );
+      if(!row||row.consumed_at||row.verified_at||row.attempts>=5||
+         new Date(row.expires_at).getTime()<=Date.now())
+        throw new ApiError(400,'CODE_INVALID_OR_EXPIRED');
+      await db.query('UPDATE web_auth.password_resets SET attempts=attempts+1 WHERE id=$1',[row.id]);
+      if(row.code_hash!==this.fingerprint([row.id,code]))
+        throw new CommitError(400,'CODE_INVALID_OR_EXPIRED');
+      const reset_token=token();
+      await db.query(
+        'UPDATE web_auth.password_resets SET verified_at=clock_timestamp(),reset_hash=$2 WHERE id=$1',
+        [row.id,hash(reset_token)],
+      );
+      await this.audit(db,ctx,'account.password_reset_verified',row.user_id,null,row.id);
+      return {status:200,body:{reset_token,expires_in:600}};
+    });
+  }
+  async completePasswordReset(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['email','reset_token','password']);
+    const email=required(input,'email',254).trim().toLowerCase();
+    const reset_token=required(input,'reset_token',256);
+    const password=required(input,'password',512);
+    if([...password].length<8||[...password].length>128||Buffer.byteLength(password)>512)
+      throw new ApiError(422,'INVALID_PASSWORD');
+    const password_hash=await passwordHash(password);
+    return this.tx(ctx,async db=>{
+      const {rows:[row]}=await db.query(
+        `SELECT * FROM web_auth.password_resets
+          WHERE email=$1 AND browser_hash=$2 AND reset_hash=$3
+            AND verified_at IS NOT NULL AND consumed_at IS NULL
+            AND expires_at>clock_timestamp()
+          FOR UPDATE`,
+        [email,hash(ctx.browser),hash(reset_token)],
+      );
+      if(!row) throw new ApiError(400,'RESET_INVALID_OR_EXPIRED');
+      const {rows:[user]}=await db.query('SELECT id FROM control.users WHERE id=$1 AND active FOR UPDATE',[row.user_id]);
+      if(!user) throw new ApiError(400,'RESET_INVALID_OR_EXPIRED');
+      await db.query('UPDATE control.users SET password_hash=$2 WHERE id=$1',[user.id,password_hash]);
+      await db.query('UPDATE web_auth.families SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE user_id=$1',[user.id]);
+      await db.query(
+        'UPDATE web_auth.password_resets SET consumed_at=clock_timestamp(),reset_hash=NULL WHERE user_id=$1 AND consumed_at IS NULL',
+        [user.id],
+      );
+      await db.query(
+        `UPDATE web_auth.browsers SET completion=NULL,completion_family=NULL,completion_expires=NULL
+         WHERE hash IN (SELECT browser_hash FROM web_auth.families WHERE user_id=$1)`,
+        [user.id],
+      );
+      await this.audit(db,ctx,'account.password_reset_completed',user.id,null,row.id);
+      return {status:200,body:{password_changed:true},cookies:{access:'',refresh:''}};
+    });
+  }
+  async deliverPasswordResetOne() {
+    const leaseToken=randomUUID();
+    const {rows:[job]}=await this.pool.query(
+      `WITH candidate AS (
+        SELECT j.reset_id FROM web_auth.password_reset_mail_jobs j
+        WHERE j.completed_at IS NULL AND j.available_at<=clock_timestamp()
+          AND (j.lease_until IS NULL OR j.lease_until<=clock_timestamp())
+        ORDER BY j.available_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED
+       )
+       UPDATE web_auth.password_reset_mail_jobs j
+       SET lease_token=$1,lease_until=clock_timestamp()+interval '30 seconds'
+       FROM candidate,web_auth.password_resets r
+       WHERE j.reset_id=candidate.reset_id AND r.id=j.reset_id
+       RETURNING j.reset_id,j.envelope,j.attempts,r.consumed_at,r.expires_at`,
+      [leaseToken],
+    );
+    if(!job)return;
+    const active=!job.consumed_at&&new Date(job.expires_at).getTime()>Date.now();
+    if(!active) {
+      await this.pool.query(
+        'UPDATE web_auth.password_reset_mail_jobs SET completed_at=clock_timestamp(),envelope=NULL,lease_token=NULL,lease_until=NULL WHERE reset_id=$1 AND lease_token=$2',
+        [job.reset_id,leaseToken],
+      );
+      return;
+    }
+    try {
+      const message=this.open(job.envelope);
+      await this.mail.send({id:job.reset_id,email:message.email,code:message.code,purpose:'password_reset'});
+      await this.pool.query(
+        'UPDATE web_auth.password_reset_mail_jobs SET completed_at=clock_timestamp(),envelope=NULL,lease_token=NULL,lease_until=NULL WHERE reset_id=$1 AND lease_token=$2',
+        [job.reset_id,leaseToken],
+      );
+    } catch(error) {
+      const permanent=error instanceof MailDeliveryError&&!error.retryable;
+      await this.pool.query(
+        `UPDATE web_auth.password_reset_mail_jobs
+         SET attempts=attempts+1,
+             available_at=clock_timestamp()+make_interval(secs=>LEAST(240,60*power(2,LEAST(attempts,2)))::int),
+             completed_at=CASE WHEN $3::boolean OR attempts>=4 THEN clock_timestamp() ELSE NULL END,
+             envelope=CASE WHEN $3::boolean OR attempts>=4 THEN NULL ELSE envelope END,
+             lease_token=NULL,lease_until=NULL
+         WHERE reset_id=$1 AND lease_token=$2`,
+        [job.reset_id,leaseToken,permanent],
+      );
+    }
+  }
   async login(ctx:Context,input:Record<string,unknown>) {
     exact(input,['email','password','device_id']);
     const email=required(input,'email',254).trim().toLowerCase(),password=required(input,'password',512),device=required(input,'device_id',36);
@@ -396,12 +541,21 @@ export class WebAuth {
       await this.limit(db,'party-suggest:'+user.id,40,60);
     });
     if(!this.lookup.suggest) throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
+    let items:Array<{inn:string;legal_name:string;legal_address:string}>;
     try {
-      const items=await this.lookup.suggest(query);
-      return {status:200,body:{items}};
+      items=await this.lookup.suggest(query);
     } catch {
       throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
     }
+    return this.tx(ctx,async db=>{
+      await this.identity(db,ctx);
+      const {rows}=await db.query(
+        'SELECT inn FROM web_auth.verified_inns($1::text[])',
+        [items.map(item=>item.inn)],
+      );
+      const claimed=new Set(rows.map(row=>row.inn as string));
+      return {status:200,body:{items:items.map(item=>({...item,verified:claimed.has(item.inn)}))}};
+    });
   }
   async lookupOrganization(ctx:Context,input:Record<string,unknown>) {
     exact(input,['inn']);
@@ -441,6 +595,9 @@ export class WebAuth {
       const {rows:[row]}=await db.query('SELECT *,expires_at>clock_timestamp() AS fresh FROM web_auth.lookups WHERE id=$1 AND user_id=$2',[lookup,user.id]);
       if(!row) throw new ApiError(404,'RESOURCE_NOT_FOUND');
       if(!row.fresh) throw new ApiError(409,'LOOKUP_EXPIRED');
+      // Recheck at creation time: UI disabled controls are not a security boundary.
+      const {rows:[claimed]}=await db.query('SELECT inn FROM web_auth.verified_inns($1::text[])',[[row.inn]]);
+      if(claimed) throw new ApiError(409,'ORGANIZATION_ALREADY_EXISTS');
       const id=randomUUID(),member=randomUUID();
       await this.scope(db,id);
       try {
