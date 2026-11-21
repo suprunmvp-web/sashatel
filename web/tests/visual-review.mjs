@@ -36,6 +36,23 @@ for(const width of [1440,1024,768,390]){
    if(width===1440&&theme==='light')await page.screenshot({path:dir+'/'+section+'.png',fullPage:true});
   }
   if(width===1440&&theme==='light'){
+   await page.locator('[data-nav=trunks]').click();
+   await page.locator('[data-action=trunk]').click();
+   await page.getByRole('heading',{name:'Создать SIP-транк'}).waitFor();
+   await page.getByLabel('SIP-сервер').fill('sip.example.test');
+   await page.screenshot({path:dir+'/create-trunk-dialog.png',fullPage:true});
+   await page.getByRole('button',{name:'Закрыть'}).first().click();
+   await page.locator('[data-nav=employees]').click();
+   await page.locator('[data-action=invite]').click();
+   await page.getByRole('heading',{name:'Пригласить сотрудника'}).waitFor();
+   await page.screenshot({path:dir+'/invite-employee-dialog.png',fullPage:true});
+   await page.getByRole('button',{name:'Закрыть'}).first().click();
+   await page.locator('.profile-menu summary').click();
+   await page.locator('[data-view=profile]').click();
+   await page.getByRole('heading',{name:'Профиль'}).waitFor();
+   await page.locator('[data-nav=statistics]').click();
+  }
+  if(width===1440&&theme==='light'){
    await page.locator('[data-nav=history]').click();
    await page.locator('[data-ux-open=call]').first().click();
    await page.getByRole('heading',{name:'+7 999 123-45-67'}).waitFor();
