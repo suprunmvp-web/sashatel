@@ -1,4 +1,4 @@
-# Release trigger: DaData 4-digit suggestions, backend PR #38, staging image only.
+# Release trigger: password recovery and verified-INN suggestions; publication only, no runtime rollout.
 name: SashaTel Backend — staging image
 
 on:
@@ -47,7 +47,7 @@ jobs:
       - name: Initialize disposable PostgreSQL schema
         run: |
           psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE control_runtime LOGIN PASSWORD 'disposable-ci-runtime' NOSUPERUSER NOBYPASSRLS"
-          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql -f migrations/002-uis.sql -f migrations/003-operator.sql -f migrations/004-web.sql -f migrations/005-trunk-routing.sql -f migrations/006-global-carousel.sql -f migrations/007-mail-lease.sql
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f migrations/001.sql -f migrations/runtime.sql -f migrations/002-uis.sql -f migrations/003-operator.sql -f migrations/004-web.sql -f migrations/005-trunk-routing.sql -f migrations/006-global-carousel.sql -f migrations/007-mail-lease.sql -f migrations/008-password-recovery.sql -f migrations/009-verified-inn-suggestions.sql
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
