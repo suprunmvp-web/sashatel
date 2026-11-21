@@ -220,17 +220,19 @@ async function run(action, success) {
 }
 async function enter(result) {
   if (result.account) setAccount(result.account);
-  if (result.organization) {
-    state.organization = (
-      await api.openOrganization(result.organization.id)
-    ).organization;
-    routeOrganization(state.organization.id);
-    location.assign("/"+state.organization.id+"/"+(preview?"?preview=1":""));
-  } else {
-    clearOrganizationRoute();
-    state.organizations=result.organizations||[];
-    go(state.organizations.length ? "organizations" : "welcome");
+  const available=result.organizations||[];
+  // Reuse the existing server context instead of selecting it again on every navigation.
+  const selected=result.organization||(
+    available.length===1 ? (await api.openOrganization(available[0].id)).organization : null
+  );
+  if (selected) {
+    state.organization=selected;
+    location.replace("/"+selected.id+"/"+(preview?"?preview=1":""));
+    return;
   }
+  clearOrganizationRoute();
+  state.organizations=available;
+  go(available.length ? "organizations" : "welcome");
 }
 root.addEventListener("input", (event) => {
   if (event.target.name === "password" && state.page === "register") {
