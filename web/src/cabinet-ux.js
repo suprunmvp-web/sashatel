@@ -55,7 +55,8 @@ function trunks(data=[],ctx={}){
   return [name,condition,phones,pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')];
  });
  const ready=data.find(t=>t.ready==='Готов'&&t.active&&t.registration==='Зарегистрирован');
- const callCTA='<button class="ux-button ux-trunk-call" data-test-call-list type="button"'+(!ready?' disabled title="Нет готового транка"':'')+'><span data-icon="phone-call"></span> Тестовый звонок</button>';
+ const verified=ctx.organization?.verification_status==='verified';
+ const callCTA='<button class="ux-button ux-trunk-call" data-test-call-list type="button"'+(!ready||!verified?' disabled title="'+(!verified?'Требуется верификация организации':'Нет готового транка')+'"':'')+'><span data-icon="phone-call"></span> Тестовый звонок</button>';
  return shell('<div class="ux-headline"><p class="ux-subtitle">Исходящие SIP-подключения и номера карусели</p><div class="ux-head-actions">'+action('Добавить транк','trunk',true)+callCTA+'</div></div><section class="ux-section ux-list">'+table(['Транк','Подключение','Номера','Состояние'],rows,'Транков пока нет')+'</section>');
 }
 function employees(data=[],ctx={}){
@@ -133,7 +134,7 @@ export function sectionUI(page,ctx={}){
 }
 export function wireSectionUI(ctx={}){
  document.querySelectorAll('[data-action="prepare-numbers"]').forEach(btn=>btn.addEventListener('click',openNumberPreparation));
- document.querySelectorAll('[data-test-call-list]').forEach(btn=>btn.addEventListener('click',()=>{const ready=(ctx.trunks||[]).find(t=>t.ready==='Готов'&&t.active&&t.registration==='Зарегистрирован');if(ready)openTestCall({trunk:ready,organization:ctx.organization||{},startCall:ctx.startCall||null});}));
+ document.querySelectorAll('[data-test-call-list]').forEach(btn=>btn.addEventListener('click',()=>{const ready=(ctx.trunks||[]).find(t=>t.ready==='Готов'&&t.active&&t.registration==='Зарегистрирован');if(ready&&ctx.organization?.verification_status==='verified')openTestCall({trunk:ready,organization:ctx.organization||{},startCall:ctx.startCall||null});}));
 
  const employeesRaw=document.querySelector('#ux-employees-data')?.textContent;
  if(employeesRaw){const employees=JSON.parse(employeesRaw);document.querySelectorAll('[data-employee-index]').forEach(btn=>btn.addEventListener('click',()=>openEmployeeAccess({employee:employees[Number(btn.dataset.employeeIndex)],updateRole:ctx.updateRole||null})));}
