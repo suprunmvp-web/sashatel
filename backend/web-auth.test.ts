@@ -196,6 +196,21 @@ test('Web onboarding with real PostgreSQL',async t=>{
       const login=await fetch(base+'/v1/auth/login',{method:'POST',headers:{...headers,cookie},body:JSON.stringify({email:input.email,password:input.password,device_id:randomUUID()})});
       assert.equal(login.status,200);
       assert.equal((await login.json()).account.phone,'+79261234567');
+      // 21 unrelated clients share the same reverse-proxy TCP address.
+      // None may inherit an unrelated visitor's rate limit.
+      for(let i=0;i<21;i++){
+        const fresh=await fetch(base+'/v1/auth/csrf');
+        const challenge=await fresh.json();
+        const visitor=fresh.headers.getSetCookie()[0].split(';')[0];
+        const attempted=await fetch(base+'/v1/auth/login',{
+          method:'POST',
+          headers:{cookie:visitor,origin:'https://platform.example.test',
+            'x-csrf-token':challenge.csrf_token,'content-type':'application/json'},
+          body:JSON.stringify({email:randomUUID()+'@example.test',
+            password:'invalid-test-password',device_id:randomUUID()})
+        });
+        assert.equal(attempted.status,401,'shared proxy IP must not block other visitors');
+      }
     } finally {await new Promise<void>(resolve=>api.close(()=>resolve()));}
   });
 });
