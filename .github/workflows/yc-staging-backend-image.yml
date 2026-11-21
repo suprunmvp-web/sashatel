@@ -1,3 +1,4 @@
+# Release trigger: DaData 4-digit suggestions, backend PR #38, staging image only.
 name: SashaTel Backend — staging image
 
 on:
