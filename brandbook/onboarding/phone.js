@@ -92,10 +92,13 @@ export function setupPhone() {
         document.querySelector("#phone-prefix").textContent = `+${country.dial}`;
         trigger.setAttribute("aria-label", `Страна: ${country.name}, код +${country.dial}`);
         input.dataset.dial = country.dial;
+        // Do not carry a Russian national number into a different country.
+        // The selected calling code, not the flag alone, controls the submitted E.164 value.
+        if (country.code !== "RU" && country.code !== "KZ") input.value = "";
         formatInput();
         close();
         validate();
-        input.focus();
+        input.focus({preventScroll:true});
       });
       list.append(button);
     }
@@ -125,16 +128,18 @@ export function setupPhone() {
     formatInput();
     validate();
   });
-  trigger.addEventListener("click", () => {
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
     if (!picker.hidden) {
       close();
+      trigger.focus({preventScroll:true});
       return;
     }
     picker.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
     search.value = "";
     draw();
-    search.focus();
+    search.focus({preventScroll:true});
   });
   search.addEventListener("input", draw);
   picker.addEventListener("keydown", (e) => {
@@ -161,11 +166,12 @@ export function setupPhone() {
     },
     { signal: lifecycle.signal },
   );
-  trigger.closest("form").addEventListener("focusout", () => {
-    queueMicrotask(() => {
-      if (!document.activeElement.closest(".phone-field")) close();
-    });
-  });
+  // Do not close the picker on a focusout microtask: pointerdown on a
+  // country option moves focus before its click event, causing a lost selection.
+  // A focusin *outside* the widget is safe and also covers keyboard navigation.
+  document.addEventListener("focusin", (event) => {
+    if (!event.target.closest?.(".phone-field")) close();
+  }, {signal:lifecycle.signal});
 }
 let lifecycle = new AbortController();
 // Each render replaces the phone DOM; release its document listener first.

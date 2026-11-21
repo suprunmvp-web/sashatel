@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: suprunmvp-web/sashatel
-          ref: 6e01c154a53759e3a122c56226dd835a6e079313
+          ref: f953952b37da3415f19c7bd95f26f8aa5bba2917
           path: .integration
       - uses: actions/setup-node@v4
         with:
@@ -38,7 +38,7 @@ jobs:
       - name: Prepare isolated PostgreSQL runtime
         run: |
           psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE control_runtime LOGIN PASSWORD 'disposable-web-runtime' NOSUPERUSER NOBYPASSRLS"
-          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f .integration/backend/migrations/001.sql -f .integration/backend/migrations/runtime.sql -f .integration/backend/migrations/002-uis.sql -f .integration/backend/migrations/003-operator.sql -f .integration/backend/migrations/004-web.sql
+          psql "$TEST_ADMIN_URL" -v ON_ERROR_STOP=1 -1 -f .integration/backend/migrations/001.sql -f .integration/backend/migrations/runtime.sql -f .integration/backend/migrations/002-uis.sql -f .integration/backend/migrations/003-operator.sql -f .integration/backend/migrations/004-web.sql -f .integration/backend/migrations/005-trunk-routing.sql -f .integration/backend/migrations/006-global-carousel.sql -f .integration/backend/migrations/007-mail-lease.sql -f .integration/backend/migrations/008-password-recovery.sql -f .integration/backend/migrations/009-verified-inn-suggestions.sql -f .integration/backend/migrations/010-internal-organization-reviews.sql
       - run: npm ci --ignore-scripts --prefix .integration/backend
       - run: npm ci --ignore-scripts --prefix brandbook/onboarding
       - run: cd brandbook/onboarding && npx playwright install --with-deps chromium

@@ -140,7 +140,7 @@ function render() {
         <p class="lookup-intro">Укажите ИНН — мы найдём и заполним реквизиты.</p>
         <form novalidate data-form="lookup" class="company-lookup-form">
           <div class="inn-control">
-            ${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="Введите ИНН" aria-controls="inn-suggestions" aria-autocomplete="list"')}
+            ${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="7707083893" aria-controls="inn-suggestions" aria-autocomplete="list"')}
             <div id="inn-suggestions" class="inn-suggestions" role="listbox" aria-label="Результаты поиска" hidden></div>
           </div>
           <div class="company-form-fields">
@@ -165,7 +165,7 @@ function render() {
     default:
       html = ``;
   }
-  root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p><p id="request-status" role="status" class="status"></p>`;
+  root.innerHTML = `${html}<p class="error" role="alert" tabindex="-1" hidden></p>`;
   if(state.page==="verify") {
     syncOtp();
     const notice=root.querySelector("#delivery-state");
@@ -209,7 +209,8 @@ async function run(action, success) {
   const generation = state.generation;
   state.busy = true;
   announceError("");
-  root.querySelector("#request-status").textContent = "Подождите…";
+  // Requests run silently. Prevent duplicate submissions without changing
+  // visible button labels or adding loading text to the form.
   root.querySelectorAll("button,input").forEach((el) => {
     el.disabled = true;
   });
@@ -232,7 +233,6 @@ async function run(action, success) {
       root.querySelectorAll("button,input").forEach((el) => {
         el.disabled = false;
       });
-      root.querySelector("#request-status").textContent = "";
       tick();
     }
   }
@@ -253,28 +253,46 @@ async function enter(result) {
   state.organizations=available;
   go(available.length ? "organizations" : "welcome");
 }
-// Locally generated test-only organizations. Never shown as real registry results.
-function sampleInn(prefix, i) {
-  if (!/^\d{1,12}$/.test(prefix)) return null;
-  if (prefix.length === 10 || prefix.length === 12) return prefix;
-  const width = 9 - prefix.length;
-  const base = width > 0 ? prefix + String(i).padStart(width, "0").slice(-width) : prefix;
-  const weights = [2,4,10,3,5,9,4,6,8];
-  const checksum = (weights.reduce((sum, weight, ix) => sum + Number(base[ix])*weight, 0) % 11) % 10;
-  return base + checksum;
+// Lookup results must come from the authenticated Backend/DaData API, never fixtures.
+let lookupSequence=0;
+let lookupTimer=null;
+let lookupController=null;
+let lookupSuggestions=[];
+function resetLookupDropdown(dropdown) {
+  dropdown.hidden=true;
+  dropdown.innerHTML="";
 }
-function companyCandidates(prefix) {
-  if (!/^\d{1,12}$/.test(prefix) || prefix.length === 11) return [];
-  const result = [], seen = new Set();
-  if (prefix === "7707083893") result.push({inn:prefix,name:'ООО «Пример организации»'});
-  for (let i = 1; i <= 200 && result.length < 20; i++) {
-    const inn = sampleInn(prefix, i);
-    if (!inn || seen.has(inn) || result.some(x=>x.inn===inn)) continue;
-    seen.add(inn);
-    const suffix = inn.slice(5,9);
-    result.push({inn,name:`ООО «Компания ${suffix}»`});
+function setLookupMessage(dropdown,message) {
+  dropdown.hidden=false;
+  dropdown.innerHTML=`<div class="inn-lookup-status" role="status">${esc(message)}</div>`;
+}
+async function requestCompanySuggestions(query,sequence,controller) {
+  const dropdown=root.querySelector("#inn-suggestions");
+  if(!dropdown||sequence!==lookupSequence||state.page!=="lookup")return;
+  // No transient "searching" row; only show results, an actual empty result
+  // or a real retrieval error.
+  resetLookupDropdown(dropdown);
+  try {
+    const result=await api.suggestOrganizations(query,{signal:controller.signal});
+    if(controller.signal.aborted||sequence!==lookupSequence||state.page!=="lookup")return;
+    const current=root.querySelector('[name="inn"]');
+    if(!current||current.value!==query)return;
+    lookupSuggestions=(Array.isArray(result?.items)?result.items:[]).filter(item=>
+      typeof item?.inn==="string"&&item.inn.startsWith(query)&&
+      typeof item?.legal_name==="string"&&item.legal_name.trim()).slice(0,20);
+    if(!lookupSuggestions.length) {
+      setLookupMessage(dropdown,"Организации не найдены");
+      return;
+    }
+    dropdown.hidden=false;
+    dropdown.innerHTML=lookupSuggestions.map((item,index)=>
+      `<button type="button" class="inn-result${item.verified?' inn-result--verified':''}" data-action="select-inn" data-index="${index}" role="option" aria-disabled="${item.verified?'true':'false'}" ${item.verified?'disabled':''}><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(displayLegalName(item.legal_name))}</strong><small>ИНН ${esc(item.inn)}${item.verified?' · Уже верифицирована в SashaTel':''}</small></span>${icon(item.verified?"lock":"arrow-right")}</button>`
+    ).join("");
+    window.renderSashaIcons?.(dropdown);
+  }catch(error){
+    if(controller.signal.aborted||sequence!==lookupSequence||state.page!=="lookup")return;
+    setLookupMessage(dropdown,"Не удалось получить организации. Повторите ввод.");
   }
-  return result;
 }
 root.addEventListener("input", (event) => {
   if (state.page === "lookup" && event.target.name === "inn") {
@@ -289,11 +307,16 @@ root.addEventListener("input", (event) => {
       root.querySelector(".company-complete").hidden = true;
       // A selected suggestion or Enter triggers lookup.
     }
-    const options = !state.lookup ? companyCandidates(inn) : [];
-    dropdown.hidden = options.length === 0;
-    if (!dropdown.hidden) {
-      dropdown.innerHTML = options.map(({inn: value,name}) => `<button type="button" class="inn-result" data-action="select-inn" data-inn="${esc(value)}" role="option"><span class="inn-result-icon">${icon("building-2")}</span><span><strong>${esc(name)}</strong><small>ИНН ${esc(value)}</small></span>${icon("arrow-right")}</button>`).join('');
-      window.renderSashaIcons?.(dropdown);
+    clearTimeout(lookupTimer);
+    lookupController?.abort();
+    lookupController=null;
+    const sequence=++lookupSequence;
+    lookupSuggestions=[];
+    resetLookupDropdown(dropdown);
+    if(!state.lookup&&inn.length>=4) {
+      lookupController=new AbortController();
+      const controller=lookupController;
+      lookupTimer=setTimeout(()=>{void requestCompanySuggestions(inn,sequence,controller);},300);
     }
   }
   if (event.target.name === "password" && state.page === "register") {
@@ -392,6 +415,11 @@ root.addEventListener("submit", (event) => {
       );
       break;
     case "lookup":
+      // Enter also resolves only a real, full INN via Backend.
+      clearTimeout(lookupTimer);
+      lookupController?.abort();
+      ++lookupSequence;
+      lookupSuggestions=[];
       void run(
         () => api.lookup({ inn: values.inn }),
         (result) => {
@@ -434,12 +462,25 @@ root.addEventListener("click", (event) => {
     return;
   }
   if (action === "select-inn") {
-    const form = root.querySelector('form[data-form="lookup"]');
-    const choice = event.target.closest('[data-inn]');
-    if (form && choice) {
-      form.elements.namedItem('inn').value = choice.dataset.inn;
-      root.querySelector('#inn-suggestions').hidden = true;
-      form.requestSubmit();
+    const selected=event.target.closest('[data-index]');
+    const index=selected?Number(selected.dataset.index):-1;
+    const item=Number.isInteger(index)?lookupSuggestions[index]:null;
+    const form=root.querySelector('form[data-form="lookup"]');
+    if(item&&!item.verified&&form) {
+      clearTimeout(lookupTimer);
+      lookupController?.abort();
+      ++lookupSequence;
+      lookupSuggestions=[];
+      form.elements.namedItem('inn').value=item.inn;
+      resetLookupDropdown(root.querySelector("#inn-suggestions"));
+      void run(
+        ()=>api.lookup({inn:item.inn}),
+        result=>{
+          state.lookup=result;
+          state.createKey=crypto.randomUUID();
+          go("lookup");
+        },
+      );
     }
     return;
   }
