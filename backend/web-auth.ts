@@ -593,8 +593,13 @@ export class WebAuth {
   async internalOrganizations(ctx:Context) {
     return this.tx(ctx,async db=>{
       const {user}=await this.identity(db,ctx);
-      const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations($1)',[user.id]);
-      return {status:200,body:{items:rows}};
+      try {
+        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations($1)',[user.id]);
+        return {status:200,body:{items:rows}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        throw error;
+      }
     });
   }
   async reviewOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
