@@ -1,0 +1,116 @@
+/* SashaTel v3 visual direction: Resend-inspired proportion and restraint.
+   One workspace control top-left; icon-only theme; fluid canvas with restrained reading width. */
+.platform{--sidebar:252px;--ux-page-max:1080px;--ux-border:var(--line);--ux-hair:color-mix(in srgb,var(--fg) 9%,transparent);font-family:var(--font)}
+.platform.sidebar-collapsed{--sidebar:68px}
+.platform .sidebar{width:var(--sidebar);padding:0 10px 16px;border-right:1px solid var(--line);background:var(--surface);transition:width .17s ease}
+.platform .organization-head{height:70px;padding:10px 0;margin:0 0 13px;border-bottom:1px solid var(--line);gap:4px}
+.platform .organization-head .icon-button{flex:none;width:30px;height:32px;border-radius:7px;color:var(--sub)}
+.platform .organization-head .icon-button:hover{color:var(--fg);background:var(--hover)}
+.platform .ux-workspace{flex:1;min-width:0}
+.platform .ux-workspace summary{max-width:none;display:flex;align-items:center;min-height:43px;gap:10px;padding:5px 8px;border:1px solid transparent;border-radius:8px}
+.platform .ux-workspace summary:hover,.platform .ux-workspace[open] summary{background:var(--hover)}
+.platform .ux-workspace summary [data-icon]{width:14px;height:14px;color:var(--sub);margin-left:auto}
+.platform .ux-workspace-avatar{display:grid;place-items:center;width:29px;height:29px;flex:none;border:1px solid var(--line);border-radius:8px;background:var(--hover);font-size:12px;font-weight:650;color:var(--fg)}
+.platform .ux-workspace-meta{display:grid;gap:3px;min-width:0;flex:1}
+.platform .ux-workspace-meta strong{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.platform .ux-workspace-meta small{font:11px/1 var(--font);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.platform .ux-workspace .ux-switcher-menu{left:0;right:auto;top:calc(100% + 7px);width:280px;padding:6px;border-radius:10px;box-shadow:0 18px 42px #0003}
+.platform .ux-switcher-menu .ux-switcher-label{padding:9px 9px 6px;font-size:10px}
+.platform .ux-switcher-menu a,.platform .ux-switcher-menu button{min-height:38px;font-size:12px;padding:7px 9px;gap:9px}
+.platform .ux-switcher-menu [data-icon]{width:16px;height:16px}
+.platform .ux-switcher-menu hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+.platform .ux-org-initial{width:25px;height:25px;border-radius:6px;background:var(--hover);font-size:11px;display:grid;place-items:center;flex:none}
+.platform .sidebar nav{display:grid;gap:2px;padding:0 1px}
+.platform .sidebar nav a{height:37px;min-height:37px;display:flex;align-items:center;gap:11px;border:0;border-radius:7px;padding:8px 11px;color:var(--sub);font-size:12px;font-weight:500;white-space:nowrap}
+.platform .sidebar nav a:hover{color:var(--fg);background:var(--hover)}
+.platform .sidebar nav a[aria-current]{color:var(--fg);background:var(--hover);font-weight:600}
+.platform .sidebar nav a [data-icon]{width:17px;height:17px;flex:none}
+.platform .sidebar nav a [data-icon] svg{width:17px;height:17px;stroke-width:1.8}
+.platform .ux-sidebar-footer{margin-top:auto;padding:13px 12px 7px;border-top:1px solid var(--line);display:grid;gap:5px}
+.platform .ux-brand-sign{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:-.01em}
+.platform .ux-sidebar-footer small{font-size:10px;color:var(--sub)}
+.platform .platform-body{margin-left:var(--sidebar);min-width:0}
+.platform .platform-top{height:62px;min-height:62px;padding:0 clamp(20px,3vw,38px);border-bottom:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.platform .ux-breadcrumb{display:flex;align-items:center;gap:9px;font-size:12px;white-space:nowrap;overflow:hidden}
+.platform .ux-breadcrumb>span:first-child{color:var(--sub)}
+.platform .ux-breadcrumb strong{font-weight:500;text-overflow:ellipsis;overflow:hidden}
+.platform .ux-crumb-separator{color:var(--sub);opacity:.55}
+.platform .top-controls{gap:8px}
+.platform .ux-theme-toggle{width:32px;height:32px;border:1px solid transparent;border-radius:8px;display:grid;place-items:center}
+.platform .ux-theme-toggle:hover{border-color:var(--line);background:var(--hover)}
+.platform .profile-menu summary{height:33px;min-height:33px;padding:3px 6px;border-radius:8px;display:flex;align-items:center;gap:7px}
+.platform .profile-menu summary:hover{background:var(--hover)}
+.platform .ux-user-avatar{display:grid;place-items:center;border-radius:50%;height:27px;width:27px;font-size:11px;font-weight:600;background:var(--hover);border:1px solid var(--line)}
+.platform .profile-menu summary [data-icon]{color:var(--sub);width:14px;height:14px}
+.platform .profile-menu>div{width:205px;right:0;top:calc(100% + 7px);padding:7px;border-radius:10px}
+.platform .profile-menu>div hr{border:0;border-top:1px solid var(--line)}
+.platform main{width:100%;max-width:calc(var(--ux-page-max) + 88px);margin:0 auto;padding:42px clamp(22px,3vw,44px) 90px}
+.platform .page-heading{margin:0 0 25px}
+.platform h1{font:600 25px/1.3 var(--font);letter-spacing:-.045em;margin:0}
+.platform .ux-page{gap:26px}
+.platform .ux-headline{gap:14px;min-height:35px;align-items:center;margin:-4px 0 0}
+.platform .ux-subtitle{font:12px/1.65 var(--font);color:var(--sub);margin:0}
+.platform .ux-button{min-height:34px;padding:8px 13px;border-radius:7px;font-size:12px;gap:8px}
+.platform .ux-button span{opacity:.65}
+.platform .ux-date{min-height:33px;padding:6px 10px;font-size:11px;border-radius:7px}
+.platform .ux-kpis{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.platform .ux-kpi{padding:20px 20px 21px;gap:13px}
+.platform .ux-kpi:not(:first-child){padding-left:20px}
+.platform .ux-kpi span{font-size:11px}
+.platform .ux-kpi strong{font:550 29px/1 var(--font);letter-spacing:-.045em}
+.platform .ux-chart{padding:0}
+.platform .ux-chart .ux-section-title{margin:0 0 12px}
+.platform .ux-section h2,.platform .ux-section-title h2{font:600 13px/1.45 var(--font);letter-spacing:-.015em}
+.platform .ux-chart-canvas{height:188px}
+.platform .ux-chart-interactive{height:180px;min-height:180px}
+.platform .ux-chart-interactive svg{height:180px}
+.platform .ux-chart-interactive + .ux-chart-dates{margin-top:1px}
+.platform .ux-two{gap:28px;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);padding-top:24px}
+.platform .ux-results-body{gap:15px;justify-content:flex-start;align-items:center}
+.platform .ux-donut{width:140px;height:140px;flex-basis:140px}
+.platform .ux-legend{max-width:240px;gap:10px}
+.platform .ux-legend-row{font-size:11px;gap:8px}
+.platform .ux-breakdown .ux-section-title{gap:8px}
+.platform .ux-segment{border:1px solid var(--line);padding:2px;border-radius:7px}
+.platform .ux-segment button{padding:7px 9px;border-radius:5px;font-size:10.5px}
+.platform .ux-table-viewport{border:1px solid var(--line);border-radius:9px;overflow-x:auto}
+.platform .ux-table{min-width:520px;font-size:12px}
+.platform .ux-table th{padding:11px 14px;background:var(--hover);border-bottom:1px solid var(--line);font-weight:500;font-size:11px}
+.platform .ux-table td{padding:15px 14px;border-top:1px solid var(--line);height:52px}
+.platform .ux-table th:first-child,.platform .ux-table td:first-child{padding-left:16px}
+.platform .ux-table th:last-child,.platform .ux-table td:last-child{padding-right:16px}
+.platform .ux-table tbody tr:hover{background:color-mix(in srgb,var(--fg) 2%,transparent)}
+.platform .ux-pill{border-radius:5px;padding:5px 8px;font-size:10px}
+.platform .ux-list{min-height:0}
+.platform .ux-empty{max-width:390px;padding:38px 18px}
+.platform .ux-empty-mark{border-radius:10px}
+.platform .ux-call-hero{padding-bottom:23px;border-bottom:0;align-items:flex-start}
+.platform main:has(.ux-call-hero) .page-heading{display:none}
+.platform .ux-backlink{font-size:11px;margin-bottom:4px}
+.platform .ux-call-hero h2{font:600 25px/1.3 var(--font);letter-spacing:-.04em}
+.platform .ux-call-hero .ux-eyebrow{font-size:10px}
+.platform .ux-call-hero .ux-subtitle{font-size:12px}
+.platform .ux-detail-tabs{gap:22px;border-bottom:1px solid var(--line)}
+.platform .ux-detail-tabs button{font-size:12px;padding:11px 0}
+.platform .ux-detail-panel{padding:17px 0}
+.platform .ux-detail-toolbar{margin:0 0 12px}
+.platform .ux-settings-row{padding:14px 0 18px}
+.platform .ux-kv{gap:0 30px}
+.platform .ux-kv>div{padding:13px 0}
+.platform .ux-connector{padding:15px;min-height:100px}
+.platform .ux-connectors{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.platform .ux-connector .ux-pill{margin-left:0}
+.platform .ux-connector-info{flex:1}
+.platform .ux-footnote{font-size:11px}
+.platform .ux-review-dock{position:fixed;bottom:16px;right:20px;z-index:14;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 35px #0002;padding:7px 8px 7px 12px}
+.platform .ux-review-dock>span{font-size:10px;color:var(--sub);font-weight:600;letter-spacing:.025em}
+.platform .ux-review-dock button{font:500 11px var(--font);color:var(--fg);background:var(--hover);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
+.platform.sidebar-collapsed .ux-workspace-meta,.platform.sidebar-collapsed .ux-workspace summary>[data-icon],.platform.sidebar-collapsed .organization-head>.icon-button,.platform.sidebar-collapsed .ux-sidebar-footer{display:none}
+.platform.sidebar-collapsed .ux-workspace summary{padding:6px;justify-content:center}
+.platform.sidebar-collapsed .ux-workspace .ux-switcher-menu{left:0}
+.platform.sidebar-collapsed .sidebar nav a{justify-content:center;padding-inline:0}
+.platform.sidebar-collapsed .sidebar nav a>span:not([data-icon]){display:none}
+@media(max-width:1120px){.platform .ux-two{grid-template-columns:1fr;gap:24px}.platform .ux-results-body{max-width:480px}.platform .ux-connectors{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:768px){.platform{--sidebar:66px}.platform .sidebar{padding:0 7px 14px}.platform .organization-head{justify-content:center}.platform .ux-workspace summary{padding:6px;justify-content:center}.platform .ux-workspace-meta,.platform .ux-workspace summary>[data-icon],.platform .organization-head>.icon-button,.platform .ux-sidebar-footer{display:none}.platform .sidebar nav a{padding:8px 0;justify-content:center}.platform .sidebar nav a>span:not([data-icon]){display:none}.platform .ux-workspace .ux-switcher-menu{left:0}.platform main{padding:27px 23px 85px}.platform .platform-top{height:58px;min-height:58px;padding:0 22px}.platform .ux-two{grid-template-columns:1fr}.platform .ux-connectors{grid-template-columns:1fr}.platform .ux-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.platform .ux-kpi:nth-child(3){border-left:0}.platform .ux-kpi:nth-child(4){border-top:1px solid var(--line)}.platform .ux-kpi:nth-child(2){border-top:0}.platform .ux-kpi:nth-child(3){border-top:1px solid var(--line)}}
+@media(max-width:520px){.platform main{padding:23px 17px 88px}.platform h1{font-size:22px}.platform .ux-breadcrumb{font-size:11px}.platform .ux-kpi{padding:17px 13px}.platform .ux-kpi:not(:first-child){padding-left:13px}.platform .ux-kpi:nth-child(3){padding-left:13px}.platform .ux-kpi strong{font-size:24px}.platform .ux-results-body{flex-direction:row;align-items:center}.platform .ux-donut{width:118px;height:118px;flex-basis:118px}.platform .ux-legend-row{font-size:10px}.platform .ux-chart-interactive,.platform .ux-chart-interactive svg{height:150px;min-height:150px}.platform .ux-table{min-width:520px}.platform .ux-review-dock{bottom:12px;right:10px}.platform .ux-connector{min-height:85px}.platform .ux-call-hero h2{font-size:21px}}
+@media(prefers-reduced-motion:reduce){.platform .sidebar{transition:none}}
