@@ -30,8 +30,8 @@ try{
  assert(message?.code);await page.getByLabel('Шестизначный код подтверждения').fill(message.code);await page.getByLabel('Шестизначный код подтверждения').press('Enter');
  await page.getByRole('heading',{name:/Добро пожаловать/}).waitFor();
  await page.getByRole('button',{name:'Создать организацию',exact:true}).click();
- await page.getByLabel('ИНН организации или ИП').fill('1234567890');await page.getByLabel('ИНН организации или ИП').press('Enter');await alert(page,/ИНН/);
- await page.getByLabel('ИНН организации или ИП').fill('7707083893');await page.getByLabel('ИНН организации или ИП').press('Enter');await heading(page,'Подтвердите организацию.');
+ await page.getByLabel('ИНН организации или ИП').fill('1234567890');await page.locator('form[data-form=lookup]').evaluate(form=>form.requestSubmit());await alert(page,/ИНН/);
+ await page.getByLabel('ИНН организации или ИП').fill('7707083893');await page.locator('form[data-form=lookup]').evaluate(form=>form.requestSubmit());await page.locator('.company-complete').waitFor({state:'visible'});await page.locator('#company-consent').check();
  await page.getByRole('button',{name:'Создать организацию',exact:true}).click();await heading(page,'Статистика');
  const orgId=new URL(page.url()).pathname.split('/')[1];assert.match(orgId,/^[0-9a-f-]{36}$/);
  await page.reload();await heading(page,'Статистика');await noOverflow(page);
