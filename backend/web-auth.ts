@@ -541,12 +541,21 @@ export class WebAuth {
       await this.limit(db,'party-suggest:'+user.id,40,60);
     });
     if(!this.lookup.suggest) throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
+    let items:Array<{inn:string;legal_name:string;legal_address:string}>;
     try {
-      const items=await this.lookup.suggest(query);
-      return {status:200,body:{items}};
+      items=await this.lookup.suggest(query);
     } catch {
       throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
     }
+    return this.tx(ctx,async db=>{
+      await this.identity(db,ctx);
+      const {rows}=await db.query(
+        'SELECT inn FROM web_auth.verified_inns($1::text[])',
+        [items.map(item=>item.inn)],
+      );
+      const claimed=new Set(rows.map(row=>row.inn as string));
+      return {status:200,body:{items:items.map(item=>({...item,verified:claimed.has(item.inn)}))}};
+    });
   }
   async lookupOrganization(ctx:Context,input:Record<string,unknown>) {
     exact(input,['inn']);
@@ -586,6 +595,9 @@ export class WebAuth {
       const {rows:[row]}=await db.query('SELECT *,expires_at>clock_timestamp() AS fresh FROM web_auth.lookups WHERE id=$1 AND user_id=$2',[lookup,user.id]);
       if(!row) throw new ApiError(404,'RESOURCE_NOT_FOUND');
       if(!row.fresh) throw new ApiError(409,'LOOKUP_EXPIRED');
+      // Recheck at creation time: UI disabled controls are not a security boundary.
+      const {rows:[claimed]}=await db.query('SELECT inn FROM web_auth.verified_inns($1::text[])',[[row.inn]]);
+      if(claimed) throw new ApiError(409,'ORGANIZATION_ALREADY_EXISTS');
       const id=randomUUID(),member=randomUUID();
       await this.scope(db,id);
       try {
