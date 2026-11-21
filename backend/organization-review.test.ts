@@ -59,6 +59,7 @@ test('organization review: duplicates, staff gate, verified-only uniqueness and 
  assert.equal(subscription.n,0);
  await admin.query("UPDATE web_auth.internal_staff SET active=false WHERE user_id=$1",[user.id]);
  await assert.rejects(auth.internalOrganizations(ctx),error('INTERNAL_ACCESS_DENIED'));
- await admin.query("DELETE FROM web_auth.organization_reviews WHERE organization_id=ANY($1::uuid[])",[[a,b]]);
+ await admin.query("DELETE FROM web_auth.audit WHERE organization_id=ANY($1::uuid[])",[[a,b,c]]);
+ await admin.query("DELETE FROM web_auth.organization_reviews WHERE organization_id=ANY($1::uuid[])",[[a,b,c]]);
  await admin.query("DELETE FROM control.organizations WHERE id=ANY($1::uuid[])",[[a,b,c]]);
 });
