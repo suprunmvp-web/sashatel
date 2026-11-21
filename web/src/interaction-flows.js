@@ -19,7 +19,7 @@ const cleanPhone=input=>{const digits=String(input||'').replace(/\D/g,'');return
 export function testCallBlock({trunk={},organization={}}={}){
  const canCall=Boolean(organization.verification_status==='verified' && trunk.active===true && trunk.ready==='Готов' && trunk.registration==='Зарегистрирован' && (trunk.numbers||[]).some(n=>(n.status||'active')==='active'));
  const blocked=organization.verification_status!=='verified'?'Требуется верификация организации':!trunk.active?'Транк выключен':trunk.registration!=='Зарегистрирован'?'Нет SIP-регистрации':trunk.ready!=='Готов'?'Исходящие звонки недоступны':'Нет активных разрешённых номеров';
- return '<button type="button" class="ux-button ux-test-call-trigger" data-test-call data-call-ready="'+String(canCall)+'"'+(!canCall?' aria-describedby="ux-call-blocker"':'')+'>'+renderIcon('phone-call')+' Тестовый звонок</button>'+(!canCall?'<p id="ux-call-blocker" class="ux-call-blocker">'+h(blocked)+'</p>':'');
+ return '<button type="button" class="ux-button ux-test-call-trigger" data-test-call data-call-ready="'+String(canCall)+'"'+(!canCall?' disabled aria-describedby="ux-call-blocker"':'')+'>'+renderIcon('phone-call')+' Тестовый звонок</button>'+(!canCall?'<p id="ux-call-blocker" class="ux-call-blocker">'+h(blocked)+'</p>':'');
 }
 export function openTestCall({trunk={},organization={},startCall=null,onCallComplete=null}={}){
  const eligible=organization.verification_status==='verified'&&trunk.active===true&&trunk.registration==='Зарегистрирован'&&trunk.ready==='Готов'&&(trunk.numbers||[]).some(n=>(n.status||'active')==='active');
