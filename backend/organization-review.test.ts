@@ -39,6 +39,13 @@ test('organization review: duplicates, staff gate, verified-only uniqueness and 
  await admin.query("UPDATE web_auth.internal_staff SET role='reviewer' WHERE user_id=$1",[user.id]);
  const list=await auth.internalOrganizations(ctx);
  assert((list.body as any).items.some((o:any)=>o.id===a));
+ const page1=(await auth.internalOrganizations(ctx,{limit:1})).body as any;
+ assert.equal(page1.items.length,1);
+ assert.equal(page1.next_offset,1);
+ const page2=(await auth.internalOrganizations(ctx,{limit:1,offset:page1.next_offset})).body as any;
+ assert.equal(page2.items.length,1);
+ assert.notEqual(page2.items[0].id,page1.items[0].id);
+ await assert.rejects(auth.internalOrganizations(ctx,{limit:201}),error('INVALID_PAGE'));
  const decision={decision:'verified',evidence_reference:'document-check-123',explanation:'Документы проверены сотрудником'};
  const approved=await auth.reviewOrganization(ctx,a,decision);
  assert.equal((approved.body as any).verification_status,'verified');
