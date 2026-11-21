@@ -209,14 +209,8 @@ async function run(action, success) {
   const generation = state.generation;
   state.busy = true;
   announceError("");
-  // Keep loading feedback inside the active submit button, never as a
-  // detached status line below the form. All other controls stay disabled.
-  const submit = root.querySelector('form button[type="submit"]');
-  const originalSubmitContent = submit?.innerHTML;
-  if (submit) {
-    submit.textContent = state.page === "login" ? "Входим…" : "Отправляем…";
-    submit.setAttribute("aria-busy", "true");
-  }
+  // Requests run silently. Prevent duplicate submissions without changing
+  // visible button labels or adding loading text to the form.
   root.querySelectorAll("button,input").forEach((el) => {
     el.disabled = true;
   });
@@ -239,10 +233,6 @@ async function run(action, success) {
       root.querySelectorAll("button,input").forEach((el) => {
         el.disabled = false;
       });
-      if (submit?.isConnected) {
-        submit.innerHTML = originalSubmitContent;
-        submit.removeAttribute("aria-busy");
-      }
       tick();
     }
   }
@@ -279,7 +269,9 @@ function setLookupMessage(dropdown,message) {
 async function requestCompanySuggestions(query,sequence,controller) {
   const dropdown=root.querySelector("#inn-suggestions");
   if(!dropdown||sequence!==lookupSequence||state.page!=="lookup")return;
-  setLookupMessage(dropdown,"Ищем организации…");
+  // No transient "searching" row; only show results, an actual empty result
+  // or a real retrieval error.
+  resetLookupDropdown(dropdown);
   try {
     const result=await api.suggestOrganizations(query,{signal:controller.signal});
     if(controller.signal.aborted||sequence!==lookupSequence||state.page!=="lookup")return;
