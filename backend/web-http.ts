@@ -38,7 +38,7 @@ export function webHandler(auth:WebAuth,origin:string) {
       if(req.method==='GET') {
         if(path==='/v1/auth/bootstrap') send(await auth.bootstrap(ctx));
         else if(path==='/v1/account') {
-          const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx)).user)}}));
+          const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx,true)).user)}}),true);
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
