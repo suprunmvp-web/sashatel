@@ -14,6 +14,7 @@ const enablePreview=process.env.SASHA_ENABLE_PREVIEW==='1';
 if(enablePreview)await cp(root+'../brandbook/onboarding/preview-api.js',out+'/assets/preview-api.js');
 else await rm(out+'/assets/preview-api.js',{force:true});
 await cp(root+'../assets/sashatel-symbol.svg',out+'/assets/sashatel-symbol.svg');
+await cp(root+'../assets/sashatel-email-symbol.png',out+'/assets/sashatel-email-symbol.png');
 await cp(root+'../assets/sashatel-lock.svg',out+'/assets/lock.svg');
 await cp(root+'../assets/sashatel-symbol-transparent.svg',out+'/assets/sashatel-symbol-transparent.svg');
 let sha='unknown';try{sha=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();}catch{}
