@@ -86,6 +86,7 @@ function render() {
   root.classList.toggle("workspace", state.page === "cabinet");
   document.body.classList.toggle("auth-verifying", state.page === "verify");
   document.body.classList.toggle("auth-welcome", state.page === "welcome");
+  document.body.classList.toggle("auth-lookup", state.page === "lookup");
   document.body.classList.toggle("in-workspace", state.page === "cabinet");
   document.documentElement.dataset.theme =
     state.page === "cabinet" ? savedTheme() : "dark";
@@ -110,7 +111,7 @@ function render() {
       html = `<div class="eyebrow">ПРИСОЕДИНЕНИЕ К КОМАНДЕ</div><h1 tabindex="-1">Ожидайте приглашения</h1><p>Попросите владельца организации отправить приглашение на <span class="email">${esc(state.email)}</span>.</p><div class="warning">Приглашений пока нет.</div>${button("Создать свою организацию", "lookup")}<button class="text-button" data-action="welcome">Назад</button>`;
       break;
     case "lookup":
-      html = `<div class="eyebrow">НОВАЯ ОРГАНИЗАЦИЯ</div><h1 tabindex="-1">Найдём вашу компанию</h1><p class="intro">Введите ИНН. Проверьте юридическое название на следующем шаге.</p><form novalidate data-form="lookup">${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" aria-describedby="inn-hint"')}<span class="hint" id="inn-hint">10 цифр для организации, 12 — для ИП</span><button class="button" type="submit">Найти организацию ${icon("arrow-right")}</button></form><button class="text-button" data-action="welcome">Назад</button>`;
+      html = `<section class="lookup-screen" aria-labelledby="lookup-heading"><div class="lookup-emblem" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-3v17M12 8l7 3v10M8 10h1M8 13h1M8 16h1M15 13h1M15 16h1"/></svg></div><p class="eyebrow">НОВАЯ ОРГАНИЗАЦИЯ</p><h1 id="lookup-heading" tabindex="-1">Найдём вашу компанию</h1><p class="lookup-intro">Введите ИНН организации или ИП. Реквизиты проверим перед созданием кабинета.</p><form novalidate data-form="lookup">${field("ИНН организации или ИП", "inn", state.lookup?.inn ?? "", 'inputmode="numeric" autocomplete="off" minlength="10" maxlength="12" pattern="[0-9]{10}([0-9]{2})?" placeholder="7707083893" aria-describedby="inn-hint"')}<span class="hint" id="inn-hint">10 цифр для организации, 12 — для ИП</span><button class="button" type="submit">Найти организацию</button></form><button class="text-button lookup-back" data-action="welcome">Назад</button></section>`;
       break;
     case "confirm":
       html = `<div class="eyebrow">ПОДТВЕРЖДЕНИЕ РЕКВИЗИТОВ</div><h1 tabindex="-1">Это ваша организация?</h1><p>Кабинет будет создан для юридического лица ниже.</p><dl class="summary"><dt>Юридическое название</dt><dd>${esc(state.lookup.legal_name)}</dd><dt>ИНН</dt><dd class="mono">${esc(state.lookup.inn)}</dd><dt>Адрес</dt><dd>${esc(state.lookup.legal_address)}</dd></dl><p class="hint">Вы станете единственным Владельцем. Проверка организации и подключение телефонии выполняются отдельно.</p><div class="actions">${button("Создать кабинет", "create")}${button("Изменить ИНН", "lookup", true)}</div><button class="text-button" data-action="welcome">Отмена</button>`;
