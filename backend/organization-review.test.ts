@@ -34,6 +34,9 @@ test('organization review: duplicates, staff gate, verified-only uniqueness and 
  await assert.rejects(auth.reviewOrganization(ctx,a,{decision:'verified',evidence_reference:'document-check-123',explanation:'Документы проверены сотрудником'}),error('INTERNAL_ACCESS_DENIED'));
  await admin.query("INSERT INTO web_auth.internal_staff(user_id,role) VALUES($1,'reviewer')",[user.id]);
  assert.equal((await auth.internalSession(ctx)).body.role,'reviewer');
+ await admin.query("UPDATE web_auth.internal_staff SET role='owner' WHERE user_id=$1",[user.id]);
+ assert.equal((await auth.internalSession(ctx)).body.role,'owner');
+ await admin.query("UPDATE web_auth.internal_staff SET role='reviewer' WHERE user_id=$1",[user.id]);
  const list=await auth.internalOrganizations(ctx);
  assert((list.body as any).items.some((o:any)=>o.id===a));
  const decision={decision:'verified',evidence_reference:'document-check-123',explanation:'Документы проверены сотрудником'};
