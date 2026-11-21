@@ -25,6 +25,7 @@ export class MailDeliveryError extends Error {
 }
 export interface LookupPort {
   lookup(inn:string): Promise<{legal_name:string;legal_address:string}|null>;
+  suggest?(query:string): Promise<Array<{inn:string;legal_name:string;legal_address:string}>>;
 }
 export type WebResult = {status:number;body?:unknown;cookies?:Record<string,string>;replayed?:boolean};
 type Context = {browser:string;access?:string;refresh?:string;requestId:string};
@@ -384,6 +385,23 @@ export class WebAuth {
       await db.query('UPDATE web_auth.families SET organization_id=$2,context_epoch=$3 WHERE id=$1',[family.id,id,family.context_epoch]);
       return {status:200,body:{context:await this.context(db,family)}};
     });
+  }
+  async suggestOrganizations(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['query']);
+    const query=required(input,'query',12);
+    if(!/^[0-9]{4,12}$/.test(query)) throw new ApiError(422,'INN_INVALID');
+    // Authenticate and rate-limit by verified account before calling paid DaData API.
+    await this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      await this.limit(db,'party-suggest:'+user.id,40,60);
+    });
+    if(!this.lookup.suggest) throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
+    try {
+      const items=await this.lookup.suggest(query);
+      return {status:200,body:{items}};
+    } catch {
+      throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
+    }
   }
   async lookupOrganization(ctx:Context,input:Record<string,unknown>) {
     exact(input,['inn']);

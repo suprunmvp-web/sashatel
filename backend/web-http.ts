@@ -7,7 +7,7 @@ export function webHandler(auth:WebAuth,origin:string) {
   if(new URL(origin).origin!==origin) throw new Error('Exact WEB_ORIGIN required');
   return async(req:IncomingMessage,res:ServerResponse) => {
     const path=req.url?.split('?')[0]??'';
-    if(!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')) return false;
+    if(!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')) return false;
     const requestId=randomUUID();
     res.setHeader('content-type','application/json');
     res.setHeader('cache-control','no-store');
@@ -74,6 +74,7 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/auth/logout':result=await auth.logout(ctx);break;
         case '/v1/session/organization':result=await auth.selectOrganization(ctx,body);break;
         case '/v1/organizations/lookup':result=await auth.lookupOrganization(ctx,body);break;
+        case '/v1/organizations/suggest':result=await auth.suggestOrganizations(ctx,body);break;
         case '/v1/organizations':result=await auth.createOrganization(ctx,body,key);break;
         default:throw new ApiError(404,'RESOURCE_NOT_FOUND');
       }
