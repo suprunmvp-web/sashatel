@@ -25,7 +25,7 @@ function chart(days=[]){
  const valid=days.filter(d=>d&&/^\d{4}-\d{2}-\d{2}$/.test(d.date));
  if(!valid.length)return '<section class="ux-section ux-chart"><div class="ux-section-title"><h2>Динамика дозвона</h2></div><div class="ux-chart-canvas" role="img" aria-label="Пока нет данных для графика дозвона"><div class="ux-chart-scale"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span></div><div class="ux-chart-lines"><div class="ux-chart-grid"></div><div class="ux-chart-caption">График появится после первых звонков</div><div class="ux-chart-dates"><span>Начало периода</span><span>Конец периода</span></div></div></div></section>';
  const displayDate=value=>new Date(value+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
- const x=i=>30+i*840/Math.max(valid.length-1,1),y=d=>168-(Math.max(0,Math.min(100,number(d.reach)))*1.42);
+ const x=i=>valid.length===1?450:30+i*840/(valid.length-1),y=d=>168-(Math.max(0,Math.min(100,number(d.reach)))*1.42);
  const points=valid.map((d,i)=>x(i)+','+y(d)).join(' ');
  const markers=valid.map((d,i)=>'<circle class="ux-point" cx="'+x(i)+'" cy="'+y(d)+'" r="6" tabindex="0" role="button" aria-label="'+escape(d.date)+', дозвон '+number(d.reach)+'%" data-ux-day="'+i+'"/>').join('');
  const labels=valid.map(d=>[d.date,number(d.reach),number(d.minutes),number(d.attempts),number(d.answers)]);
