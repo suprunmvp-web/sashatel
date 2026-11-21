@@ -43,8 +43,14 @@ function listPage(label,info,headers,emptyTitle,emptyText,actionLabel,actionId){
 const pill=(label,tone='neutral')=>'<span class="ux-pill ux-pill-'+tone+'">'+escape(label)+'</span>';
 const sectionHeading=(subtitle,cta='')=>'<div class="ux-headline"><p class="ux-subtitle">'+subtitle+'</p>'+cta+'</div>';
 function trunks(data=[],ctx={}){
- const rows=data.map(t=>[(t.id&&ctx.orgId?'<a class="ux-row-link" href="/'+escape(ctx.orgId)+'/trunks/'+escape(t.id)+'/"'+(ctx.review?' data-ux-open="trunk"':'')+'>'+escape(t.name)+'</a>':escape(t.name)),pill(t.registration||'Нет данных',t.registration==='Зарегистрирован'?'success':'neutral'),pill(t.ready||'Нет данных',t.ready==='Готов'?'success':'neutral'),pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')]);
- return shell(sectionHeading('Подключения операторов и маршрутизация исходящих звонков',action('Создать транк','trunk',true))+'<section class="ux-section ux-list">'+table(['Транк','Регистрация','Готовность','Статус'],rows,'Транков пока нет')+(rows.length?'':hint('Подключите первый SIP-транк','После подключения здесь появятся транки, их номера и состояние соединения.'))+'</section>');
+ const rows=data.map(t=>{
+  const name=t.id&&ctx.orgId?'<a class="ux-row-link" href="/'+escape(ctx.orgId)+'/trunks/'+escape(t.id)+'/"'+(ctx.review?' data-ux-open="trunk"':'')+'>'+escape(t.name)+'</a>':escape(t.name);
+  const connected=t.registration==='Зарегистрирован'&&t.ready==='Готов';
+  const condition=t.registration||t.ready?pill(connected?'Подключён':'Нет соединения',connected?'success':'neutral'):pill('Нет данных');
+  const phones=Number.isFinite(t.numberCount)?int(t.numberCount):'—';
+  return [name,condition,phones,pill(t.active?'Включён':'Выключен',t.active?'success':'neutral')];
+ });
+ return shell(sectionHeading('Управление исходящими SIP-подключениями',action('Создать транк','trunk',true))+'<section class="ux-section ux-list">'+table(['Транк','Подключение','Номера','Состояние'],rows,'Транков пока нет')+(rows.length?'':hint('Транков пока нет','Создайте первый SIP-транк, чтобы подключить исходящую телефонию.'))+'</section>');
 }
 function employees(data=[]){
  const rows=data.map(e=>[escape(e.name),escape(e.email),pill(e.role||'Сотрудник'),pill(e.presence||'Не в сети',e.presence==='В сети'?'success':e.presence==='На линии'?'warning':'neutral')]);
@@ -92,7 +98,7 @@ function trunkDetail(ctx={}){
  const numberRows=numberRowsFor(t.numbers||[],'active');
  const numbers='<div class="ux-detail-toolbar"><div class="ux-segment" role="group" aria-label="Фильтр номеров"><button type="button" data-ux-number="active" aria-pressed="true">Активные</button><button type="button" data-ux-number="passive" aria-pressed="false">Пассивные</button></div></div><div id="ux-numbers-table">'+table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],numberRows,'Нет номеров в выбранной группе')+'</div><script type="application/json" id="ux-numbers-data">'+JSON.stringify(t.numbers||[]).replace(/</g,'\\u003c')+'</script>';
  const information=kv([['SIP-сервер',t.host],['Порт',t.port],['Транспорт',t.transport],['Регистрация',t.registration],['Готовность к вызову',t.ready],['Режим авторизации',t.authType]]);
- return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">SIP-ТРАНК</p><h2>'+escape(t.name)+'</h2><p class="ux-subtitle">Статус подключения и управление Caller ID</p></div>'+pill(t.ready||'Неизвестно',t.ready==='Готов'?'success':'neutral')+'</div><div class="ux-detail-tabs" role="tablist">'+detailTab('management','Управление',true)+detailTab('numbers','Номера')+detailTab('information','Информация')+'</div><div class="ux-detail-panel" data-ux-detail-panel="management">'+management+'</div><div class="ux-detail-panel" data-ux-detail-panel="numbers" hidden>'+numbers+'</div><div class="ux-detail-panel" data-ux-detail-panel="information" hidden>'+information+'</div>');
+ return shell(intro+'<div class="ux-call-hero"><div><p class="ux-eyebrow">SIP-ТРАНК</p><div class="ux-title-line"><h2>'+escape(t.name)+'</h2>'+pill(t.ready||'Неизвестно',t.ready==='Готов'?'success':'neutral')+'</div><p class="ux-subtitle">Статус подключения и номера для исходящих звонков</p></div></div><div class="ux-detail-tabs" role="tablist">'+detailTab('management','Управление',true)+detailTab('numbers','Номера')+detailTab('information','Информация')+'</div><div class="ux-detail-panel" data-ux-detail-panel="management">'+management+'</div><div class="ux-detail-panel" data-ux-detail-panel="numbers" hidden>'+numbers+'</div><div class="ux-detail-panel" data-ux-detail-panel="information" hidden>'+information+'</div>');
 }
 function profile(ctx={}){
  const a=ctx.account||{};
