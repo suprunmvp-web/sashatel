@@ -127,3 +127,6 @@
 .ux-connector .ux-pill{margin-left:auto;font-size:10px}
 .ux-table .ux-pill{font-size:11px}
 .ux-connector-info{min-width:0}
+
+/* Interactive chart has its own document-flow x-axis; only the empty-state grid uses positioned dates. */
+.ux-chart-interactive + .ux-chart-dates{position:static;display:flex;justify-content:space-between;margin:0 0 3px 30px;color:var(--sub);font-size:10px}
