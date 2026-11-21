@@ -1,0 +1,37 @@
+; INERT EXAMPLE ONLY. Never include into running PBX without carrier validation.
+; Provider-specific IP-auth OUTBOUND trunk. Registration variant is different.
+; This file is not read by infra/asterisk/render.py; no real secrets here.
+;
+; Required placeholders: approved trunk slug, dedicated transport,
+; provider SIP proxy hostname and known CIDR (identify), carrier-agreed codecs.
+; CLI (From/PAI), NAT, SRTP/RTP and registration must match operator profile.
+; The ARI worker may only originate approved numbers on this exact endpoint.
+[TRUNK_ID]
+type=endpoint
+transport=TRANSPORT_ID
+context=commercial-deny
+disallow=all
+allow=alaw,ulaw
+aors=TRUNK_ID
+direct_media=no
+allow_transfer=no
+allow_subscribe=no
+trust_id_inbound=no
+send_pai=yes
+; from_domain=OPERATOR_AGREED_DOMAIN
+; from_user=OPERATOR_AGREED_ACCOUNT
+; outbound_auth=TRUNK_AUTH_ID  ; only for auth-based trunk
+; callerid must be supplied by validated server-side call decision
+
+[TRUNK_ID]
+type=aor
+contact=sip:OPERATOR_SIP_HOST:OPERATOR_PORT
+qualify_frequency=30
+
+[TRUNK_ID-identify]
+type=identify
+endpoint=TRUNK_ID
+match=OPERATOR_CIDR
+
+; No incoming PSTN context is exposed here. Do not reuse the template
+; for arbitrary carriers without documenting auth / IP ACL / CLI semantics.
