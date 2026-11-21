@@ -161,3 +161,6 @@
 .ux-settings-row p{font-size:12px;color:var(--sub);line-height:1.6}
 .ux-detail-toolbar{display:flex;justify-content:flex-end;margin:0 0 16px}
 @media(max-width:760px){.ux-kv{grid-template-columns:1fr}.ux-transcript-line{grid-template-columns:52px 1fr}.ux-transcript-line p{grid-column:2}.ux-call-facts{grid-template-columns:1fr}.ux-call-facts>div:not(:first-child){padding-left:0;border-left:0;border-top:1px solid var(--line)}.ux-call-facts>div{padding:13px 0}.ux-call-hero h2{font-size:19px}}
+
+.ux-button-secondary{background:transparent;color:var(--fg);border-color:var(--line)}.ux-button-secondary:hover{background:var(--hover);opacity:1}
+.ux-row-link{color:var(--fg);font-weight:500;text-decoration:none;border-bottom:1px solid transparent}.ux-row-link:hover{border-bottom-color:var(--fg)}
