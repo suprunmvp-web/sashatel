@@ -120,3 +120,30 @@ body.auth-shell .recovery-screen { margin-inline:auto; }
   body.auth-shell .welcome-screen .serif { font-size:clamp(31px,8vw,42px); }
   body.auth-shell .lookup-screen .serif { font-size:clamp(31px,8vw,42px); }
 }
+
+/* Mobile Safari automatically zooms focused form controls below 16px. */
+@media (max-width: 767px) {
+  body.auth-shell input:not([type="checkbox"]),
+  body.auth-shell select,
+  body.auth-shell textarea,
+  body.auth-shell #country-search,
+  body.auth-recovery input:not([type="checkbox"]) {
+    font-size: 16px !important;
+  }
+}
+/* A verified organization's INN is claimed: it cannot be selected again. */
+body.auth-shell .inn-result:disabled {
+  cursor: not-allowed;
+  opacity: .56;
+  background: transparent;
+}
+body.auth-shell .inn-result:disabled:hover,
+body.auth-shell .inn-result:disabled:focus-visible { background: transparent; }
+body.auth-shell .inn-result:disabled .inn-result-icon {
+  color: #94949e;
+  background: #25252a;
+}
+body.auth-shell .inn-result--verified > [data-icon] {
+  color: #94949e;
+  flex: none;
+}

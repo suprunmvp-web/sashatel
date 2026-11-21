@@ -33,6 +33,26 @@ try {
   await page.goto(base+'/register/');
   await heading(page,'Давайте познакомимся.');
   assert.equal(await page.evaluate(()=>window.__SASHA_PREVIEW_ENABLED__),false);
+  // Country selector must change both the visual prefix and the submitted dial code.
+  await page.locator('#country-button').click();
+  await page.locator('#country-search').fill('Алжир');
+  await page.getByRole('button',{name:/Алжир/}).click();
+  assert.equal(await page.locator('#phone-prefix').textContent(),'+213');
+  assert.equal(await page.locator('#phone').getAttribute('data-dial'),'213');
+  await page.locator('#country-button').click();
+  assert.equal(await page.locator('#country-picker').isHidden(),false);
+  await page.locator('#country-button').click();
+  assert.equal(await page.locator('#country-picker').isHidden(),true);
+  await page.locator('#country-button').click();
+  await page.locator('#country-search').fill('Россия');
+  await page.getByRole('button',{name:/Россия/}).click();
+  assert.equal(await page.locator('#phone-prefix').textContent(),'+7');
+  assert.equal(await page.locator('#phone').getAttribute('data-dial'),'7');
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.locator('#phone').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16),true);
+  assert.equal(await page.locator('[name=email]').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16),true);
+  await noOverflow(page);
+  await page.setViewportSize({width:1440,height:900});
   await page.getByLabel('Имя',{exact:true}).fill('Александра');
   await page.getByLabel('Фамилия',{exact:true}).fill('Иванова');
   const email='web-'+Date.now()+'@example.test';
