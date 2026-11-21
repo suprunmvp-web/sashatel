@@ -219,7 +219,18 @@ root.addEventListener("paste", (event) => {
 root.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target;
-  if (state.busy || !form.reportValidity()) return;
+  if (state.busy) return;
+  if (!form.checkValidity()) {
+    const invalid=form.querySelector(":invalid");
+    const message=invalid?.name==="terms"
+      ? "Для регистрации примите условия соглашения и обработки данных."
+      : invalid?.name==="password" || invalid?.name==="repeat_password"
+        ? "Пароль должен содержать минимум 8 символов."
+        : "Заполните обязательные поля и проверьте введённые данные.";
+    announceError(message);
+    invalid?.focus();
+    return;
+  }
   const values = Object.fromEntries(new FormData(form));
   if (values.email) state.email = values.email.trim();
   if (values.display_name) state.name = values.display_name.trim();
