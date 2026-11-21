@@ -4,8 +4,8 @@ import {esc,icon,link,button,table,empty,missing,tabs,metrics,range,hydrate} fro
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const query=new URLSearchParams(location.search),previewSuffix=isPreview?'?preview=1'+(query.get('role')?'&role='+encodeURIComponent(query.get('role')):''):'';
 let parts=location.pathname.split('/').filter(Boolean);const admin=parts[0]==='admin';
-let account=null,org=null,organizations=[],internalRole=isPreview?(query.get('role')||'owner'):null;
-if(!['owner','admin','manager'].includes(internalRole))internalRole=null;
+let account=null,org=null,organizations=[],internalOrganizations=[],internalRole=isPreview?(query.get('role')||'reviewer'):null;
+if(!['admin','reviewer'].includes(internalRole))internalRole=null;
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
 const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','activity','Статистика'],['history','history','История звонков'],['trunks','server','Транки'],['employees','users','Сотрудники'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг']];
 let collapsed=false;
@@ -33,11 +33,22 @@ function clientPage(){
  return empty('Страница не найдена','Выберите раздел в меню.');
 }
 function adminPage(){
- if(!internalRole)return empty('Служебный доступ недоступен','Backend ещё не предоставляет подтверждённую identity и scope сотрудника SashaTel. Клиентская сессия не даёт внутренних полномочий.',true);
- if(page==='employees')return '<div class="page-actions">'+button('Пригласить сотрудника SashaTel','internal-invite',internalRole==='manager')+'</div>'+table(['Имя и фамилия','Email','Телефон','Роль','Ответственные организации'],[])+missing('внутренних сотрудников');
+ if(!internalRole)return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
+ if(page==='employees')return missing('реестра внутренних сотрудников');
  if(page!=='overview')return empty('Страница не найдена','Выберите раздел в меню.');
- const rows=[];
- return '<div class="page-actions">'+button(icon('plus')+' Создать клиента','client')+'</div><div class="filters">'+filters()+'</div>'+metrics(['Общие минуты','Инициации','Ответы','Дозвон'])+'<section class="chart-empty"><h2>Минуты за период</h2><p>Нет данных за выбранный период</p></section>'+table(['Организация','ИНН','Ответственный','Минуты','Инициации','Ответы','Дозвон','Баланс','Действия'],rows)+missing('внутреннего обзора');
+ const filter='<div class="filters"><label>Поиск организации<input type="search" id="organization-filter" placeholder="Название или ИНН"></label></div>';
+ const labels={unverified:'Ожидает проверки',verified:'Верифицирована',rejected:'Отклонена'};
+ const rows=internalOrganizations.map(o=>[
+  '<strong>'+esc(o.legal_name||'Без названия')+'</strong>',
+  '<span class="mono">'+esc(o.inn||'—')+'</span>',
+  esc(o.created_owner_email||'—'),
+  esc(labels[o.verification_status]||'Неизвестно'),
+  o.verification_status==='unverified'
+   ? '<button type="button" class="button secondary" data-review-org="'+esc(o.id)+'" data-review-decision="verified">Подтвердить</button> <button type="button" class="button secondary" data-review-org="'+esc(o.id)+'" data-review-decision="rejected">Отклонить</button>'
+   : '—'
+ ]);
+ return filter+table(['Организация','ИНН','Владелец','Проверка','Действия'],rows)+
+   (rows.length?'':empty('Организаций нет','Новые организации появятся здесь после регистрации клиентов.'));
 }
 function render(){
  document.body.className='platform'+(collapsed?' sidebar-collapsed':'');document.documentElement.dataset.theme=savedTheme();
@@ -116,7 +127,14 @@ async function start(){
  try{
   const session=await api.resume();account=session?.account;organizations=session?.organizations||[];
   if(!account){await import('./auth.js');return;}
-  if(admin){render();return;}
+  if(admin){
+    if(!isPreview){
+      const internal=await api.internalSession();
+      internalRole=internal.role;
+      internalOrganizations=await api.internalOrganizations();
+    }
+    render();return;
+  }
   if(uuid.test(parts[0]||'')){org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;render();return;}
   // Authenticated users never stay on /login/ or /register/.
   // Prefer the last server-selected organization, otherwise enter the only available one.
