@@ -38,12 +38,11 @@ test('Web onboarding with real PostgreSQL',async t=>{
     const ctx=await actor(),email=randomUUID()+'@example.test';
     await assert.rejects(auth.register(ctx,{...profile,email,phone:'+123'},randomUUID()),code('INVALID_PHONE'));
     await assert.rejects(auth.register(ctx,{...profile,email,password:'short7!'},randomUUID()),code('INVALID_PASSWORD'));
-    const eightCharPassword='eight123';
-    const minimum=await auth.register(await actor(),{...profile,email:randomUUID()+'@example.test',password:eightCharPassword},randomUUID());
-    assert.equal(minimum.status,202);
-
+    // Exercise the minimum using the existing challenge, without adding another queued job.
+    const shortProfile={...profile,email,password:'eight123'};
     const key=randomUUID();
-    const [a,b]=await Promise.all([auth.register(ctx,{...profile,email},key),auth.register(ctx,{...profile,email},key)]);
+    const [a,b]=await Promise.all([auth.register(ctx,shortProfile,key),auth.register(ctx,shortProfile,key)]);
+    assert.equal(a.status,202);
     assert.deepEqual(a.body,b.body);
     const id=(a.body as any).challenge_id;
     failMail=true;await auth.deliverOne();failMail=false;
