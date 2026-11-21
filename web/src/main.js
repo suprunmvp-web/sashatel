@@ -6,7 +6,7 @@ const fixtureId='279a66cd-c1cc-4d19-9c09-3490e9049d0a';
 const fixtureOrg={id:fixtureId,legal_name:'ООО «Пример организации»',inn:'7707083893',role:'owner',status:'active',verification_status:'unverified'};
 const fixtureActor={first_name:'Иван',last_name:'Иванов',email:'review@example.test',phone:'+79261234567',phone_verified:false};
 const query=new URLSearchParams(location.search),previewSuffix=isPreview?'?preview=1'+(query.get('role')?'&role='+encodeURIComponent(query.get('role')):''):'';
-const parts=location.pathname.split('/').filter(Boolean),admin=parts[0]==='admin';
+let parts=location.pathname.split('/').filter(Boolean);const admin=parts[0]==='admin';
 let account=null,org=null,organizations=[],internalRole=isPreview?(query.get('role')||'owner'):null;
 if(!['owner','admin','manager'].includes(internalRole))internalRole=null;
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
@@ -47,6 +47,34 @@ function render(){
  document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar"><div class="organization-head"><a href="'+(admin?'/admin/'+previewSuffix:'/'+org.id+'/'+previewSuffix)+'" title="'+esc(admin?'SashaTel':org.legal_name)+'"><strong>'+esc(admin?'SashaTel':org.legal_name)+'</strong><small>'+esc(admin?'Внутренняя платформа':org.inn)+'</small></a><button class="icon-button" data-action="sidebar" aria-label="'+(collapsed?'Развернуть':'Свернуть')+' меню" aria-pressed="'+collapsed+'">'+icon(collapsed?'panel-left-open':'panel-left-close')+'</button></div><nav aria-label="Основная навигация">'+nav.map(([id,glyph,label])=>link(url(id),icon(glyph)+'<span>'+label+'</span>',page===id).replace('<a ','<a aria-label="'+label+'" title="'+label+'" ')).join('')+'</nav>'+(!admin?'<div class="sidebar-bottom"><span>Баланс <b>—</b></span><span>Дата платежа <b>—</b></span><button class="text-button" data-action="organizations">Выбрать организацию</button></div>':'')+'</aside><div class="platform-body"><header class="platform-top"><span>'+esc(admin?'SashaTel / Внутренняя платформа':org.legal_name)+'</span><div class="top-controls">'+(isPreview?'<span class="fixture-badge">Preview · fixture</span>':'')+'<button class="icon-button" data-action="theme" aria-label="Переключить тему">'+icon(savedTheme()==='dark'?'sun':'moon')+'</button><details class="profile-menu"><summary>'+esc(account?.first_name||'Аккаунт')+' '+icon('chevron-down')+'</summary><div>'+link((org?'/'+org.id+'/profile/':'/login/')+previewSuffix,'Профиль')+link((org?'/'+org.id+'/security/':'/login/')+previewSuffix,'Безопасность')+(org?link('/'+org.id+'/organization/'+previewSuffix,'Организация'):'')+'<button class="text-button" data-action="logout">Выйти</button></div></details></div></header>'+(service?'<div class="service-banner">Служебный доступ · '+esc(account.first_name+' '+account.last_name)+' · '+link('/admin/?preview=1','Вернуться в обзор')+'</div>':'')+'<main id="content" tabindex="-1"><div class="page-heading"><div><h1 tabindex="-1">'+esc(title())+'</h1>'+(!admin&&org.verification_status!=='verified'?'<span class="status-label">Организация не верифицирована · телефония выключена</span>':'')+'</div></div><div id="page-content">'+(admin?adminPage():org.role==='employee'?empty('Кабинет организации','Управление доступно Владельцу и Администратору. Звонки — в Desktop.'):clientPage())+'</div><p id="platform-error" class="error" role="alert" tabindex="-1" hidden></p></main></div><dialog aria-labelledby="dialog-title" id="operation-dialog"></dialog>';
  hydrate();document.querySelector('h1')?.focus();wire();
 }
+// Section navigation stays inside the cabinet. Auth bootstrap is required only on initial load.
+function cabinetPath(pathname){
+ const segments=pathname.split('/').filter(Boolean);
+ if(admin)return segments[0]==='admin';
+ return Boolean(org&&segments[0]===org.id);
+}
+function navigate(pathname){
+ parts=pathname.split('/').filter(Boolean);
+ page=admin?(parts[1]||'overview'):(parts[1]||'statistics');
+ document.title=title()+' — SashaTel';
+ render();
+}
+document.addEventListener('click',event=>{
+ if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||!account)return;
+ const anchor=event.target.closest('a[href]');
+ if(!anchor||anchor.target||anchor.hasAttribute('download'))return;
+ const target=new URL(anchor.href,location.href);
+ if(target.origin!==location.origin||!cabinetPath(target.pathname)||!cabinetPath(location.pathname))return;
+ if(target.pathname===location.pathname&&target.search===location.search)return;
+ event.preventDefault();
+ history.pushState(null,'',target.pathname+target.search+target.hash);
+ navigate(target.pathname);
+});
+addEventListener('popstate',()=>{
+ if(!account)return;
+ if(cabinetPath(location.pathname))navigate(location.pathname);
+ else location.reload();
+});
 function savedTheme(){try{return localStorage.getItem('sashatel.web.theme')==='light'?'light':'dark';}catch{return 'dark';}}
 function operation(action){
  const dialog=document.querySelector('dialog');
