@@ -128,6 +128,10 @@ function render() {
   }
   window.renderSashaIcons?.(root);
   root.querySelector("h1")?.focus();
+  if(state.page==="verify"){
+    root.querySelector(".otp-input")?.focus({preventScroll:true});
+    syncOtp();
+  }
   setupPhone();
   tick();
 }
