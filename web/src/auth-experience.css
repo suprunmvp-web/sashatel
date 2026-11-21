@@ -510,3 +510,47 @@ body.auth-welcome:not(.platform) .welcome-create {
   .welcome-invite { flex-direction: column; gap: 9px; }
   .welcome-invite-action { margin-left: 32px; }
 }
+
+/* Company lookup: 2D building icon in the same visual language as email verification. */
+body.auth-lookup:not(.platform) main:not(.workspace) {
+  width: min(calc(100% - 32px), 440px);
+  margin: clamp(24px, 7vh, 62px) auto 48px;
+}
+.lookup-screen { text-align: center; }
+.lookup-emblem {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  margin: 0 auto 25px;
+  background: #dceaff;
+  color: #2467ed;
+}
+.lookup-emblem svg { width: 32px; height: 32px; }
+.lookup-screen .eyebrow {
+  color: #a9a9b2;
+  font-size: 10px;
+  margin-bottom: 12px;
+}
+.lookup-screen h1 {
+  font: 600 clamp(27px, 4.8vw, 34px)/1.2 var(--font);
+  letter-spacing: -.045em;
+  margin: 0 0 14px;
+}
+.lookup-intro {
+  margin: 0 auto 30px;
+  max-width: 410px;
+  font: 400 14px/1.65 var(--font);
+  color: var(--sub);
+}
+.lookup-screen form { text-align: left; gap: 12px; }
+.lookup-screen form label { color: var(--fg); }
+.lookup-screen form input { font-variant-numeric: tabular-nums; }
+.lookup-screen form .hint { margin: -2px 0 8px; }
+.lookup-screen .button { width: 100%; border-radius: 10px; }
+.lookup-back { display: inline-flex; margin-top: 18px; color: var(--sub); }
+@media(max-width:480px) {
+ .lookup-emblem { width: 58px; height: 58px; margin-bottom: 21px; }
+ .lookup-intro { margin-bottom: 24px; }
+}
