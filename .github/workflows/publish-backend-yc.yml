@@ -35,13 +35,75 @@ jobs:
           [[ "$RUN_ID" =~ ^[0-9]+$ ]]
           [[ "$TESTED_SHA" =~ ^[0-9a-f]{40}$ ]]
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" > /tmp/source-run.json
-          jq -e --arg sha "$TESTED_SHA" '
+          jq -e '
             .name == "Backend Control Plane" and
             .conclusion == "success" and
             .event == "pull_request" and
-            .head_sha == $sha and
             .repository.full_name == env.GITHUB_REPOSITORY
           ' /tmp/source-run.json
+
+          # PR workflows build the synthetic refs/pull/N/merge commit,
+          # while the run head_sha is the PR source commit. Verify that
+          # the supplied build commit is the run's actual merge commit.
+          gh api "repos/$GITHUB_REPOSITORY/commits/$TESTED_SHA" > /tmp/tested-commit.json
+          jq -e --arg run_head "$(jq -r .head_sha /tmp/source-run.json)" '
+            (.parents | length) == 2 and
+            .parents[1].sha == $run_head and
+            .sha == env.TESTED_SHA
+          ' /tmp/tested-commit.json
+
+          # Ensure the run produced exactly the expected named artifact.
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" \
+            --jq '.artifacts[] | select(.name == "sashatel-backend-" + env.TESTED_SHA and .expired == false) | .id' \
+            | grep -Eq '^[0-9]+
+
+      - name: Download tested artifact from verified run
+        uses: actions/download-artifact@v4
+        with:
+          name: sashatel-backend-${{ inputs.tested_sha }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+          path: /tmp/backend-artifact
+
+      - name: Verify checksum and load exact tested image
+        env:
+          TESTED_SHA: ${{ inputs.tested_sha }}
+        run: |
+          set -euo pipefail
+          cd /tmp/backend-artifact
+          ARCHIVE="sashatel-backend-${TESTED_SHA}.tar.gz"
+          test -s "$ARCHIVE"
+          test -s "$ARCHIVE.sha256"
+          sha256sum --check "$ARCHIVE.sha256"
+          gzip -dc "$ARCHIVE" | docker load
+          docker image inspect "sashatel-backend:ci-${TESTED_SHA}" >/dev/null
+
+      # Yandex OIDC binding is restricted to the feature/web-auth-production-20261121 branch.
+      # The existing sashatel-staging-deploy account has registry push permission.
+      - name: Obtain short-lived Yandex Cloud IAM token through GitHub OIDC
+        id: yc-auth
+        uses: docker://ghcr.io/yc-actions/yc-iam-token-fed:1.0.0
+        with:
+          yc-sa-id: ajeja1u2timegoko4vn9
+
+      - name: Push tested image and record immutable digest
+        env:
+          TESTED_SHA: ${{ inputs.tested_sha }}
+          REGISTRY_ID: crpjs1v75pobqqd0ij5t
+          YC_IAM_TOKEN: ${{ steps.yc-auth.outputs.token }}
+        run: |
+          set -euo pipefail
+          [[ "$REGISTRY_ID" =~ ^[a-z0-9]+$ ]]
+          test -n "$YC_IAM_TOKEN"
+          IMAGE="cr.yandex/$REGISTRY_ID/sashatel-backend"
+          printf '%s' "$YC_IAM_TOKEN" | docker login cr.yandex --username iam --password-stdin
+          docker tag "sashatel-backend:ci-$TESTED_SHA" "$IMAGE:$TESTED_SHA"
+          docker push "$IMAGE:$TESTED_SHA"
+          DIGEST="$(docker image inspect "$IMAGE:$TESTED_SHA" --format '{{range .RepoDigests}}{{println .}}{{end}}' | grep -F "$IMAGE@sha256:" | head -n1)"
+          test -n "$DIGEST"
+          echo "Immutable image: $DIGEST" >> "$GITHUB_STEP_SUMMARY"
+          echo "$DIGEST"
+
 
       - name: Download tested artifact from verified run
         uses: actions/download-artifact@v4
