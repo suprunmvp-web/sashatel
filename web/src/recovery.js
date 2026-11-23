@@ -15,6 +15,14 @@ const icons={
 };
 const icon=name=>'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+icons[name]+'</svg>';
 function otpCells(){return '<div class="otp-field"><label class="otp-label" for="recovery-code">Код подтверждения</label><div class="otp-box"><div class="otp-cells" aria-hidden="true">'+Array.from({length:6},(_,i)=>'<span class="otp-cell" data-otp-cell="'+i+'"></span>').join('')+'</div><input id="recovery-code" class="otp-input" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-label="Шестизначный код подтверждения" required value="'+esc(otp)+'"></div></div>';}
+function passwordField(name, label) {
+  const id = 'recovery-' + name;
+  return `<div class="recovery-password-field"><label for="${id}">${label}</label>
+    <div class="password-row">
+      <input id="${id}" type="password" name="${name}" autocomplete="new-password" placeholder="••••••••" minlength="8" required>
+      <button type="button" class="icon-button" data-password-toggle aria-controls="${id}" aria-label="Показать пароль: ${label.toLowerCase()}" data-field-label="${label.toLowerCase()}"><span data-icon="eye"></span></button>
+    </div></div>`;
+}
 function render(){
   document.body.classList.add('auth-recovery');
   document.body.classList.add('auth-shell');
@@ -32,7 +40,11 @@ function render(){
   }else if(stage==='password'){
     heading='Новый пароль';
     description='Придумайте новый пароль для вашего аккаунта.';
-    body='<form novalidate class="recovery-form" id="recovery-form"><label>Новый пароль<input type="password" name="password" autocomplete="new-password" placeholder="••••••••" minlength="8" required></label><label>Повторите пароль<input type="password" name="repeat" autocomplete="new-password" placeholder="••••••••" minlength="8" required></label><button class="button" type="submit">Сохранить пароль</button></form>';
+    body=`<form novalidate class="recovery-form" id="recovery-form">
+      ${passwordField('password', 'Новый пароль')}
+      ${passwordField('repeat', 'Повторите пароль')}
+      <button class="button" type="submit">Сохранить пароль</button>
+    </form>`;
   }else{
     heading='Пароль изменён';
     description='Теперь вы можете войти с новым паролем.';
@@ -40,6 +52,7 @@ function render(){
   }
   const glyph=stage==='code'?'mail':stage==='done'?'success':'key';
   root.innerHTML='<section class="recovery-screen"><div class="recovery-emblem" aria-hidden="true">'+icon(glyph)+'</div><h1 tabindex="-1">'+heading+'</h1>'+(description?'<p class="recovery-description">'+description+'</p>':'')+body+(stage==='email'?'<p class="recovery-top-link">Вспомнили пароль? <a href="/login/">Вернуться ко входу</a></p>':'')+'</section>';
+  window.renderSashaIcons?.(root);
   root.querySelector('h1')?.focus({preventScroll:true});
   root.querySelector('#recovery-form')?.addEventListener('submit',onSubmit);
   const codeInput=root.querySelector('#recovery-code');
@@ -106,5 +119,15 @@ async function onSubmit(event){
   }catch(error){notify(error.message||'Операция недоступна. Повторите позже.','error');}
   finally{busy=false;if(submit&&submit.isConnected)submit.disabled=false;}
 }
+root.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-password-toggle]');
+  if (!button) return;
+  const input = document.getElementById(button.getAttribute('aria-controls'));
+  const visible = input.type === 'password';
+  input.type = visible ? 'text' : 'password';
+  button.setAttribute('aria-label', `${visible ? 'Скрыть' : 'Показать'} пароль: ${button.dataset.fieldLabel}`);
+  button.firstElementChild.dataset.icon = visible ? 'eye-off' : 'eye';
+  window.renderSashaIcons?.(root);
+});
 setInterval(updateResend,1000);
 render();
