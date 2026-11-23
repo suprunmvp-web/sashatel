@@ -1,5 +1,5 @@
 import {api,isPreview} from './session.js';
-import {cabinetNavigation, cabinetWorkspace, cabinetProfile, verificationNotice} from './cabinet-shell.js';
+import {cabinetNavigation, cabinetWorkspace, cabinetProfile, verificationNotice, showCabinetWelcome} from './cabinet-shell.js';
 import {notify} from './notifications.js';
 import {esc,icon,link,button,table,empty,missing,tabs,metrics,hydrate} from './components.js';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -249,7 +249,18 @@ async function start(){
     }
     render();return;
   }
-  if(uuid.test(parts[0]||'')){org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;render();return;}
+  if(uuid.test(parts[0]||'')){
+    org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;
+    render();
+    if (page === 'statistics' && ['owner', 'admin'].includes(org.role)) {
+      showCabinetWelcome({account, org, organizationUrl: url('organization'), openTrunk: () => {
+        history.pushState(null, '', url('trunks'));
+        navigate(location.pathname);
+        operation('trunk');
+      }});
+    }
+    return;
+  }
   // Authenticated users never stay on /login/ or /register/.
   // Prefer the last server-selected organization, otherwise enter the only available one.
   if(session.organization){location.replace('/'+session.organization.id+'/');return;}
