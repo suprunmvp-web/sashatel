@@ -499,7 +499,7 @@ export class WebAuth {
   async scope(db:PoolClient,tenant:string) {await db.query("SELECT set_config('control.tenant',$1,true)",[tenant]);}
   async organization(db:PoolClient,userId:string,id:string) {
     await this.scope(db,id);
-    const {rows:[row]}=await db.query(`SELECT o.id,o.inn,o.legal_name,o.verification_status,o.active,m.id AS membership_id,
+    const {rows:[row]}=await db.query(`SELECT o.id,o.inn,o.legal_name,coalesce(o.display_name,o.legal_name) AS display_name,o.verification_status,o.active,m.id AS membership_id,
        CASE WHEN o.owner_membership_id=m.id THEN 'owner' ELSE m.role_id END AS role
       FROM control.organizations o JOIN control.memberships m ON m.organization_id=o.id
       WHERE o.id=$1 AND m.user_id=$2 AND m.active`,[id,userId]);
@@ -532,6 +532,24 @@ export class WebAuth {
       family.organization_id=id;family.context_epoch++;
       await db.query('UPDATE web_auth.families SET organization_id=$2,context_epoch=$3 WHERE id=$1',[family.id,id,family.context_epoch]);
       return {status:200,body:{context:await this.context(db,family)}};
+    });
+  }
+  async renameOrganization(ctx:Context,id:string,input:Record<string,unknown>) {
+    exact(input,['display_name']);
+    if(!uuid.test(id)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    const name=typeof input.display_name==='string'?input.display_name.trim():'';
+    if(!name||[...name].length>180||/[\p{Cc}\p{Cf}]/u.test(name)) throw new ApiError(422,'INVALID_DISPLAY_NAME');
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+      if(family.organization_id!==id) throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+      try {
+        const {rows:[row]}=await db.query('SELECT web_auth.rename_organization($1,$2,$3) AS changes',[user.id,id,name]);
+        if(row.changes) await this.audit(db,ctx,'organization.display_name_changed',user.id,id,id,row.changes);
+      } catch(error) {
+        if((error as {code?:string}).code==='42501') throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+        throw error;
+      }
+      return {status:200,body:{organization:await this.organization(db,user.id,id)}};
     });
   }
   async suggestOrganizations(ctx:Context,input:Record<string,unknown>) {
@@ -590,8 +608,85 @@ export class WebAuth {
       const {user}=await this.identity(db,ctx,true);
       const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
-      return {status:200,body:{role:role.role}};
+      const capabilities=['organizations:list'];
+      if(['owner','admin','reviewer'].includes(role.role)) capabilities.push('organizations:review');
+      if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen');
+      if(['owner','admin','manager'].includes(role.role)) capabilities.push('client_context:read');
+      if(role.role==='owner') capabilities.push('staff:manage');
+      return {status:200,body:{role:role.role,capabilities}};
     },true);
+  }
+  async internalStaff(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      try {
+        const {rows}=await db.query('SELECT * FROM web_auth.list_internal_staff($1)',[user.id]);
+        return {status:200,body:{items:rows}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        throw error;
+      }
+    },true);
+  }
+  async setInternalStaff(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['user_id','role']);
+    const target=required(input,'user_id',36);
+    if(!uuid.test(target)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    const role=input.role;
+    if(role!==null&&role!=='admin'&&role!=='manager') throw new ApiError(422,'INVALID_ROLE');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows:[row]}=await db.query('SELECT web_auth.set_internal_staff($1,$2,$3) AS changes',[user.id,target,role]);
+        if(row.changes) await this.audit(db,ctx,'internal.staff_access_changed',user.id,null,target,row.changes);
+        return {status:204};
+      } catch(error) {
+        const failure=error as {code?:string,message?:string};
+        if(failure.code==='42501') throw new ApiError(403,failure.message==='PROTECTED_OWNER'?'PROTECTED_OWNER':'INTERNAL_ACCESS_DENIED');
+        if(failure.code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        throw error;
+      }
+    });
+  }
+  async internalClientContext(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx,true);
+      const {rows:[row]}=await db.query('SELECT web_auth.internal_client_view($1,$2) AS context',[user.id,family.id]);
+      if(!row.context) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+      return {status:200,body:{context:row.context}};
+    },true);
+  }
+  async openInternalClient(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['organization_id']);
+    const orgId=required(input,'organization_id',36);
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+      const id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query('SELECT web_auth.open_internal_client($1,$2,$3,$4) AS context',[user.id,family.id,orgId,id]);
+        if(!row.context) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        await this.audit(db,ctx,'internal.client_context_opened',user.id,orgId,id,{expires_at:row.context.expires_at});
+        return {status:201,body:{context:row.context}};
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'INTERNAL_CONTEXT_ACTIVE');
+        throw error;
+      }
+    });
+  }
+  async closeInternalClient(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['context_id']);
+    const id=required(input,'context_id',36);
+    if(!uuid.test(id)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+      const {rows:[row]}=await db.query('SELECT web_auth.close_internal_client($1,$2,$3) AS organization_id',[user.id,family.id,id]);
+      if(row.organization_id) await this.audit(db,ctx,'internal.client_context_closed',user.id,row.organization_id,id);
+      return {status:204};
+    });
   }
   async internalOrganizations(ctx:Context,page:{offset?:number;limit?:number}={}) {
     const offset=page.offset??0,limit=page.limit??200;

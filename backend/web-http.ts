@@ -7,7 +7,8 @@ export function webHandler(auth:WebAuth,origin:string) {
   if(new URL(origin).origin!==origin) throw new Error('Exact WEB_ORIGIN required');
   return async(req:IncomingMessage,res:ServerResponse) => {
     const path=req.url?.split('?')[0]??'';
-    if(!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
+    const displayNameRoute=/^\/v1\/organizations\/([^/]+)\/display-name$/.exec(path);
+    if(!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
     res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
@@ -29,7 +30,7 @@ export function webHandler(auth:WebAuth,origin:string) {
       res.writeHead(result.status);res.end(result.body===undefined?'':JSON.stringify(result.body));
     };
     try {
-      if(req.method==='POST'&&req.headers.origin!==origin) throw new ApiError(403,'CSRF_INVALID');
+      if((req.method==='POST'||req.method==='PATCH')&&req.headers.origin!==origin) throw new ApiError(403,'CSRF_INVALID');
       const browser=await auth.browser(existing,parsed['__Host-sashatel-refresh']??parsed['__Host-sashatel-access']);
       if(browser!==existing) set('__Host-sashatel-preauth',browser,86400);
       const ctx={browser,access:parsed['__Host-sashatel-access'],refresh:parsed['__Host-sashatel-refresh'],requestId};
@@ -43,6 +44,8 @@ export function webHandler(auth:WebAuth,origin:string) {
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
+        else if(path==='/v1/internal/staff') send(await auth.internalStaff(ctx));
+        else if(path==='/v1/internal/client-context') send(await auth.internalClientContext(ctx));
         else if(path==='/v1/internal/organizations') {
           const query=new URL(req.url??path,'http://localhost').searchParams;
           if([...query.keys()].some(key=>!['offset','limit'].includes(key)) ||
@@ -61,7 +64,7 @@ export function webHandler(auth:WebAuth,origin:string) {
         else throw new ApiError(404,'RESOURCE_NOT_FOUND');
         return true;
       }
-      if(req.method!=='POST') throw new ApiError(405,'METHOD_NOT_ALLOWED');
+      if(req.method!==(displayNameRoute?'PATCH':'POST')) throw new ApiError(405,'METHOD_NOT_ALLOWED');
       if(!existing||auth.csrf(browser)!==req.headers['x-csrf-token']) throw new ApiError(403,'CSRF_INVALID');
       if(req.headers['content-type']?.split(';')[0]!=='application/json') throw new ApiError(415,'JSON_REQUIRED');
       let raw='',bytes=0;
@@ -83,6 +86,7 @@ export function webHandler(auth:WebAuth,origin:string) {
       }
       const key=typeof req.headers['idempotency-key']==='string'?req.headers['idempotency-key']:'';
       let result:WebResult;
+      if(displayNameRoute){send(await auth.renameOrganization(ctx,displayNameRoute[1],body));return true;}
       switch(path) {
         case '/v1/auth/register':result=await auth.register(ctx,body,key);break;
         case '/v1/auth/email/verify':result=await auth.verify(ctx,body);break;
@@ -98,6 +102,9 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/organizations/lookup':result=await auth.lookupOrganization(ctx,body);break;
         case '/v1/organizations/suggest':result=await auth.suggestOrganizations(ctx,body);break;
         case '/v1/organizations':result=await auth.createOrganization(ctx,body,key);break;
+        case '/v1/internal/staff/access':result=await auth.setInternalStaff(ctx,body);break;
+        case '/v1/internal/client-context/open':result=await auth.openInternalClient(ctx,body);break;
+        case '/v1/internal/client-context/close':result=await auth.closeInternalClient(ctx,body);break;
         case '/v1/internal/organizations/review':{
           if(typeof body.organization_id!=='string') throw new ApiError(400,'INVALID_REQUEST');
           const {organization_id,...review}=body;
