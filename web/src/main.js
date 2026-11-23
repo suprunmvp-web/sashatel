@@ -8,7 +8,7 @@ let parts=location.pathname.split('/').filter(Boolean);const admin=parts[0]==='a
 let account=null,org=null,organizations=[],internalOrganizations=[],internalRole=isPreview?(query.get('role')||'reviewer'):null;
 if(!['admin','reviewer'].includes(internalRole))internalRole=null;
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
-const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','activity','Статистика'],['trunks','server','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки']];
+const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','chart-no-axes-column','Статистика'],['trunks','layers','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки']];
 let collapsed=false;
 try{collapsed=localStorage.getItem('sashatel.web.sidebar')==='collapsed';}catch{}
 const base=()=>admin?'/admin/':'/'+org.id+'/';
@@ -20,7 +20,12 @@ function settingsNavigation(){
  return '<nav class="tabs" aria-label="Настройки организации">'+link(url('organization'),'Общие',page==='organization')+link(url('employees'),'Пользователи',page==='employees')+'</nav>';
 }
 function clientPage(){
- if(page==='statistics')return '<div class="filters">'+range()+'<label>Сотрудник<select disabled><option>Все сотрудники</option></select></label><label>Транк<select disabled><option>Все транки</option></select></label>'+button(icon('download')+' CSV','export',true,true)+'</div>'+metrics(['Минуты','Инициации','Ответы','Дозвон'])+'<section class="chart-empty"><h2>Динамика звонков</h2><p>Нет данных за выбранный период</p></section><div class="split"><section><h2>Итоги набора</h2>'+missing('результатов звонков')+'</section><section><h2>По сотрудникам</h2>'+table(['Сотрудник','Инициации','Ответы','Дозвон','Средняя длительность'],[])+missing('статистики')+'</section></div>';
+ if(page==='statistics')return '<div class="statistics-page">'+
+  '<dl class="metrics statistics-metrics">'+
+  ['Потрачено минут','Попытки звонка','Ответы','Дозвон'].map(label=>'<div><dt>'+label+'</dt><dd aria-label="Нет данных">—</dd></div>').join('')+
+  '</dl><section class="statistics-chart"><h2>Динамика дозвона</h2>'+
+  '<div class="statistics-unavailable" role="status">'+icon('activity')+
+  '<strong>Статистика пока недоступна</strong><p>Здесь появятся показатели после подключения данных о звонках.</p></div></section></div>';
  if(page==='history'){
   if(parts[2])return '<a href="'+url('history')+'">К истории</a><h2>Карточка звонка</h2><p>Запись, транскрипт и саммари недоступны без подтверждённого источника.</p>'+tabs([['transcript','Транскрипт'],['details','Детали']],parts[3]||'transcript',base()+'history/'+parts[2]+'/')+table(['Поле','Значение'],['Номер абонента','Тип','Оператор','Регион нумерации','Страна','Часовой пояс','DEF / городской код','Caller ID','Транк','Начало / соединение / конец','Длительность / тарифицируемая','SIP-код','Причина завершения','CRM'].map(k=>[esc(k),'Нет данных']))+missing('карточки звонка');
   return '<div class="filters">'+range()+button(icon('download')+' CSV','export',true,true)+'</div>'+table(['Дата и время','Сотрудник','Номер','Транк','Длительность','Результат'],[])+missing('истории звонков');
