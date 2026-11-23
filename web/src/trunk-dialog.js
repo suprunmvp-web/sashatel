@@ -33,6 +33,7 @@ export function showTrunkDialog(dialog, kind, onSubmit) {
     onSubmit();
   });
   dialog.onclose = () => {
+    if (dialog.open) return;
     dialog.replaceChildren();
     dialog.setAttribute('aria-labelledby', 'dialog-title');
     dialog.classList.remove('reference-trunk-dialog');

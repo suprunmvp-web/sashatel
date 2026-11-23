@@ -1,3 +1,6 @@
+import {esc} from './components.js';
+import {renderRecordingButton} from './cabinet-recording.js';
+
 // Date and call-filter markup from SashaTel-UI-Review-v2.html.
 export function renderPeriod(label='Выберите даты'){
  return `<div class="date-control">
@@ -17,11 +20,44 @@ export function renderPeriod(label='Выберите даты'){
 </div>
 </div>`;
 }
+export function renderPeoplePicker(id, {label, searchLabel, dialogLabel, glyph=''}) {
+ return `<button type="button" class="calls-filter-btn people-picker-trigger" id="${id}" popovertarget="${id}Options" aria-haspopup="dialog">
+ ${glyph}<span>${esc(label)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+ <div id="${id}Options" class="people-picker" popover role="dialog" aria-label="${esc(dialogLabel)}">
+  <label class="picker-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" autofocus autocomplete="off" aria-label="${esc(searchLabel)}" placeholder="${esc(searchLabel)}"></label>
+  <div class="manager-choices"><button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L19 7"/></svg>${esc(label)}</button></div>
+  <p class="people-picker-empty" role="status" hidden>Ничего не найдено</p>
+ </div>`;
+}
+
+export function wirePeoplePickers(root) {
+ for (const panel of root.querySelectorAll('.people-picker')) {
+  const trigger=panel.previousElementSibling;
+  const search=panel.querySelector('input');
+  const all=panel.querySelector('button');
+  const empty=panel.querySelector('.people-picker-empty');
+  panel.addEventListener('toggle',event=>{
+   if(event.newState!=='open')return;
+   search.value='';
+   search.dispatchEvent(new Event('input'));
+   search.focus({preventScroll:true});
+  });
+  search.oninput=()=>{
+   all.hidden=!all.textContent.toLocaleLowerCase('ru').includes(search.value.trim().toLocaleLowerCase('ru'));
+   empty.hidden=!all.hidden;
+  };
+  all.onclick=()=>{panel.hidePopover();trigger.focus({preventScroll:true});};
+ }
+}
+
 export function renderCallFilters(){
  return `<div class="calls-filters-new">
    <label class="calls-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg><input id="callsSearch" type="search" inputmode="tel" placeholder="Поиск по номеру" aria-label="Поиск по номеру телефона"/></label>
    <div class="calls-filter-holder"><button type="button" class="calls-filter-btn" id="callsResultToggle" aria-expanded="false" aria-controls="callsResultMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.5 7.5V19l-3 1.5v-8L4 5z"/></svg><span id="callsResultLabel">Все результаты</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button><div class="calls-option-menu" id="callsResultMenu" hidden></div></div>
-   <div class="calls-filter-holder"><button type="button" class="calls-filter-btn" id="callsEmployeeToggle" aria-expanded="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20M17 8a3 3 0 0 1 0 6M17 17a5 5 0 0 1 4 3"/></svg><span id="callsEmployeeLabel">Все сотрудники</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button></div>
+   <div class="calls-filter-holder">${renderPeoplePicker('callsEmployeeToggle',{
+     label:'Все сотрудники',searchLabel:'Поиск сотрудника',dialogLabel:'Фильтр по сотруднику',
+     glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20M17 8a3 3 0 0 1 0 6M17 17a5 5 0 0 1 4 3"/></svg>'
+   })}</div>
   
     ${renderPeriod('Все даты')}</div>
 <div class="calls-table-wrap" tabindex="0" role="region" aria-label="Таблица звонков"><table class="calls-table calls-table-new"><thead><tr><th>Дата и время</th><th>Сотрудник</th><th>Номер</th><th class="calls-recording-col"><span class="sr-only">Запись</span></th><th class="calls-numeric">Длительность</th><th>Результат</th></tr></thead><tbody id="callsRows"><tr><td colspan="6" class="calls-empty">Нет данных</td></tr></tbody></table></div>
@@ -106,12 +142,26 @@ const callDetailTabs = [
  ['details', `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>О контакте`],
  ['agreements', `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 4-2 4 2m10 0-4-2-6 2-3 4 2 2 4-3 5 5-5 5-8-5-3-3 1-5m17 0 1 5-3 3m-7 0 4 3"/></svg>Договорённости`],
 ];
-export function renderCallDetails(back, base, current) {
+export function renderCallDetails(back, base, current, call) {
  const active=callDetailTabs.some(([id])=>id===current)?current:'transcript';
  const headings={transcript:'Транскрипция',details:'О контакте',agreements:'Договорённости'};
- return `<div class="calls-detail-top"><a class="calls-back-icon" href="${back}" aria-label="Назад к истории звонков"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7"/></svg></a></div>
+ const contact=active==='details'&&call?.contact!=null;
+ const payload=contact?JSON.stringify(call.contact,null,2):'';
+ const agreement=active==='agreements'&&call?.agreement;
+ const fields=agreement?[
+  ['Имя клиента',agreement.customerName],['Согласие получено',typeof agreement.consent==='boolean'?(agreement.consent?'Да':'Нет'):null],
+  ['Время по МСК',agreement.moscowTime],['Локальное время',agreement.localTime]
+ ]:[];
+ const details=agreement?[
+  ['Договорённости',agreement.agreements],['Факты о клиенте',agreement.facts],['Текст SMS',agreement.sms]
+ ]:[];
+ const body=contact?`<div id="callsTechBody"><pre tabindex="0" aria-label="Данные контакта в JSON"><code id="callContactJson">${esc(payload)}</code></pre><span id="callJsonStatus" role="status"></span></div>`:
+  agreement?`<div class="agreement-section"><dl>${fields.map(([key,value])=>'<div><dt>'+key+'</dt><dd>'+esc(value??'—')+'</dd></div>').join('')}</dl>
+   ${details.filter(([,value])=>value).map(([key,value])=>'<h3>'+key+'</h3><article>'+esc(value)+'</article>').join('')}</div>`:
+  '<p class="cabinet-muted">Нет данных</p>';
+ return `<div class="calls-detail-top"><a class="calls-back-icon" href="${back}" aria-label="Назад к истории звонков"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7"/></svg></a>${renderRecordingButton(call)}</div>
  <nav class="tabs calls-tabs" aria-label="Карточка звонка">${callDetailTabs.map(([id,body])=>`<a href="${base}${id}/"${active===id?' aria-current="page"':''}>${body}</a>`).join('')}</nav>
- <section class="calls-section"><div class="calls-section-title"><h2>${headings[active]}</h2></div><p class="cabinet-muted">Нет данных</p></section>`;
+ <section class="calls-section"><div class="calls-section-title"><h2>${headings[active]}</h2>${contact?'<button type="button" id="callCopyJson" class="button secondary">Копировать JSON</button>':''}</div>${body}</section>`;
 }
 
 export function renderStatistics() {

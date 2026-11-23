@@ -28,6 +28,8 @@ export function cabinetWorkspace({admin,org,organizations}) {
 }
 
 const referenceNavIcons = {
+  overview: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>`,
+  employees: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M2 20v-1a6 6 0 0 1 12 0v1M16 8a3 3 0 1 0 0 6m0 3a5 5 0 0 1 5 3"/></svg>`,
   statistics: `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19v-6M9 19V7M14 19v-9M19 19V4M3 21h18"></path></svg>`,
   trunks: `<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="4.5" cy="6.5" fill="currentColor" r="1" stroke="none"></circle><circle cx="4.5" cy="12" fill="currentColor" r="1" stroke="none"></circle><circle cx="4.5" cy="17.5" fill="currentColor" r="1" stroke="none"></circle><path d="M9 6.5h11M9 12h11M9 17.5h11"></path></svg>`,
   history: `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 9A8.5 8.5 0 1 1 4 16M3.5 4.5V9H8M12 7.5V12l3 2"/></svg>`,
@@ -52,7 +54,7 @@ export function cabinetNavigation({admin,nav,current,url}) {
 export function verificationNotice(status) {
   if(status==='verified')return '';
   const rejected=status==='rejected';
-  return '<section class="cabinet-notice" role="status">'+icon('shield-off')+
+  return '<section class="cabinet-notice" role="status"><svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.4 12 2l7 3v6c0 1.2-.2 2.3-.7 3.4M16 17.8a13 13 0 0 1-4 3.2S5 18.2 5 11V6m-2-3 18 18"/></svg>'+
     '<strong>'+(rejected?'Верификация отклонена':'Требуется верификация')+'</strong>'+
     '<p>'+(rejected?'Обратитесь в поддержку, чтобы уточнить причину.':'Организация не верифицирована · телефония выключена')+'</p></section>';
 }

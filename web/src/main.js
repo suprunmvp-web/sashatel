@@ -1,6 +1,7 @@
+import {wireRecordingPlayer} from './cabinet-recording.js';
 import {renderSettingsTabs, settingsUsersMarkup, clientInviteFields, wireClientInvite} from './cabinet-settings.js';
 import {billingMarkup, invoiceFields, invoiceMethod, invoiceIcon, wireInvoiceForm} from './cabinet-billing.js';
-import {renderPeriod, renderStatistics, renderCallFilters, renderCallDetails, wirePeriod} from './cabinet-reporting.js';
+import {renderPeriod, renderStatistics, renderCallFilters, renderCallDetails, renderPeoplePicker, wirePeoplePickers, wirePeriod} from './cabinet-reporting.js';
 import {showTrunkDialog, trunkManagementMarkup, renderTrunkInformation, renderTrunkNumbers, wireTrunkNumbers, trunkLandingMarkup, renderTrunkHeader} from './trunk-dialog.js';
 import {api,isPreview} from './session.js';
 import {cabinetNavigation, cabinetWorkspace, cabinetProfile, cabinetFinance, verificationNotice, showCabinetWelcome} from './cabinet-shell.js';
@@ -13,7 +14,7 @@ let account=null,org=null,organizations=[],internalOrganizations=[],internalRole
 if(!['admin','reviewer'].includes(internalRole))internalRole=null;
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
 const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','chart-no-axes-column','Статистика'],['trunks','list-trunks','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки'],['support','message-circle','Поддержка'],['documentation','book-open','Документация']];
-let collapsed=false;
+let collapsed=false, stopRecording;
 try{collapsed=localStorage.getItem('sashatel.web.sidebar')==='collapsed';}catch{}
 const base=()=>admin?'/admin/':'/'+org.id+'/';
 const url=section=>base()+(section==='overview'||section==='statistics'?'':section+'/')+previewSuffix;
@@ -68,8 +69,25 @@ function organizationActions(organization){
   (canReview?(finance?'<hr>':'')+review('verified','Верифицировать организацию','circle-check')+review('rejected','Отклонить заявку','x'):'')+'</div>';
 }
 
+const internalRoles=[
+ ['reviewer','Проверяющий','Проверка организаций, фиксация решения и основания'],
+ ['admin','Администратор','Внутренний администратор SashaTel']
+];
+function internalRoleChoices(name,selected){
+ return '<fieldset class="ux-role-choices"><legend>Внутренняя роль</legend>'+
+  internalRoles.map(([value,label,hint])=>'<label class="ux-role-choice"><input type="radio" name="'+name+
+   '" value="'+value+'"'+(selected===value?' checked':'')+'><span class="ux-role-radio" aria-hidden="true"></span>'+
+   '<span class="ux-role-copy"><strong>'+label+'</strong><small>'+hint+'</small></span></label>').join('')+'</fieldset>';
+}
+function staffActions(){
+ return '<button type="button" popovertarget="adminStaffMenu" class="icon-button admin-org-action-trigger" aria-label="Действия сотрудника">'+icon('ellipsis')+'</button>'+
+  '<div popover id="adminStaffMenu" class="admin-org-action-menu" aria-label="Действия сотрудника">'+
+  '<button type="button" data-staff-action="internal-role">'+adminMenuIcon('<path d="M12 20h9M16 3l5 5L9 20H4v-5L16 3Z"/>')+'Изменить роль</button>'+
+  '<button type="button" data-staff-action="internal-contacts">'+adminMenuIcon('<circle cx="12" cy="8" r="3"/><path d="M5 20v-1a7 7 0 0 1 14 0v1"/>')+'Контакты и Telegram</button>'+
+  '<button type="button" disabled>'+adminMenuIcon('<path d="M4 7h16M10 4h4m-8 3 1 13h10l1-13"/>')+'Отозвать доступ</button></div>';
+}
 function adminPage(){
- if(!internalRole)return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
+ if(!internalRoles.some(([role])=>role===internalRole))return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
  if(page==='profile'||page==='security')return accountPage(page);
  if(page==='employees'){
   const fullName=[account.first_name,account.last_name].filter(Boolean).join(' ')||'—';
@@ -77,7 +95,9 @@ function adminPage(){
   const emailStatus=account.email_verified===true
    ? '<span class="admin-verification" data-verified="true">'+icon('circle-check')+'Да</span>'
    : account.email_verified===false?'<span class="admin-verification">'+adminMinus+'Нет</span>':'—';
-  const row=['<div class="admin-staff-person"><span aria-hidden="true">'+esc(initials)+'</span><strong>'+esc(fullName)+'</strong></div>',esc(account.email||'—'),internalRole==='admin'?'Администратор':'Проверяющий',esc(account.phone||'—'),emailStatus,'—',''];
+  const roleName=internalRoles.find(([value])=>value===internalRole)[1];
+  const role=internalRole==='admin'?'<button class="admin-staff-role" type="button" data-action="internal-role">'+roleName+icon('chevron-down')+'</button>':roleName;
+  const row=['<div class="admin-staff-person"><span aria-hidden="true">'+esc(initials)+'</span><strong>'+esc(fullName)+'</strong></div>',esc(account.email||'—'),role,esc(account.phone||'—'),emailStatus,'—',internalRole==='admin'?staffActions():''];
   return '<section class="admin-staff"><div class="section-heading ux-staff-header"><span id="adminStaffCount" role="status">1 из 1</span>'+
    '<label class="workspace-search">'+icon('search')+'<input id="adminStaffSearch" type="search" placeholder="Поиск сотрудника" aria-label="Поиск сотрудников"></label></div>'+
    table(['Фамилия Имя','Email','Роль','Телефон','Email подтверждён','Дата регистрации',''],[row])+'</section>';
@@ -86,8 +106,8 @@ function adminPage(){
  const filter='<label class="workspace-search admin-org-search">'+icon('search')+'<input type="search" id="organization-filter" aria-label="Поиск организации" placeholder="Название или ИНН"></label>';
  const labels={unverified:'Нет',verified:'Да',rejected:'Отклонена'};
  const membershipIds=new Set(organizations.map(item=>item.id));
- const managerFilter='<div class="admin-manager-filter"><label for="orgManagerFilter">Ответственный</label>'+
-  '<button type="button" id="orgManagerFilter" class="button secondary" disabled>Все менеджеры '+icon('chevron-down')+'</button></div>';
+ const managerFilter='<div class="admin-manager-filter"><span>Ответственный</span>'+
+  renderPeoplePicker('orgManagerFilter',{label:'Все менеджеры',searchLabel:'Поиск менеджера',dialogLabel:'Фильтр по ответственному'})+'</div>';
  const rows=internalOrganizations.map(o=>[
   membershipIds.has(o.id)
    ? '<a class="admin-org-link" data-open-org="'+esc(o.id)+'" href="/'+encodeURIComponent(o.id)+'/'+esc(previewSuffix)+'">'+esc(o.legal_name||'Без названия')+'</a>'
@@ -124,6 +144,7 @@ function pageAction(){
  return '';
 }
 function render({focus=true}={}){
+ stopRecording?.();
  document.body.className='platform'+(collapsed?' sidebar-collapsed':'');
  document.documentElement.dataset.theme=savedTheme();
  const heading=esc(title());
@@ -132,10 +153,10 @@ function render({focus=true}={}){
   :clientPage();
  document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar" id="cabinet-sidebar">'+
   '<button type="button" class="icon-button drawer-close" data-action="close-drawer" aria-label="Закрыть меню">'+icon('x')+'</button>'+
-  cabinetWorkspace({admin,org,organizations})+(admin&&internalRole==='admin'?'<button class="button admin-create-client" type="button" data-action="client" aria-label="Создать клиента">'+icon('plus')+'<span>Создать клиента</span></button>':'')+cabinetNavigation({admin,nav,current:currentNav(),url})+(admin?'':cabinetFinance())+cabinetProfile({account,org,url,internalRole:admin?internalRole:null})+'</aside>'+
+  cabinetWorkspace({admin,org,organizations})+(admin&&internalRole==='admin'?'<button class="button admin-create-client" type="button" data-action="client" aria-label="Создать клиента"><svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Создать клиента</span></button>':'')+cabinetNavigation({admin,nav,current:currentNav(),url})+(admin?'':cabinetFinance())+cabinetProfile({account,org,url,internalRole:admin?internalRole:null})+'</aside>'+
   '<button type="button" class="drawer-scrim" data-action="close-drawer" aria-label="Закрыть меню" tabindex="-1" hidden></button>'+
   '<div class="platform-body"><header class="platform-top"><div class="platform-heading">'+
-  '<button type="button" class="icon-button" data-action="sidebar" aria-label="Меню кабинета" aria-controls="cabinet-sidebar" aria-expanded="'+(!collapsed&&!matchMedia('(max-width:768px)').matches)+'">'+icon('panel-left')+'</button>'+
+  '<button type="button" class="icon-button" data-action="sidebar" aria-label="Меню кабинета" aria-controls="cabinet-sidebar" aria-expanded="'+(!collapsed&&!matchMedia('(max-width:768px)').matches)+'"><svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><rect height="16" rx="2" width="18" x="3" y="4"/><path d="M9 4v16"/></svg></button>'+
   '<span class="platform-crumb">SashaTel</span>'+icon('chevron-right')+'<strong>'+heading+'</strong></div>'+
   '<div class="top-controls">'+(isPreview?'<span class="fixture-badge">Preview · fixture</span>':'')+
   '<button type="button" class="icon-button" data-action="theme" aria-label="Переключить тему">'+icon(savedTheme()==='dark'?'sun':'moon')+'</button></div></header>'+
@@ -199,13 +220,20 @@ function operation(action,organization){
   return;
  }
  let name='',fields='',submit='Подтвердить';
- const description=organization?.legal_name||'';
+ let description=organization?.legal_name||'';
  if(action==='internal-invite'){
   name='Добавить сотрудника';submit='Добавить';
   fields=`<div class="admin-dialog-form"><label>Фамилия Имя<input id="uxStaffName" type="text" required placeholder="Имя и фамилия"/></label><label>Email<input id="uxStaffEmail" type="email" required placeholder="name@sashatel.example"/></label><label>Телефон<input id="uxStaffPhone" type="tel" placeholder="+7 ..."/></label><label>Имя пользователя в Telegram<input id="uxStaffTelegram" maxlength="33" placeholder="@username"/></label></div>`+
-   '<fieldset class="ux-role-choices"><legend>Внутренняя роль</legend>'+
-   '<label class="ux-role-choice"><input type="radio" name="uxStaffRole" value="reviewer" checked><span><strong>Проверяющий</strong><small>Проверка организаций, фиксация решения и основания</small></span></label>'+
-   '<label class="ux-role-choice"><input type="radio" name="uxStaffRole" value="admin"><span><strong>Администратор</strong><small>Внутренний администратор SashaTel</small></span></label></fieldset>';
+   internalRoleChoices('uxStaffRole','reviewer');
+ }
+ if(action==='internal-role'||action==='internal-contacts'){
+  if(internalRole!=='admin')return;
+  description=[[account.first_name,account.last_name].filter(Boolean).join(' '),account.email].filter(Boolean).join(' · ');
+  name=action==='internal-role'?'Изменить роль':'Контакты сотрудника';
+  submit='Сохранить';
+  fields=action==='internal-role'?internalRoleChoices('uxRole',internalRole):
+   '<div class="admin-dialog-form"><label>Телефон<input id="staffContactPhone" type="tel" value="'+esc(account.phone||'')+'"></label>'+
+   '<label>Имя пользователя в Telegram<input id="staffContactTelegram" type="text" autocomplete="off" maxlength="33" placeholder="@username"></label></div>';
  }
  if(action==='invite'){
   name='Пригласить сотрудника';
@@ -348,6 +376,14 @@ function wire(){
  }
  wireWorkspacePicker();
  wirePeriod(document);
+ wirePeoplePickers(document);
+ stopRecording=wireRecordingPlayer(document.querySelector('#page-content'));
+ const copyContact=document.querySelector('#callCopyJson');
+ if(copyContact)copyContact.onclick=async()=>{
+  const status=document.querySelector('#callJsonStatus');
+  try{await navigator.clipboard.writeText(document.querySelector('#callContactJson').textContent);status.textContent='JSON скопирован';}
+  catch{status.textContent='Не удалось скопировать JSON.';}
+ };
  wireTrunkNumbers(document);
  const resultToggle=document.querySelector('#callsResultToggle');
  if(resultToggle){
@@ -377,6 +413,10 @@ function wire(){
   trigger.focus({preventScroll:true});
   return trigger;
  };
+ document.querySelectorAll('[data-staff-action]').forEach(el=>el.onclick=()=>{
+  closeOrganizationMenu(el);
+  operation(el.dataset.staffAction);
+ });
  document.querySelectorAll('[data-review-org]').forEach(el=>el.onclick=()=>{
   reviewOrganizationDialog(el.dataset.reviewOrg,el.dataset.reviewDecision,closeOrganizationMenu(el));
  });
@@ -397,12 +437,17 @@ function wire(){
 function wireAdminOrganizationList(){
  const section=document.querySelector('.cabinet-admin-organizations');
  if(!section)return;
- const search=section.querySelector('input[type=search]');
+ const search=section.querySelector('#organization-filter');
  const tbody=section.querySelector('tbody');
  const pager=section.querySelector('.admin-org-pager');
  const [previous,next]=pager.querySelectorAll('button');
  const count=section.querySelector('#adminOrgTotal');
  const rows=[...tbody.rows].filter(row=>!row.querySelector('.table-empty'));
+ const noResults=tbody.insertRow();
+ const noResultsCell=noResults.insertCell();
+ noResultsCell.className='table-empty';
+ noResultsCell.colSpan=6;
+ noResultsCell.textContent='Организации не найдены';
  for(const link of tbody.querySelectorAll('[data-open-org]'))link.onclick=async event=>{
   if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
   event.preventDefault();
@@ -420,12 +465,13 @@ function wireAdminOrganizationList(){
  let current=0, sortColumn=-1, ascending=true;
  function update(){
   const query=search.value.trim().toLocaleLowerCase('ru');
-  const matches=rows.filter(row=>row.textContent.toLocaleLowerCase('ru').includes(query));
+  const matches=rows.filter(row=>[row.cells[0],row.cells[1]].some(cell=>cell.textContent.toLocaleLowerCase('ru').includes(query)));
   if(sortColumn>=0)matches.sort((a,b)=>collator.compare(a.cells[sortColumn].textContent,b.cells[sortColumn].textContent)*(ascending?1:-1));
   for(const row of rows)row.hidden=true;
   const start=current*pageSize;
   for(const row of matches.slice(start,start+pageSize)){row.hidden=false;tbody.append(row);}
   pager.querySelector('[role=status]').textContent=matches.length?`${start+1}–${Math.min(start+pageSize,matches.length)} из ${matches.length}`:'Организации не найдены';
+  noResults.hidden=matches.length>0||rows.length===0;
   count.textContent=matches.length+' из '+rows.length;
   previous.disabled=current===0;
   next.disabled=(current+1)*pageSize>=matches.length;
