@@ -3,7 +3,7 @@
 export class ApiError extends Error{
  constructor(code,message,retryAfter=0,status=0,requestId=null){super(message);Object.assign(this,{code,status,retryAfter,requestId});}
 }
-const messages={INVALID_PROFILE:'Проверьте имя и фамилию.',INVALID_PHONE:'Проверьте номер телефона и код страны.',INVALID_EMAIL:'Проверьте email.',INVALID_PASSWORD:'Пароль: от 8 до 128 символов.',INVALID_CREDENTIALS:'Проверьте email и пароль.',CODE_INVALID_OR_EXPIRED:'Код неверный или истёк. Запросите новый код.',RESET_INVALID_OR_EXPIRED:'Время восстановления истекло. Запросите новый код.',RATE_LIMITED:'Лимит запросов. Повторите позже.',RESOURCE_NOT_FOUND:'Данные не найдены или недоступны.',AUTH_UNAVAILABLE:'Сервис временно недоступен. Повторите позже.',EMAIL_DELIVERY_UNAVAILABLE:'Сервис отправки писем недоступен. Предыдущий код сохраняется.',ORGANIZATION_LOOKUP_UNAVAILABLE:'Сервис реквизитов временно недоступен.',INN_INVALID:'Проверьте ИНН.',LOOKUP_EXPIRED:'Реквизиты устарели. Повторите поиск.',ORGANIZATION_ALREADY_EXISTS:'Организация с этим ИНН уже существует.',SESSION_REVOKED:'Сессия завершена. Войдите снова.',REFRESH_REUSED:'Сессия завершена. Войдите снова.',REFRESH_EXPIRED:'Сессия истекла. Войдите снова.',ORGANIZATION_CONTEXT_CHANGED:'Организация изменилась в другой вкладке. Обновите страницу.',PERMISSION_DENIED:'Недостаточно прав.',USER_REVOKED:'Доступ отозван.',EMAIL_UNVERIFIED:'Подтвердите email.',ALREADY_AUTHENTICATED:'Аккаунт уже авторизован. Обновите страницу.'};
+const messages={INVALID_PROFILE:'Проверьте имя и фамилию.',INVALID_PHONE:'Проверьте номер телефона и код страны.',INVALID_EMAIL:'Проверьте email.',INVALID_PASSWORD:'Пароль: от 8 до 128 символов.',INVALID_CREDENTIALS:'Проверьте email и пароль.',CODE_INVALID_OR_EXPIRED:'Код неверный или истёк. Запросите новый код.',RESET_INVALID_OR_EXPIRED:'Время восстановления истекло. Запросите новый код.',RATE_LIMITED:'Лимит запросов. Повторите позже.',RESOURCE_NOT_FOUND:'Данные не найдены или недоступны.',AUTH_UNAVAILABLE:'Сервис временно недоступен. Повторите позже.',EMAIL_DELIVERY_UNAVAILABLE:'Сервис отправки писем недоступен. Предыдущий код сохраняется.',ORGANIZATION_LOOKUP_UNAVAILABLE:'Сервис реквизитов временно недоступен.',INN_INVALID:'Проверьте ИНН.',LOOKUP_EXPIRED:'Реквизиты устарели. Повторите поиск.',ORGANIZATION_ALREADY_EXISTS:'Организация с этим ИНН уже существует.',SESSION_REVOKED:'Сессия завершена. Войдите снова.',REFRESH_REUSED:'Сессия завершена. Войдите снова.',REFRESH_EXPIRED:'Сессия истекла. Войдите снова.',ORGANIZATION_CONTEXT_CHANGED:'Активная организация изменилась в другой вкладке. Выберите организацию ещё раз.',ORGANIZATION_SUSPENDED:'Организация заблокирована.',INTERNAL_ACCESS_DENIED:'У вас нет доступа к админскому кабинету.',ALREADY_REVIEWED:'Заявку уже рассмотрели.',VERIFIED_ORGANIZATION_EXISTS:'Организация с этим ИНН уже верифицирована.',INVALID_REVIEW:'Проверьте основание и комментарий к решению.',PERMISSION_DENIED:'Недостаточно прав.',USER_REVOKED:'Доступ отозван.',EMAIL_UNVERIFIED:'Подтвердите email.',ALREADY_AUTHENTICATED:'Аккаунт уже авторизован. Обновите страницу.'};
 export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage=globalThis.sessionStorage}={}){
  let csrf=null,csrfPromise=null,refreshPromise=null,context=null,account=null,generation=0;
  const device=(()=>{try{let id=localStorage.getItem('sashatel.web.device');if(!id){id=crypto.randomUUID();localStorage.setItem('sashatel.web.device',id);}return id;}catch{return crypto.randomUUID();}})();
@@ -57,7 +57,17 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
    else{try{const result=await request('/organizations/creation-status/'+key);storage.removeItem(pendingKey);return result;}catch(e){if(e.code!=='RESOURCE_NOT_FOUND')throw e;}}
    const result=await request('/organizations',{body:stored.payload,key});try{storage.removeItem(pendingKey);}catch{}return result;
   },
-  async openOrganization(id){const result=await request('/session/organization',{body:{organization_id:id,expected_context_epoch:context?.context_epoch??null}});context=result.context;return {organization:context.organization};},
+  async openOrganization(id){
+   try{
+    const result=await request('/session/organization',{body:{organization_id:id,expected_context_epoch:context?.context_epoch??null}});
+    context=result.context;
+   }catch(error){
+    if(error.code!=='ORGANIZATION_CONTEXT_CHANGED')throw error;
+    await bootstrap();
+    if(context?.organization?.id!==id)throw error;
+   }
+   return {organization:context.organization};
+  },
   async logout(){generation++;await request('/auth/logout',{body:{}});invalidate();},
   async internalSession(){return request('/internal/session');},
   async internalOrganizations(){return (await request('/internal/organizations')).items;},

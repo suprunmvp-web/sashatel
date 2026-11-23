@@ -118,7 +118,7 @@ function adminPage(){
  ]);
  const total=new Intl.NumberFormat('ru-RU').format(internalOrganizations.length);
  const kpis=[
-  ['Организации',total,'Всего зарегистрировано'],
+  ['Организации',total,'В полученном списке'],
   ['Потрачено минут','—','За выбранный период'],
   ['Выручка фактическая','—','Подтверждённые оплаты']
  ];
@@ -310,16 +310,30 @@ function reviewOrganizationDialog(id,decision,trigger){
  dialog.querySelector('form').onsubmit=async(event)=>{
    event.preventDefault();
    const form=event.currentTarget;
-   if(!form.reportValidity())return;
    const submit=form.querySelector('[type="submit"]');
+   if(submit.disabled||!form.reportValidity())return;
    submit.disabled=true;
+   let result;
    try{
-     await api.reviewOrganization(id,decision,form.elements.evidence.value.trim(),form.elements.explanation.value.trim());
-     internalOrganizations=await api.internalOrganizations();
-     dialog.close();
-     render();
-     notify(decision==='verified'?'Организация верифицирована':'Заявка отклонена','success');
-   }catch(error){showError(error.message||'Не удалось провести проверку.');submit.disabled=false;}
+     result=await api.reviewOrganization(id,decision,form.elements.evidence.value.trim(),form.elements.explanation.value.trim());
+   }catch(error){
+     if(error.code==='ALREADY_REVIEWED'){
+       try{
+         internalOrganizations=await api.internalOrganizations();
+         if(form.isConnected&&dialog.open)dialog.close();
+         if(!dialog.open)render();
+       }catch{submit.disabled=false;}
+     }else{
+       submit.disabled=false;
+     }
+     showError(error.message||'Не удалось провести проверку.');
+     return;
+   }
+   internalOrganizations=internalOrganizations.map(item=>item.id===id
+     ?{...item,verification_status:result.verification_status}:item);
+   if(form.isConnected&&dialog.open)dialog.close();
+   if(!dialog.open)render();
+   notify(result.verification_status==='verified'?'Организация верифицирована':'Заявка отклонена','success');
  };
  dialog.onclose=()=>{if(dialog.open)return;dialog.replaceChildren();if(document.activeElement===document.body)trigger?.focus({preventScroll:true});};
  dialog.showModal();
