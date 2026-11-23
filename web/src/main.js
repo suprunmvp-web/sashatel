@@ -50,13 +50,35 @@ function clientPage(){
   '<div class="ws-form-actions"><button id="wsOrgSave" type="submit" class="button" disabled>Сохранить настройки</button><span id="wsOrgFeedback" role="status"></span></div></form></section>';
  return empty('Страница не найдена','Выберите раздел в меню.');
 }
+const adminMinus='<svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>';
+const adminMenuIcon=path=>'<svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true">'+path+'</svg>';
+function organizationActions(organization){
+ const id=esc(organization.id);
+ const menuId='org-actions-'+id;
+ const canReview=organization.verification_status==='unverified';
+ const button=(action,label,path)=>'<button type="button" data-admin-org-action="'+action+'" data-org-id="'+id+'">'+adminMenuIcon(path)+label+'</button>';
+ const review=(decision,label,glyph)=>'<button type="button" data-review-org="'+id+'" data-review-decision="'+decision+'">'+icon(glyph)+label+'</button>';
+ const finance=internalRole==='admin'?
+   button('credit','Пополнить баланс','<path d="M12 5v14M5 12h14"/>')+
+   button('debit','Списать с баланса','<path d="M5 12h14"/>')+
+   button('payment-date','Дата следующей оплаты','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>') : '';
+ if(!finance&&!canReview)return '';
+ return '<button type="button" class="icon-button admin-org-action-trigger" popovertarget="'+menuId+'" aria-label="Действия организации '+esc(organization.legal_name)+'">'+icon('ellipsis')+'</button>'+
+  '<div popover class="admin-org-action-menu" id="'+menuId+'" aria-label="Действия организации">'+finance+
+  (canReview?(finance?'<hr>':'')+review('verified','Верифицировать организацию','circle-check')+review('rejected','Отклонить заявку','x'):'')+'</div>';
+}
+
 function adminPage(){
  if(!internalRole)return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
  if(page==='profile'||page==='security')return accountPage(page);
  if(page==='employees'){
   const fullName=[account.first_name,account.last_name].filter(Boolean).join(' ')||'—';
-  const row=['<strong>'+esc(fullName)+'</strong>',esc(account.email||'—'),internalRole==='admin'?'Администратор':'Проверяющий',esc(account.phone||'—'),account.email_verified===true?'Да':account.email_verified===false?'Нет':'—','—',''];
-  return '<section class="admin-staff"><div class="section-heading ux-staff-header"><span>Ваш аккаунт</span>'+
+  const initials=fullName.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toLocaleUpperCase('ru');
+  const emailStatus=account.email_verified===true
+   ? '<span class="admin-verification" data-verified="true">'+icon('circle-check')+'Да</span>'
+   : account.email_verified===false?'<span class="admin-verification">'+adminMinus+'Нет</span>':'—';
+  const row=['<div class="admin-staff-person"><span aria-hidden="true">'+esc(initials)+'</span><strong>'+esc(fullName)+'</strong></div>',esc(account.email||'—'),internalRole==='admin'?'Администратор':'Проверяющий',esc(account.phone||'—'),emailStatus,'—',''];
+  return '<section class="admin-staff"><div class="section-heading ux-staff-header"><span id="adminStaffCount" role="status">1 из 1</span>'+
    '<label class="workspace-search">'+icon('search')+'<input id="adminStaffSearch" type="search" placeholder="Поиск сотрудника" aria-label="Поиск сотрудников"></label></div>'+
    table(['Фамилия Имя','Email','Роль','Телефон','Email подтверждён','Дата регистрации',''],[row])+'</section>';
  }
@@ -71,18 +93,22 @@ function adminPage(){
    ? '<a class="admin-org-link" data-open-org="'+esc(o.id)+'" href="/'+encodeURIComponent(o.id)+'/'+esc(previewSuffix)+'">'+esc(o.legal_name||'Без названия')+'</a>'
    : '<strong>'+esc(o.legal_name||'Без названия')+'</strong>',
   '<span class="mono">'+esc(o.inn||'—')+'</span>',
-  '<span class="admin-verification" data-verified="'+String(o.verification_status==='verified')+'">'+icon(o.verification_status==='verified'?'circle-check':'shield-off')+esc(labels[o.verification_status]||'—')+'</span>',
+  '<span class="admin-verification" data-verified="'+String(o.verification_status==='verified')+'">'+(o.verification_status==='verified'?icon('circle-check'):adminMinus)+esc(labels[o.verification_status]||'—')+'</span>',
   '—',
   '—',
-  o.verification_status==='unverified'
-   ? '<button type="button" class="button secondary" data-review-org="'+esc(o.id)+'" data-review-decision="verified">Подтвердить</button> <button type="button" class="button secondary" data-review-org="'+esc(o.id)+'" data-review-decision="rejected">Отклонить</button>'
-   : '—'
+  organizationActions(o)
  ]);
+ const total=new Intl.NumberFormat('ru-RU').format(internalOrganizations.length);
+ const kpis=[
+  ['Организации',total,'Всего зарегистрировано'],
+  ['Потрачено минут','—','За выбранный период'],
+  ['Выручка фактическая','—','Подтверждённые оплаты']
+ ];
  const analytics='<section class="cabinet-admin-analytics" aria-labelledby="admin-analytics-title"><div class="section-heading"><h2 id="admin-analytics-title">Показатели платформы</h2>'+renderPeriod()+'</div>'+
-  '<dl class="metrics"><div><dt>Организации</dt><dd>'+new Intl.NumberFormat('ru-RU').format(internalOrganizations.length)+'</dd></div>'+
-  '<div><dt>Потрачено минут</dt><dd>—</dd></div><div><dt>Выручка фактическая</dt><dd>—</dd></div></dl>'+
-  '<h3>Тарифицируемые минуты по дням</h3><div class="cabinet-admin-chart" aria-label="Нет данных по минутам"></div></section>';
- return analytics+'<section class="cabinet-admin-organizations"><div class="section-heading"><h2>Организации</h2></div><div class="admin-org-toolbar">'+managerFilter+filter+'</div>'+
+  '<dl class="admin-metrics">'+kpis.map(([label,value,description])=>'<div><dt>'+label+'</dt><dd>'+value+'</dd><dd class="admin-metric-description">'+description+'</dd></div>').join('')+'</dl>'+
+  '<div class="admin-chart-heading"><h3>Тарифицируемые минуты по дням</h3><span><i aria-hidden="true"></i>Минуты</span></div>'+
+  '<div class="cabinet-admin-chart" role="img" aria-label="Нет данных по минутам"></div></section>';
+ return analytics+'<section class="cabinet-admin-organizations"><div class="section-heading"><h2>Организации</h2><span id="adminOrgTotal" aria-hidden="true"></span></div><div class="admin-org-toolbar">'+managerFilter+filter+'</div>'+
    table(['Организация','ИНН','Верификация','Ответственный менеджер','Минут потрачено','Действия'],rows,'Организаций нет')+
    '<nav class="admin-org-pager" aria-label="Страницы организаций"><span role="status"></span><button type="button" class="button secondary" data-step="-1">Назад</button><button type="button" class="button secondary" data-step="1">Вперёд</button></nav></section>';
 }
@@ -165,15 +191,15 @@ addEventListener('popstate',()=>{
  else location.reload();
 });
 function savedTheme(){try{return localStorage.getItem('sashatel.web.theme')==='light'?'light':'dark';}catch{return 'dark';}}
-function operation(action){
+function operation(action,organization){
  const dialog=document.querySelector('#operation-dialog');
  const trunkKind={trunk:'create','trunk-sip':'sip','trunk-rename':'rename'}[action];
  if(trunkKind){
   showTrunkDialog(dialog,trunkKind,()=>showError('Не удалось выполнить действие. Попробуйте ещё раз.'));
   return;
  }
- let name='',fields='',warning='',submit='Подтвердить';
- const field=(label,name,type='text')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" required></label>';
+ let name='',fields='',submit='Подтвердить';
+ const description=organization?.legal_name||'';
  if(action==='internal-invite'){
   name='Добавить сотрудника';submit='Добавить';
   fields=`<div class="admin-dialog-form"><label>Фамилия Имя<input id="uxStaffName" type="text" required placeholder="Имя и фамилия"/></label><label>Email<input id="uxStaffEmail" type="email" required placeholder="name@sashatel.example"/></label><label>Телефон<input id="uxStaffPhone" type="tel" placeholder="+7 ..."/></label><label>Имя пользователя в Telegram<input id="uxStaffTelegram" maxlength="33" placeholder="@username"/></label></div>`+
@@ -190,14 +216,25 @@ function operation(action){
  if(action==='invoice'){name='Пополнение по счёту';submit='Сформировать счёт';fields=invoiceFields;}
  if(action==='client'){
   name='Создать клиента';submit='Создать клиента';
-  fields='<label>Название организации<input name="name" maxlength="180" placeholder="ООО «Название»" required></label>'+
-   '<label>ИНН<input name="inn" inputmode="numeric" pattern="[0-9]{10}|[0-9]{12}" placeholder="10 или 12 цифр" required></label>'+
-   '<label>Ответственный менеджер<select disabled><option>Не назначен</option></select></label>';
+  fields='<div class="admin-dialog-form">'+
+   '<label>Название организации<input id="uxOrgName" name="name" maxlength="180" placeholder="ООО «Название»" required></label>'+
+   '<label>ИНН<input id="uxOrgInn" name="inn" inputmode="numeric" pattern="[0-9]{10}|[0-9]{12}" placeholder="10 или 12 цифр" required></label>'+
+   '<div class="admin-manager-field"><span id="uxOrgManagerLabel">Ответственный менеджер</span>'+
+   '<button type="button" class="button secondary admin-manager-choice" id="uxOrgManagerButton" aria-labelledby="uxOrgManagerLabel uxOrgManagerValue" disabled><span id="uxOrgManagerValue">Не назначен</span>'+icon('chevron-down')+'</button></div></div>';
  }
- if(action==='admin-actions'){name='Действия организации';fields='<label>Операция<select id="admin-operation"><option value="credit">Пополнить баланс</option><option value="debit">Списать баланс</option>'+ (internalRole==='manager'?'':'<option value="payment-date">Изменить дату оплаты</option>')+'<option value="verify">Верифицировать</option><option value="unverify">Снять верификацию</option></select></label>'+field('Положительная сумма, ₽ / день оплаты','amount','number')+field('Основание','reason');warning='Изменение влияет на доступность новых звонков или расчёты. Уже выставленные документы не пересчитываются. Снятие верификации запретит активацию транков. Текущие разговоры не прерываются.';}
+ if(action==='credit'||action==='debit'){
+  name=action==='credit'?'Пополнить баланс':'Списать с баланса';
+  submit=action==='credit'?'Пополнить':'Списать';
+  fields='<div class="admin-dialog-form"><label>Сумма, ₽<input id="uxLedgerAmount" name="amount" type="number" min="0.01" step="0.01" placeholder="0,00" required></label>'+
+   '<label>Комментарий<input id="uxLedgerReason" name="reason" type="text" maxlength="180" placeholder="Основание операции" required></label></div>';
+ }
+ if(action==='payment-date'){
+  name='Дата следующей оплаты';submit='Сохранить дату';
+  fields='<label>Дата следующей оплаты<input id="uxPaymentDate" name="date" type="date" required></label>';
+ }
  const trigger=document.activeElement;
  dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
-  (warning?'<p class="cabinet-muted">'+esc(warning)+'</p>':'')+'<div class="dialog-fields">'+fields+'</div>'+
+  (description?'<p class="cabinet-muted">'+esc(description)+'</p>':'')+'<div class="dialog-fields">'+fields+'</div>'+
   (action==='invoice'?invoiceMethod:'')+'<footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" value="submit">'+esc(submit)+'</button></footer></form>';
  const form=dialog.querySelector('form');
  const validInvoice=action==='invoice'?wireInvoiceForm(form,org?.inn):null;
@@ -210,10 +247,10 @@ function operation(action){
  hydrate(dialog);dialog.showModal();
  dialog.querySelector('[name=secret]')?.setAttribute('autocomplete','new-password');
  if(action==='invite')wireClientInvite(form);
- if(action==='admin-actions'){const select=dialog.querySelector('#admin-operation');const amount=dialog.querySelector('[name=amount]');select.onchange=()=>{amount.closest('label').hidden=['remove-limit','verify','unverify'].includes(select.value);};select.onchange();}
- dialog.onclose=()=>{dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();trigger?.focus({preventScroll:true});};
+
+ dialog.onclose=()=>{if(dialog.open)return;dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();trigger?.focus({preventScroll:true});};
 }
-function reviewOrganizationDialog(id,decision){
+function reviewOrganizationDialog(id,decision,trigger){
  const organization=internalOrganizations.find(o=>o.id===id);
  if(!organization||organization.verification_status!=='unverified')return;
  const dialog=document.querySelector('#operation-dialog');
@@ -241,7 +278,7 @@ function reviewOrganizationDialog(id,decision){
      notify(decision==='verified'?'Организация верифицирована':'Заявка отклонена','success');
    }catch(error){showError(error.message||'Не удалось провести проверку.');submit.disabled=false;}
  };
- dialog.onclose=()=>{dialog.replaceChildren();};
+ dialog.onclose=()=>{if(dialog.open)return;dialog.replaceChildren();trigger?.focus({preventScroll:true});};
  dialog.showModal();
 }
 function showError(message){notify(message,'error');}
@@ -333,14 +370,28 @@ function wire(){
  if(action==='logout'){el.disabled=true;try{await api.logout();location.assign('/login/');}catch(e){el.disabled=false;showError(e.message);}return;}
  operation(action);
  });
+ const closeOrganizationMenu=button=>{
+  const menu=button.closest('[popover]');
+  const trigger=menu.previousElementSibling;
+  menu.hidePopover();
+  trigger.focus({preventScroll:true});
+  return trigger;
+ };
  document.querySelectorAll('[data-review-org]').forEach(el=>el.onclick=()=>{
-   reviewOrganizationDialog(el.dataset.reviewOrg,el.dataset.reviewDecision);
+  reviewOrganizationDialog(el.dataset.reviewOrg,el.dataset.reviewDecision,closeOrganizationMenu(el));
+ });
+ document.querySelectorAll('[data-admin-org-action]').forEach(el=>el.onclick=()=>{
+  const organization=internalOrganizations.find(item=>item.id===el.dataset.orgId);
+  if(!organization||internalRole!=='admin')return;
+  closeOrganizationMenu(el);
+  operation(el.dataset.adminOrgAction,organization);
  });
  wireAdminOrganizationList();
  const staffSearch=document.querySelector('#adminStaffSearch');
  if(staffSearch)staffSearch.oninput=()=>{
   const row=document.querySelector('.admin-staff tbody tr');
   row.hidden=!row.textContent.toLocaleLowerCase('ru').includes(staffSearch.value.trim().toLocaleLowerCase('ru'));
+  document.querySelector('#adminStaffCount').textContent=(row.hidden?'0':'1')+' из 1';
  };
 }
 function wireAdminOrganizationList(){
@@ -350,6 +401,7 @@ function wireAdminOrganizationList(){
  const tbody=section.querySelector('tbody');
  const pager=section.querySelector('.admin-org-pager');
  const [previous,next]=pager.querySelectorAll('button');
+ const count=section.querySelector('#adminOrgTotal');
  const rows=[...tbody.rows].filter(row=>!row.querySelector('.table-empty'));
  for(const link of tbody.querySelectorAll('[data-open-org]'))link.onclick=async event=>{
   if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
@@ -374,6 +426,7 @@ function wireAdminOrganizationList(){
   const start=current*pageSize;
   for(const row of matches.slice(start,start+pageSize)){row.hidden=false;tbody.append(row);}
   pager.querySelector('[role=status]').textContent=matches.length?`${start+1}–${Math.min(start+pageSize,matches.length)} из ${matches.length}`:'Организации не найдены';
+  count.textContent=matches.length+' из '+rows.length;
   previous.disabled=current===0;
   next.disabled=(current+1)*pageSize>=matches.length;
  }
@@ -381,7 +434,7 @@ function wireAdminOrganizationList(){
   const header=columns[index],control=document.createElement('button');
   control.type='button';
   control.className='org-sort';
-  control.textContent=header.textContent;
+  control.innerHTML=esc(header.textContent)+'<svg viewBox="0 0 16 16" aria-hidden="true"><path class="sort-up" d="m5 6 3-3 3 3"/><path class="sort-down" d="m5 10 3 3 3-3"/></svg>';
   header.replaceChildren(control);
   control.onclick=()=>{
    ascending=index!==sortColumn||!ascending;
