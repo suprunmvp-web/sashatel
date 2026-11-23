@@ -39,3 +39,48 @@ export function cabinetProfile({account,org,url}){
     icon('ellipsis')+'</summary><div>'+(org?link(url('profile'),'Профиль')+link(url('security'),'Безопасность')+link(url('organization'),'Организация'):'')+
     '<button type="button" class="text-button" data-action="logout">Выйти</button></div></details>';
 }
+
+export function showCabinetWelcome({account, org, organizationUrl, openTrunk}) {
+  try {
+    if (sessionStorage.getItem('sashatel.web.welcome') !== org.id) return;
+    sessionStorage.removeItem('sashatel.web.welcome');
+  } catch { return; }
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'cabinet-welcome';
+  dialog.setAttribute('aria-labelledby', 'cabinet-welcome-title');
+  dialog.setAttribute('aria-describedby', 'cabinet-welcome-copy');
+  const name = account.first_name?.trim();
+  const verified = org.verification_status === 'verified';
+  dialog.innerHTML = `
+    <form method="dialog"><button class="icon-button welcome-close" aria-label="Закрыть приветствие"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form>
+    <div class="welcome-pattern" aria-hidden="true"><span>👋　✦　💬　♡　☎️</span><span>🎧</span><span>💬</span><span>✧　☎️　♡　🎧　👋</span></div>
+    <h2 id="cabinet-welcome-title" tabindex="-1" autofocus><span>Добро пожаловать${name ? ',' : '!'}</span>${name ? ' <em>'+esc(name)+'!</em>' : ''}</h2>
+    <p id="cabinet-welcome-copy">Рады вас видеть в платформе SashaTel. Мы ценим, что вы доверили нам увеличение ваших конверсий, обещаем сделать все возможное, чтобы это стало <span class="welcome-signoff">реальностью<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.1-4.4-9.2-8.9C.9 8.2 3.3 4.4 7 4.4c2 0 3.8 1.1 5 2.8 1.2-1.7 3-2.8 5-2.8 3.7 0 6.1 3.8 4.2 7.7C19.1 16.6 12 21 12 21Z"/></svg></span></p>
+    ${verified ? '<button class="button welcome-action" type="button">Подключить транк</button>' : '<a class="button welcome-action" href="'+esc(organizationUrl)+'">К верификации</a>'}`;
+  const heading = dialog.querySelector('h2');
+  const title = heading.textContent;
+  heading.setAttribute('aria-label', title);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let index = 0;
+    for (const segment of heading.children) {
+      const letters = Array.from(segment.textContent, character => {
+        const letter = document.createElement('span');
+        letter.textContent = character;
+        letter.animate([{opacity: 0}, {opacity: 1}], {
+          duration: 180, delay: 100 + index++ * 30, fill: 'backwards',
+        });
+        return letter;
+      });
+      segment.setAttribute('aria-hidden', 'true');
+      segment.replaceChildren(...letters);
+    }
+  }
+  dialog.addEventListener('close', () => dialog.remove(), {once: true});
+  dialog.querySelector('.welcome-action').addEventListener('click', () => {
+    dialog.close();
+    if (verified) openTrunk();
+  });
+  document.body.append(dialog);
+  dialog.showModal();
+}
