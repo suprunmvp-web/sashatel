@@ -16,7 +16,15 @@ assert.match(recovery,/stage==='email'/);
 assert.match(recovery,/stage==='code'/);
 assert.match(recovery,/stage==='password'/);
 assert.match(recovery,/stage==='done'/);
-assert.match(adapter,/Восстановление пароля пока недоступно/);
+for(const method of ['requestResetCode','verifyResetCode','completePasswordReset']){
+ assert.ok(adapter.includes('api.'+method+'('), 'Recovery must use the HTTP adapter through '+method);
+}
+assert.match(html,/assets\/cabinet-reference\.css/);
+assert.match(main,/cabinetWorkspace\(\{admin,org\}\)/);
+assert.match(main,/await api\.openOrganization/);
+assert.match(main,/await api\.reviewOrganization/);
+assert.match(await file('dist/assets/cabinet-reference.css'),/@font-face\s*\{\s*font-family:Geist/);
+assert.doesNotMatch(main,/SashaPreviewModel|preview-call|SashaRecordings/);
 assert.match(auth,/company-lock-icon/);
 assert.match(layout,/body\.auth-shell #content:not\(\.workspace\)/);
 for (const path of ['sashatel-symbol.svg','sashatel-symbol-transparent.svg','lock.svg']){
