@@ -66,12 +66,22 @@ export const trunkManagementMarkup = `<section id="tcManage" class="tc-editor tc
       </form>
     </section>`;
 
-export function renderTrunkNumbers() {
+export function renderTrunkNumbers(numbers=[]) {
+ const numeric=new Intl.NumberFormat('ru-RU');
+ const percent=new Intl.NumberFormat('ru-RU',{style:'percent',maximumFractionDigits:1});
+ const rows=numbers.map(number=>{
+  const status={active:'Активный',passive:'Пассивный'}[number.status]||'—';
+  return `<tr data-number-id="${esc(number.id)}" data-status="${esc(number.status)}" data-added="${esc(number.date)}">
+   <td class="tc-number-check"><input type="checkbox" aria-label="Выбрать ${esc(number.phone)}"></td><td>${esc(number.phone)}</td>
+   <td><span class="tc-number-status">${status}</span></td><td>${esc(number.spamLabel??'—')}</td>
+   <td>${number.attempts==null?'—':numeric.format(number.attempts)}</td><td>${number.answers==null?'—':numeric.format(number.answers)}</td>
+   <td>${number.attempts?percent.format(number.answers/number.attempts):'—'}</td><td>${esc(number.date)}</td></tr>`;
+ }).join('');
  return `<section id="tcNumbers" class="tc-numbers" role="tabpanel" aria-label="Номера">
       <div class="tc-number-toolbar"><div class="tc-numbers-search"><label class="tc-search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="sr-only">Поиск по номеру телефона</span><input id="tcNumberSearch" type="search" placeholder="Поиск по номеру телефона" autocomplete="off" aria-label="Поиск по номеру телефона"/></label></div><div class="tc-number-tools"><div class="tc-number-filter"><button type="button" id="tcNumberFilterBtn" aria-expanded="false" aria-controls="tcNumberFilterPop"><svg class="tc-filter-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5Z"/></svg><span id="tcNumberFilterLabel">Все статусы</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button><div class="tc-number-filter-pop" id="tcNumberFilterPop" role="group" aria-label="Статусы номеров" hidden><button type="button" data-number-filter="all" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5 11-11"/></svg>Все</button><button type="button" data-number-filter="active" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5 11-11"/></svg>Активные</button><button type="button" data-number-filter="passive" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5 11-11"/></svg>Пассивные</button></div></div>${renderPeriod('Дата добавления')}</div><div class="tc-number-meta"><button class="tc-button" id="tcNumberExport" disabled type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></svg>Скачать CSV</button></div></div>
       
-      <div id="tcNumberBulk" class="tc-number-actions" hidden><span id="tcBulkCaption" role="status"></span><button type="button" class="tc-button tc-bulk-button" id="tcNumberMove"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h15m0 0-4-4m4 4-4 4M20 17H5m0 0 4-4m-4 4 4 4"/></svg><span id="tcSelectedCount">Перенести</span></button></div><div class="tc-table-panel"><div class="tc-table-scroll"><table class="tc-table tc-number-table"><thead><tr><th class="tc-number-check"><input type="checkbox" id="tcNumberAll" disabled aria-label="Выбрать все видимые номера"/></th><th>Номер</th><th>Статус</th><th>Спам-метка</th><th>Инициации</th><th>Ответы</th><th>Дозвон</th><th>Дата добавления</th></tr></thead><tbody id="tcNumberRows"><tr><td class="tc-number-empty" colspan="8">Нет данных</td></tr></tbody></table></div></div>
-      <div class="tc-number-footer" id="tcNumberCount" role="status">Номеров: —</div><p class="tc-inline-feedback" id="tcNumberFeedback" role="status"></p>
+      <div id="tcNumberBulk" class="tc-number-actions" hidden><span id="tcBulkCaption" role="status"></span><button type="button" class="tc-button tc-bulk-button" id="tcNumberMove" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h15m0 0-4-4m4 4-4 4M20 17H5m0 0 4-4m-4 4 4 4"/></svg><span id="tcSelectedCount">Перенести</span></button></div><div class="tc-table-panel"><div class="tc-table-scroll"><table class="tc-table tc-number-table"><thead><tr><th class="tc-number-check"><input type="checkbox" id="tcNumberAll" disabled aria-label="Выбрать все видимые номера"/></th><th>Номер</th><th>Статус</th><th>Спам-метка</th><th>Инициации</th><th>Ответы</th><th>Дозвон</th><th>Дата добавления</th></tr></thead><tbody id="tcNumberRows">${rows}<tr id="tcNumberEmpty"${rows?' hidden':''}><td class="tc-number-empty" colspan="8">Нет данных</td></tr></tbody></table></div></div>
+      <div class="tc-number-footer" id="tcNumberCount" role="status">Номеров: ${numbers.length}</div><p class="tc-inline-feedback" id="tcNumberFeedback" role="status"></p>
     </section>`;
 }
 
@@ -90,6 +100,56 @@ export function wireTrunkNumbers(root) {
  if(!trigger)return;
  const menu=root.querySelector('#tcNumberFilterPop');
  const options=[...menu.querySelectorAll('button')];
+ const rows=[...root.querySelectorAll('#tcNumberRows tr[data-number-id]')];
+ const search=root.querySelector('#tcNumberSearch');
+ const all=root.querySelector('#tcNumberAll');
+ const bulk=root.querySelector('#tcNumberBulk');
+ const count=root.querySelector('#tcNumberCount');
+ const empty=root.querySelector('#tcNumberEmpty');
+ const exportButton=root.querySelector('#tcNumberExport');
+ let status='all', range=[], visible=rows;
+ function selection(){
+  const checked=visible.filter(row=>row.cells[0].firstElementChild.checked);
+  all.checked=checked.length>0&&checked.length===visible.length;
+  all.indeterminate=checked.length>0&&!all.checked;
+  bulk.hidden=!checked.length;
+  root.querySelector('#tcSelectedCount').textContent='Перенести '+checked.length;
+ }
+ function update(){
+  const phone=search.value.replace(/\D/g,'');
+  const [from,to]=range;
+  visible=rows.filter(row=>(status==='all'||row.dataset.status===status)&&
+   (!phone||row.cells[1].textContent.replace(/\D/g,'').includes(phone))&&(!from||row.dataset.added>=from)&&(!to||row.dataset.added<=to));
+  const visibleRows=new Set(visible);
+  for(const row of rows){
+   row.hidden=!visibleRows.has(row);
+   if(row.hidden)row.cells[0].firstElementChild.checked=false;
+  }
+  all.disabled=exportButton.disabled=!visible.length;
+  empty.hidden=Boolean(visible.length);
+  count.textContent='Номеров: '+visible.length;
+  selection();
+ }
+ search.oninput=update;
+ all.onchange=()=>{for(const row of visible)row.cells[0].firstElementChild.checked=all.checked;selection();};
+ for(const row of rows)row.cells[0].firstElementChild.onchange=selection;
+ root.querySelector('#tcNumbers .date-control').addEventListener('periodchange',event=>{range=event.detail;update();});
+ exportButton.onclick=()=>{
+  const csvCell=cell=>{
+   const value=cell.textContent.trim();
+   const safe=/^[=+@-]/.test(value)?"'"+value:value;
+   return '"'+safe.replaceAll('"','""')+'"';
+  };
+  const table=empty.closest('table');
+  const csv=[table.tHead.rows[0],...visible].map(row=>[...row.cells].slice(1).map(csvCell).join(';')).join('\r\n');
+  const href=URL.createObjectURL(new Blob(['\uFEFF',csv],{type:'text/csv;charset=utf-8'}));
+  const link=document.createElement('a');
+  link.href=href;
+  link.download='sashatel-numbers.csv';
+  link.click();
+  setTimeout(()=>URL.revokeObjectURL(href),1000);
+ };
+ update();
  function close() {
   menu.hidden=true;
   trigger.setAttribute('aria-expanded','false');
@@ -103,7 +163,9 @@ export function wireTrunkNumbers(root) {
  };
  for(const option of options)option.onclick=()=>{
   for(const row of options)row.setAttribute('aria-pressed',String(row===option));
-  root.querySelector('#tcNumberFilterLabel').textContent=option.dataset.numberFilter==='all'?'Все статусы':option.textContent.trim();
+  status=option.dataset.numberFilter;
+  root.querySelector('#tcNumberFilterLabel').textContent=status==='all'?'Все статусы':option.textContent.trim();
+  update();
   close();
  };
  menu.onkeydown=event=>{if(event.key==='Escape'){event.preventDefault();close();}};

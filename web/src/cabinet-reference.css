@@ -675,3 +675,46 @@ body.platform { --sidebar:248px; }
   .record-actions { flex-wrap: wrap; gap: 7px; }
   .record-volume input { width: 48px; }
 }
+
+.reach-chart[data-days] { pointer-events: auto; cursor: crosshair; }
+.graph-line { fill: none; stroke: var(--fg); stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.graph-area { fill: var(--fg); opacity: .045; }
+.graph-single-point { fill: var(--fg); }
+.graph-labels { position: relative; color: var(--sub); font-size: 11px; }
+.graph-labels:not(:empty) { height: 18px; margin-top: 8px; }
+.graph-labels > span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.graph-labels > span:last-child:not(:only-child) { transform: translateX(-100%); }
+.graph-hover-marker,.graph-tooltip { position: absolute; pointer-events: none; }
+.graph-hover-marker { width: 12px; height: 12px; transform: translate(-50%,-50%); border-radius: 50%; background: #edbc48; box-shadow: 0 0 12px 4px #eab84970; }
+.graph-tooltip { width: 182px; max-width: calc(100% - 12px); padding: 10px 11px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 12px 32px #0003; }
+.graph-tooltip .tip-date { margin-bottom: 8px; color: var(--sub); font-size: 11px; font-weight: 500; }
+.graph-tooltip :is(.tip-reach,.tip-details > div) { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.graph-tooltip .tip-reach strong { font-size: 18px; font-weight: 600; }
+.graph-tooltip .tip-details { display: grid; gap: 5px; padding-top: 7px; margin-top: 7px; border-top: 1px solid var(--line); font-size: 11px; }
+.graph-tooltip .tip-details span { color: var(--sub); }
+@media (prefers-reduced-motion:no-preference) {
+  .graph-hover-marker,.graph-tooltip { transition: left 190ms cubic-bezier(.2,.75,.25,1),top 190ms cubic-bezier(.2,.75,.25,1); }
+}
+@container stats-page (max-width:430px) {
+  .graph-labels > span:nth-child(even):not(:last-child) { display: none; }
+}
+.outcomes-legend:has(.outcome-item) { padding: 0; }
+.outcome-item { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--fg); }
+.outcome-item.is-focused { background: var(--hover); }
+.donut-wrap .has-focus .donut-segment:not(.is-focused) { opacity: .38; }
+@media (prefers-reduced-motion:no-preference) {
+  .donut-segment,.outcome-item { transition: opacity 190ms ease,background-color 190ms ease; }
+}
+.calls-table tbody tr[hidden] { display: none; }
+.calls-table tbody tr:not(:has(.calls-empty)) { height: 60px; }
+.calls-table tbody td { vertical-align: middle; padding-block: 11px; }
+.calls-table .calls-recording-col { width: 108px; }
+.calls-option-menu button { display: flex; align-items: center; gap: 8px; }
+.calls-option-menu button[aria-pressed=true] { background: var(--hover); }
+.calls-option-menu button svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.calls-option-menu button[aria-pressed=false] svg { visibility: hidden; }
+.people-picker .manager-choices { max-height: min(320px,50vh); overflow: auto; }
+.people-picker .manager-choices button { background: transparent; }
+.people-picker .manager-choices button:is(:hover,[aria-pressed=true]) { background: var(--hover); }
+.people-picker .manager-choices button[aria-pressed=false] svg { visibility: hidden; }
+.tc-number-table tr[hidden] { display: none; }

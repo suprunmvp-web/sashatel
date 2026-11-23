@@ -1,7 +1,8 @@
+import {wireStatisticsChart} from './cabinet-statistics-chart.js';
 import {wireRecordingPlayer} from './cabinet-recording.js';
 import {renderSettingsTabs, settingsUsersMarkup, clientInviteFields, wireClientInvite} from './cabinet-settings.js';
 import {billingMarkup, invoiceFields, invoiceMethod, invoiceIcon, wireInvoiceForm} from './cabinet-billing.js';
-import {renderPeriod, renderStatistics, renderCallFilters, renderCallDetails, renderPeoplePicker, wirePeoplePickers, wirePeriod} from './cabinet-reporting.js';
+import {renderPeriod, renderStatistics, renderCallFilters, renderCallDetails, renderPeoplePicker, wirePeoplePickers, wireCallHistory, wirePeriod} from './cabinet-reporting.js';
 import {showTrunkDialog, trunkManagementMarkup, renderTrunkInformation, renderTrunkNumbers, wireTrunkNumbers, trunkLandingMarkup, renderTrunkHeader} from './trunk-dialog.js';
 import {api,isPreview} from './session.js';
 import {cabinetNavigation, cabinetWorkspace, cabinetProfile, cabinetFinance, verificationNotice, showCabinetWelcome} from './cabinet-shell.js';
@@ -28,7 +29,7 @@ function clientPage(){
  if(page==='statistics')return renderStatistics();
  if(page==='history'){
   if(parts[2])return renderCallDetails(url('history'),esc(base()+'history/'+encodeURIComponent(parts[2])+'/'),parts[3]);
-  return renderCallFilters();
+  return renderCallFilters(base()+'history/',[],previewSuffix);
  }
  if(page==='trunks'){
   if(!parts[2])return trunkLandingMarkup;
@@ -376,6 +377,7 @@ function wire(){
  }
  wireWorkspacePicker();
  wirePeriod(document);
+ wireStatisticsChart(document);
  wirePeoplePickers(document);
  stopRecording=wireRecordingPlayer(document.querySelector('#page-content'));
  const copyContact=document.querySelector('#callCopyJson');
@@ -385,18 +387,7 @@ function wire(){
   catch{status.textContent='Не удалось скопировать JSON.';}
  };
  wireTrunkNumbers(document);
- const resultToggle=document.querySelector('#callsResultToggle');
- if(resultToggle){
-  const menu=document.querySelector('#callsResultMenu');
-  for(const label of ['Все результаты','Дозвон','Автоответчик','Недозвон','Отклонено','Ошибка','Не распознано']){
-   const option=document.createElement('button');
-   option.type='button';option.textContent=label;
-   option.onclick=()=>{document.querySelector('#callsResultLabel').textContent=label;menu.hidden=true;resultToggle.setAttribute('aria-expanded','false');resultToggle.focus();};
-   menu.append(option);
-  }
-  resultToggle.onclick=()=>{menu.hidden=!menu.hidden;resultToggle.setAttribute('aria-expanded',String(!menu.hidden));if(!menu.hidden)menu.firstElementChild.focus();};
-  menu.onkeydown=event=>{if(event.key==='Escape'){menu.hidden=true;resultToggle.setAttribute('aria-expanded','false');resultToggle.focus();}};
- }
+ wireCallHistory(document);
  document.querySelectorAll('[data-action]').forEach(el=>el.onclick=async()=>{
  const action=el.dataset.action;
  if(action==='close-drawer'){setDrawer(false);return;}
