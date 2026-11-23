@@ -1,40 +1,55 @@
 import {api,isPreview} from './session.js';
-import {cabinetNavigation, cabinetWorkspace, verificationNotice} from './cabinet-shell.js';
+import {cabinetNavigation, cabinetWorkspace, cabinetProfile, verificationNotice, showCabinetWelcome} from './cabinet-shell.js';
 import {notify} from './notifications.js';
-import {esc,icon,link,button,table,empty,missing,tabs,metrics,range,hydrate} from './components.js';
+import {esc,icon,link,button,table,empty,missing,tabs,metrics,hydrate} from './components.js';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const query=new URLSearchParams(location.search),previewSuffix=isPreview?'?preview=1'+(query.get('role')?'&role='+encodeURIComponent(query.get('role')):''):'';
 let parts=location.pathname.split('/').filter(Boolean);const admin=parts[0]==='admin';
 let account=null,org=null,organizations=[],internalOrganizations=[],internalRole=isPreview?(query.get('role')||'reviewer'):null;
 if(!['admin','reviewer'].includes(internalRole))internalRole=null;
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
-const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','activity','Статистика'],['trunks','server','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки']];
+const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','chart-no-axes-column','Статистика'],['trunks','list-trunks','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки']];
 let collapsed=false;
 try{collapsed=localStorage.getItem('sashatel.web.sidebar')==='collapsed';}catch{}
 const base=()=>admin?'/admin/':'/'+org.id+'/';
 const url=section=>base()+(section==='overview'||section==='statistics'?'':section+'/')+previewSuffix;
 const currentNav=()=>!admin&&page==='employees'?'organization':page;
 const title=()=>nav.find(n=>n[0]===currentNav())?.[2]||({profile:'Профиль',security:'Безопасность',organization:'Организация'}[page]||'Страница не найдена');
-function filters(){return range()+(admin?'<label>Поиск организации<input type="search" id="organization-filter" placeholder="Название или ИНН"></label>':'');}
 function settingsNavigation(){
  return '<nav class="tabs" aria-label="Настройки организации">'+link(url('organization'),'Общие',page==='organization')+link(url('employees'),'Пользователи',page==='employees')+'</nav>';
 }
 function clientPage(){
- if(page==='statistics')return '<div class="filters">'+range()+'<label>Сотрудник<select disabled><option>Все сотрудники</option></select></label><label>Транк<select disabled><option>Все транки</option></select></label>'+button(icon('download')+' CSV','export',true,true)+'</div>'+metrics(['Минуты','Инициации','Ответы','Дозвон'])+'<section class="chart-empty"><h2>Динамика звонков</h2><p>Нет данных за выбранный период</p></section><div class="split"><section><h2>Итоги набора</h2>'+missing('результатов звонков')+'</section><section><h2>По сотрудникам</h2>'+table(['Сотрудник','Инициации','Ответы','Дозвон','Средняя длительность'],[])+missing('статистики')+'</section></div>';
+ if(page==='statistics')return '<div class="statistics-page">'+
+  '<dl class="metrics statistics-metrics">'+
+  ['Потрачено минут','Попытки звонка','Ответы','Дозвон'].map(label=>'<div><dt>'+label+'</dt><dd aria-label="Нет данных">—</dd></div>').join('')+
+  '</dl><section class="statistics-chart"><h2>Динамика дозвона</h2>'+
+  '<div class="statistics-unavailable" role="status">'+icon('activity')+
+  '<strong>Статистика пока недоступна</strong><p>Здесь появятся показатели после подключения данных о звонках.</p></div></section></div>';
  if(page==='history'){
-  if(parts[2])return '<a href="'+url('history')+'">К истории</a><h2>Карточка звонка</h2><p>Запись, транскрипт и саммари недоступны без подтверждённого источника.</p>'+tabs([['transcript','Транскрипт'],['details','Детали']],parts[3]||'transcript',base()+'history/'+parts[2]+'/')+table(['Поле','Значение'],['Номер абонента','Тип','Оператор','Регион нумерации','Страна','Часовой пояс','DEF / городской код','Caller ID','Транк','Начало / соединение / конец','Длительность / тарифицируемая','SIP-код','Причина завершения','CRM'].map(k=>[esc(k),'Нет данных']))+missing('карточки звонка');
-  return '<div class="filters">'+range()+button(icon('download')+' CSV','export',true,true)+'</div>'+table(['Дата и время','Сотрудник','Номер','Транк','Длительность','Результат'],[])+missing('истории звонков');
+  if(parts[2]){
+   const sections=[['transcript','Транскрипция'],['details','О контакте'],['agreements','Договорённости']];
+   const active=sections.some(([id])=>id===parts[3])?parts[3]:'transcript';
+   return link(url('history'),'← К истории звонков')+tabs(sections,active,base()+'history/'+parts[2]+'/')+
+    empty(sections.find(([id])=>id===active)[1],'Данные этой карточки сейчас недоступны.',true);
+  }
+  return table(['Дата и время','Сотрудник','Номер','Запись','Длительность','Результат'],[],'История звонков пока недоступна.');
  }
  if(page==='trunks'){
-  if(parts[2])return '<a href="'+url('trunks')+'">К транкам</a>'+tabs([['management','Управление'],['numbers','Номера'],['information','Информация']],parts[3]||'management',base()+'trunks/'+parts[2]+'/')+(parts[3]==='numbers'?table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],[])+missing('номеров'):parts[3]==='information'?table(['Параметр','Значение'],['Регистрация SIP','Доступность','Ошибка','Сервер / порт','Транспорт','Авторизация','Endpoint / AOR'].map(k=>[k,'Нет данных'])): '<div class="warning">До верификации организации транк нельзя активировать.</div><div class="actions">'+button('Включить транк','activate',true)+button('Изменить SIP-данные','trunk',true,true)+button('Удалить транк','delete',true,true)+'</div>'+missing('управления транком'));
-  return '<div class="page-actions">'+button(icon('plus')+' Создать транк','trunk')+'</div>'+table(['Название','Статус регистрации','Включён','Готовность к звонку'],[])+missing('транков');
+  if(parts[2])return '<a href="'+url('trunks')+'">К транкам</a>'+tabs([['management','Управление'],['information','Информация'],['numbers','Номера']],parts[3]||'management',base()+'trunks/'+parts[2]+'/')+(parts[3]==='numbers'?table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],[])+missing('номеров'):parts[3]==='information'?table(['Параметр','Значение'],['Регистрация SIP','Доступность','Ошибка','Сервер / порт','Транспорт','Авторизация','Endpoint / AOR'].map(k=>[k,'Нет данных'])): '<div class="warning">До верификации организации транк нельзя активировать.</div><div class="actions">'+button('Включить транк','activate',true)+button('Изменить SIP-данные','trunk',true,true)+button('Удалить транк','delete',true,true)+'</div>'+missing('управления транком'));
+  return table(['Название','Состояние','Действия'],[],'Список транков пока недоступен.');
  }
- if(page==='employees')return settingsNavigation()+'<div class="page-actions">'+button(icon('plus')+' Пригласить сотрудника','invite')+'</div>'+table(['Имя и фамилия','Email','Телефон','Роль','Присутствие'],[])+missing('сотрудников и автоматического присутствия');
+ if(page==='employees')return settingsNavigation()+'<section class="requisites-panel"><div class="section-heading"><h2>Пользователи организации</h2>'+
+  button(icon('plus')+' Пригласить пользователя','invite')+'</div>'+
+  table(['Пользователь','Email','Роль','Телефон','Email подтверждён','Дата регистрации','Действия'],[],'Список пользователей пока недоступен.')+'</section>';
  if(page==='integrations')return '<section class="integration-unavailable">'+'<span class="integration-lock" aria-hidden="true"><img src="/assets/lock.svg" width="34" height="34" alt=""></span>'+'<p>Данный раздел находится в разработке. Мы вам сообщим, когда он появится. Благодарим за ожидание!</p></section>';
- if(page==='billing')return metrics(['Баланс','Текущие начисления','Дата платежа'])+'<div class="page-actions">'+button('Сформировать счёт на пополнение','invoice')+'</div><h2>Документы и начисления</h2>'+table(['Документ','Период','Сумма','Статус','PDF'],[])+missing('биллинга и документов');
+ if(page==='billing')return metrics(['Текущий расход','Оплатить до','Счетов в списке'])+
+  '<h2>Счета и документы</h2>'+table(['Номер','Период','Сумма','Статус','Документ'],[],'Список счетов пока недоступен.');
  if(page==='profile')return '<dl class="summary">'+[['Имя',account.first_name],['Фамилия',account.last_name],['Email',account.email],['Телефон',account.phone]].map(([k,v])=>'<dt>'+k+'</dt><dd>'+esc(v??'Не указано')+'</dd>').join('')+'</dl><p class="hint">Телефон не подтверждён. Он не используется для входа и восстановления доступа.</p>';
  if(page==='security')return '<h2>Сессии и пароль</h2>'+missing('управления сессиями и восстановления пароля')+button('Выйти из текущей сессии','logout');
- if(page==='organization')return settingsNavigation()+'<section class="requisites-panel"><h2>Настройки организации</h2><dl class="summary"><dt>Название</dt><dd>'+esc(org.legal_name)+'</dd><dt>ИНН</dt><dd class="mono">'+esc(org.inn)+'</dd><dt>Верификация</dt><dd>'+esc(org.verification_status==='verified'?'Верифицирована':'Не верифицирована')+'</dd></dl><p>'+esc(org.verification_status==='verified'?'Изменение реквизитов — через проверку сотрудником SashaTel.':'Владелец и администратор могут изменять реквизиты до верификации.')+'</p>'+button('Изменить реквизиты','requisites',true,true)+'</section>';
+ if(page==='organization')return settingsNavigation()+'<section class="requisites-panel"><h2>Настройки организации</h2>'+
+  '<div class="dialog-fields"><label>Название организации<input readonly value="'+esc(org.legal_name)+'"></label>'+
+  '<label>ИНН<input readonly value="'+esc(org.inn)+'"></label></div>'+
+  '<p class="cabinet-muted">Изменение реквизитов пока недоступно.</p>'+button('Сохранить настройки','requisites',true)+'</section>';
  return empty('Страница не найдена','Выберите раздел в меню.');
 }
 function adminPage(){
@@ -55,11 +70,51 @@ function adminPage(){
  return filter+table(['Организация','ИНН','Владелец','Проверка','Действия'],rows)+
    (rows.length?'':empty('Организаций нет','Новые организации появятся здесь после регистрации клиентов.'));
 }
-function render(){
- document.body.className='platform'+(collapsed?' sidebar-collapsed':'');document.documentElement.dataset.theme=savedTheme();
- document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar">'+cabinetWorkspace({admin,org})+cabinetNavigation({admin,nav,current:currentNav(),url})+'</aside><div class="platform-body"><header class="platform-top"><div class="platform-heading"><button type="button" class="icon-button" data-action="sidebar" aria-label="'+(collapsed?'Развернуть':'Свернуть')+' меню" aria-pressed="'+collapsed+'">'+icon('panel-left')+'</button><span>'+esc(admin?'SashaTel / Внутренняя платформа':org.legal_name)+'</span></div><div class="top-controls">'+(isPreview?'<span class="fixture-badge">Preview · fixture</span>':'')+'<button class="icon-button" data-action="theme" aria-label="Переключить тему">'+icon(savedTheme()==='dark'?'sun':'moon')+'</button><details class="profile-menu"><summary>'+esc(account?.first_name||'Аккаунт')+' '+icon('chevron-down')+'</summary><div>'+link((org?'/'+org.id+'/profile/':'/login/')+previewSuffix,'Профиль')+link((org?'/'+org.id+'/security/':'/login/')+previewSuffix,'Безопасность')+(org?link('/'+org.id+'/organization/'+previewSuffix,'Организация'):'')+'<button class="text-button" data-action="logout">Выйти</button></div></details></div></header>'+(service?'<div class="service-banner">Служебный доступ · '+esc(account.first_name+' '+account.last_name)+' · '+link('/admin/?preview=1','Вернуться в обзор')+'</div>':'')+'<main id="content" tabindex="-1">'+(!admin?verificationNotice(org.verification_status):'')+'<div class="page-heading"><div><h1 tabindex="-1">'+esc(title())+'</h1></div></div><div id="page-content">'+(admin?adminPage():org.role==='employee'?empty('Кабинет организации','Управление доступно Владельцу и Администратору. Звонки — в Desktop.'):clientPage())+'</div><p id="platform-error" class="error" role="alert" tabindex="-1" hidden></p></main></div><dialog aria-labelledby="dialog-title" id="operation-dialog"></dialog>';
- hydrate();document.querySelector('h1')?.focus();wire();
+function pageAction(){
+ if(admin||org.role==='employee'||parts[2])return '';
+ if(page==='trunks')return button(icon('plus')+' Подключить транк','trunk');
+ if(page==='billing')return button('Пополнение по счёту','invoice');
+ return '';
 }
+function render({focus=true}={}){
+ document.body.className='platform'+(collapsed?' sidebar-collapsed':'');
+ document.documentElement.dataset.theme=savedTheme();
+ const heading=esc(title());
+ const content=admin?adminPage():org.role==='employee'
+  ?empty('Кабинет организации','Управление доступно Владельцу и Администратору. Звонки — в Desktop.')
+  :clientPage();
+ document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar" id="cabinet-sidebar">'+
+  '<button type="button" class="icon-button drawer-close" data-action="close-drawer" aria-label="Закрыть меню">'+icon('x')+'</button>'+
+  cabinetWorkspace({admin,org})+cabinetNavigation({admin,nav,current:currentNav(),url})+cabinetProfile({account,org,url})+'</aside>'+
+  '<button type="button" class="drawer-scrim" data-action="close-drawer" aria-label="Закрыть меню" tabindex="-1" hidden></button>'+
+  '<div class="platform-body"><header class="platform-top"><div class="platform-heading">'+
+  '<button type="button" class="icon-button" data-action="sidebar" aria-label="Меню кабинета" aria-controls="cabinet-sidebar" aria-expanded="'+(!collapsed&&!matchMedia('(max-width:768px)').matches)+'">'+icon('panel-left')+'</button>'+
+  '<span class="platform-crumb">SashaTel</span>'+icon('chevron-right')+'<strong>'+heading+'</strong></div>'+
+  '<div class="top-controls">'+(isPreview?'<span class="fixture-badge">Preview · fixture</span>':'')+
+  '<button type="button" class="icon-button" data-action="theme" aria-label="Переключить тему">'+icon(savedTheme()==='dark'?'sun':'moon')+'</button></div></header>'+
+  (service?'<div class="service-banner">Служебный доступ · '+esc(account.first_name+' '+account.last_name)+' · '+link('/admin/?preview=1','Вернуться в обзор')+'</div>':'')+
+  '<main id="content" tabindex="-1">'+(!admin?verificationNotice(org.verification_status):'')+
+  '<div class="page-heading"><h1 tabindex="-1">'+heading+'</h1>'+pageAction()+'</div><div id="page-content">'+content+'</div>'+
+  '<p id="platform-error" class="error" role="alert" tabindex="-1" hidden></p></main></div><dialog aria-labelledby="dialog-title" id="operation-dialog"></dialog>';
+ hydrate();wire();
+ if(focus)document.querySelector('h1')?.focus({preventScroll:true});
+}
+function setDrawer(open){
+ document.body.classList.toggle('drawer-open',open);
+ document.querySelector('.drawer-scrim').hidden=!open;
+ document.querySelector('.platform-body').inert=open;
+ const toggle=document.querySelector('[data-action=sidebar]');
+ toggle.setAttribute('aria-expanded',String(open));
+ (open?document.querySelector('.drawer-close'):toggle).focus({preventScroll:true});
+}
+document.addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&document.body.classList.contains('drawer-open')&&!document.querySelector('dialog[open]'))setDrawer(false);
+});
+matchMedia('(max-width:768px)').addEventListener('change',event=>{
+ if(!document.body.classList.contains('platform'))return;
+ if(document.body.classList.contains('drawer-open'))setDrawer(false);
+ document.querySelector('[data-action=sidebar]').setAttribute('aria-expanded',String(!event.matches&&!collapsed));
+});
 // Section navigation stays inside the cabinet. Auth bootstrap is required only on initial load.
 function cabinetPath(pathname){
  const segments=pathname.split('/').filter(Boolean);
@@ -91,19 +146,37 @@ addEventListener('popstate',()=>{
 function savedTheme(){try{return localStorage.getItem('sashatel.web.theme')==='light'?'light':'dark';}catch{return 'dark';}}
 function operation(action){
  const dialog=document.querySelector('dialog');
- let name='',fields='',warning='';
+ let name='',fields='',warning='',submit='Подтвердить';
  const field=(label,name,type='text')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" required></label>';
- if(action==='trunk'){name='Создать UIS-транк';fields=field('Название','name')+field('SIP-сервер','server')+field('SIP-логин','login')+field('SIP-пароль','secret','password');warning='Новый транк выключен. До верификации организации активация недоступна.';}
- if(action==='invite'||action==='internal-invite'){name='Пригласить сотрудника';fields=field('Email','email','email')+'<label>Роль<select name="role">'+(action==='internal-invite'?'<option>Менеджер</option><option>Администратор</option>':'<option>Менеджер</option><option>Администратор</option>')+'</select></label>';warning='Пароль задаёт сам пользователь. Приглашение не меняет права Владельца.';}
+ if(action==='trunk'){name='Настройка SIP-транка';submit='Сохранить настройки';fields=field('Название','name')+field('Хост SIP-сервера','server')+field('SIP-логин','login')+field('SIP-пароль','secret','password')+field('Основной номер телефона','phone','tel');warning='Новый транк выключен. До верификации организации активация недоступна.';}
+ if(action==='invite'||action==='internal-invite'){
+  name='Пригласить пользователя';
+  submit='Отправить приглашение';
+  fields=field('Email','email','email')+'<div class="role-field"><span id="client-role-label">Роль</span><details class="role-picker"><summary aria-labelledby="client-role-label client-role-value"><span id="client-role-value">Менеджер</span>'+icon('chevron-down')+'</summary><div class="role-options">'+
+   ['Менеджер','Администратор'].map((role,index)=>'<label><input type="radio" name="role" value="'+role+'"'+(index===0?' checked':'')+'><span>'+role+'</span></label>').join('')+'</div></details></div>';
+  warning='Пароль задаёт сам пользователь.';
+ }
  if(action==='integration'){name='Создать интеграцию';fields='<label>Тип<select><option>amoCRM</option><option>Битрикс24</option><option>Webhook/API</option></select></label>';warning='Авторизация CRM и секреты требуют защищённого Backend API.';}
- if(action==='invoice'){name='Счёт на пополнение';fields=field('Сумма, ₽','amount','number');warning='Формирование счёта не зачисляет деньги. Баланс меняется после фактического поступления.';}
+ if(action==='invoice'){name='Пополнение по счёту';submit='Сформировать счёт';fields=field('Сумма, ₽','amount','number');warning='Формирование счёта не зачисляет деньги. Баланс меняется после фактического поступления.';}
  if(action==='client'){name='Создать клиента';fields=field('ИНН','inn')+'<label>Ответственный менеджер<select disabled><option>Список недоступен</option></select></label>';warning='Организация создаётся неверифицированной. Владелец клиента может отсутствовать до назначения.';}
  if(action==='admin-actions'){name='Действия организации';fields='<label>Операция<select id="admin-operation"><option value="credit">Пополнить баланс</option><option value="debit">Списать баланс</option>'+ (internalRole==='manager'?'':'<option value="payment-date">Изменить дату оплаты</option>')+'<option value="verify">Верифицировать</option><option value="unverify">Снять верификацию</option></select></label>'+field('Положительная сумма, ₽ / день оплаты','amount','number')+field('Основание','reason');warning='Изменение влияет на доступность новых звонков или расчёты. Уже выставленные документы не пересчитываются. Снятие верификации запретит активацию транков. Текущие разговоры не прерываются.';}
- if(action==='organizations'){name='Выберите организацию';fields=organizations.map(o=>'<button type="button" class="button secondary" data-select-org="'+esc(o.id)+'">'+esc(o.legal_name)+'</button>').join('');warning=organizations.length?'Выбор проверяется сервером.':'Доступных организаций нет.';}
- dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header><div class="dialog-fields">'+fields+'</div><p>'+esc(warning)+'</p>'+(action==='organizations'?'':'<label class="check"><input type="checkbox"><span>Понимаю последствия операции</span></label><p class="warning">Операция недоступна: соответствующий API ещё не подключён.</p><button class="button" disabled>Подтвердить</button>')+'</form>';
- hydrate(dialog);dialog.showModal();dialog.querySelector('[name=secret]')?.setAttribute('autocomplete','new-password');
+ if(action==='organizations'){name='Выберите организацию';fields=(organizations.length>1?'<label>Поиск организации<input id="workspace-search" type="search" placeholder="Поиск по ИНН или организации"></label>':'')+organizations.map(o=>'<button type="button" class="button secondary" data-select-org="'+esc(o.id)+'" data-inn="'+esc(o.inn)+'">'+esc(o.legal_name)+'</button>').join('');warning=organizations.length?'Выбор проверяется сервером.':'Доступных организаций нет.';}
+ const trigger=document.activeElement;
+ dialog.classList.toggle('workspace-dialog',action==='organizations');
+ dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
+  '<div class="dialog-fields">'+fields+'</div><p class="cabinet-muted">'+esc(warning)+'</p>'+
+  (action==='organizations'?'':'<p class="cabinet-muted">Операция пока недоступна.</p><footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" disabled>'+esc(submit)+'</button></footer>')+'</form>';
+ hydrate(dialog);dialog.showModal();
+ dialog.querySelector('[name=secret]')?.setAttribute('autocomplete','new-password');
+ const rolePicker=dialog.querySelector('.role-picker');
+ if(rolePicker){
+  rolePicker.onchange=event=>{rolePicker.querySelector('#client-role-value').textContent=event.target.value;rolePicker.open=false;rolePicker.querySelector('summary').focus();};
+  rolePicker.onkeydown=event=>{if(event.key==='Escape'&&rolePicker.open){event.preventDefault();rolePicker.open=false;rolePicker.querySelector('summary').focus();}};
+ }
+ const search=dialog.querySelector('#workspace-search');
+ if(search)search.oninput=()=>{const q=search.value.trim().toLocaleLowerCase('ru');dialog.querySelectorAll('[data-select-org]').forEach(item=>{item.hidden=!(item.textContent+' '+item.dataset.inn).toLocaleLowerCase('ru').includes(q);});};
  if(action==='admin-actions'){const select=dialog.querySelector('#admin-operation');const amount=dialog.querySelector('[name=amount]');select.onchange=()=>{amount.closest('label').hidden=['remove-limit','verify','unverify'].includes(select.value);};select.onchange();}
- dialog.onclose=()=>{dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();};
+ dialog.onclose=()=>{dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();trigger?.focus({preventScroll:true});};
  dialog.querySelectorAll('[data-select-org]').forEach(el=>el.onclick=async()=>{el.disabled=true;try{const result=await api.openOrganization(el.dataset.selectOrg);location.assign('/'+result.organization.id+'/'+previewSuffix);}catch(e){dialog.close();showError(e.message);} });
 }
 function reviewOrganizationDialog(id,decision){
@@ -141,8 +214,10 @@ function showError(message){notify(message,'error');}
 function wire(){
  document.querySelectorAll('[data-action]').forEach(el=>el.onclick=async()=>{
  const action=el.dataset.action;
- if(action==='sidebar'){collapsed=!collapsed;try{localStorage.setItem('sashatel.web.sidebar',collapsed?'collapsed':'expanded');}catch{}render();return;}
- if(action==='theme'){const value=savedTheme()==='dark'?'light':'dark';try{localStorage.setItem('sashatel.web.theme',value);}catch{}render();return;}
+ if(action==='close-drawer'){setDrawer(false);return;}
+ if(action==='sidebar'&&matchMedia('(max-width:768px)').matches){setDrawer(true);return;}
+ if(action==='sidebar'){collapsed=!collapsed;try{localStorage.setItem('sashatel.web.sidebar',collapsed?'collapsed':'expanded');}catch{}render({focus:false});document.querySelector('[data-action=sidebar]').focus();return;}
+ if(action==='theme'){const value=savedTheme()==='dark'?'light':'dark';try{localStorage.setItem('sashatel.web.theme',value);}catch{}document.documentElement.dataset.theme=value;el.innerHTML=icon(value==='dark'?'sun':'moon');hydrate(el);return;}
  if(action==='logout'){el.disabled=true;try{await api.logout();location.assign('/login/');}catch(e){el.disabled=false;showError(e.message);}return;}
  operation(action);
  });
@@ -174,7 +249,18 @@ async function start(){
     }
     render();return;
   }
-  if(uuid.test(parts[0]||'')){org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;render();return;}
+  if(uuid.test(parts[0]||'')){
+    org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;
+    render();
+    if (page === 'statistics' && ['owner', 'admin'].includes(org.role)) {
+      showCabinetWelcome({account, org, organizationUrl: url('organization'), openTrunk: () => {
+        history.pushState(null, '', url('trunks'));
+        navigate(location.pathname);
+        operation('trunk');
+      }});
+    }
+    return;
+  }
   // Authenticated users never stay on /login/ or /register/.
   // Prefer the last server-selected organization, otherwise enter the only available one.
   if(session.organization){location.replace('/'+session.organization.id+'/');return;}

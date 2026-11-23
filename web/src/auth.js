@@ -237,7 +237,7 @@ async function run(action, success) {
     }
   }
 }
-async function enter(result) {
+async function enter(result, { welcome = false } = {}) {
   if (result.account) setAccount(result.account);
   const available=result.organizations||[];
   // Reuse the existing server context instead of selecting it again on every navigation.
@@ -246,6 +246,9 @@ async function enter(result) {
   );
   if (selected) {
     state.organization=selected;
+    if (welcome && result.organization?.id === selected.id) {
+      try { sessionStorage.setItem("sashatel.web.welcome", selected.id); } catch {}
+    }
     location.replace("/"+selected.id+"/"+(preview?"?preview=1":""));
     return;
   }
@@ -519,7 +522,7 @@ root.addEventListener("click", (event) => {
           state.createKey,
           state.lookup,
         ),
-      enter,
+      result => enter(result, { welcome: true }),
     );
     return;
   }

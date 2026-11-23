@@ -952,3 +952,7 @@ body.auth-recovery .recovery-screen .error{display:none!important}
 @media(max-width:480px){
   body.auth-recovery-code .recovery-otp-form .otp-field{width:min(100%,268px)}
 }
+
+
+.recovery-password-field { display: grid; gap: 8px; }
+.recovery-password-field .password-row .icon-button { top: 50%; translate: 0 -50%; }
