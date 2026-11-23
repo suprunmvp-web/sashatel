@@ -120,7 +120,6 @@ body.platform { --sidebar:248px; }
 .role-options label { display:flex; align-items:center; gap:8px; padding:8px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:400; }
 .role-options label:hover,.role-options label:has(:checked) { background:var(--hover); }
 .platform .role-options input { width:15px; height:15px; margin:0; accent-color:var(--fg); }
-.platform .workspace-dialog { inset:60px auto auto 10px; margin:0; width:min(310px,calc(100% - 20px)); }
 .drawer-close,.drawer-scrim { display:none; }
 @media(max-width:768px) {
   body.platform,.platform.sidebar-collapsed { --sidebar:0px; --cabinet-gutter:14px; }
@@ -173,4 +172,46 @@ body.platform { --sidebar:248px; }
 @media (prefers-reduced-motion: no-preference) {
   .cabinet-welcome[open] { animation: welcome-in .35s ease-out both; }
   @keyframes welcome-in { from { opacity: 0; transform: translateY(8px); } }
+}
+
+.workspace-control { anchor-name: --workspace-trigger; }
+.workspace-picker {
+  position: fixed;
+  inset: 64px auto auto 10px;
+  position-anchor: --workspace-trigger;
+  top: anchor(bottom, 58px);
+  left: anchor(left, 10px);
+  margin: 6px 0 0;
+  box-sizing: border-box;
+  width: min(355px, calc(100vw - 28px));
+  max-height: min(60dvh, 440px);
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: 0 12px 36px #0005;
+}
+.workspace-option { display: flex; width: 100%; min-height: 48px; align-items: center; gap: 10px; padding: 8px; color: inherit; background: transparent; border: 0; border-radius: 8px; text-align: start; cursor: pointer; }
+.workspace-option[hidden] { display: none; }
+.workspace-option:hover, .workspace-option[aria-current] { background: var(--hover); }
+.workspace-option-symbol { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border: 1px solid var(--line); border-radius: 8px; }
+.workspace-option-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.workspace-option strong,.workspace-option small { display: block; }
+.workspace-option small { color: var(--sub); }
+.workspace-search { display: flex; align-items: center; gap: 8px; padding: 0 8px 6px; }
+.workspace-search input { min-width: 0; flex: 1; }
+.workspace-picker p { padding: 8px; color: var(--sub); }
+
+.platform .trunk-create-dialog { width: min(460px, calc(100% - 32px)); }
+.trunk-create-dialog label.trunk-name-field {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.trunk-name-field input { min-width: 0; }
+@media (max-width: 420px) {
+  .trunk-create-dialog label.trunk-name-field { grid-template-columns: 1fr; gap: 6px; }
 }
