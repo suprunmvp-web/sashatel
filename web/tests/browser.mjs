@@ -130,6 +130,14 @@ try {
     await noOverflow(page);
   }
   await page.setViewportSize({width:1440,height:900});
+  assert.equal(await page.locator('.platform-top').evaluate(node=>node.getBoundingClientRect().height),56);
+  assert.equal(await page.locator('.sidebar .cabinet-profile').count(),1);
+  await page.setViewportSize({width:390,height:900});
+  await page.getByRole('button',{name:'Меню кабинета'}).click();
+  assert.equal(await page.locator('.sidebar').isVisible(),true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.sidebar').isVisible(),false);
+  await page.setViewportSize({width:1440,height:900});
   await page.getByRole('button',{name:'Переключить тему'}).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
   await page.locator('.sidebar').getByRole('link',{name:'Транки',exact:true}).click();
@@ -137,9 +145,10 @@ try {
   await page.reload();
   await heading(page,'Транки');
   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
-  await page.getByRole('button',{name:'Создать транк'}).click();
+  await page.getByRole('button',{name:'Подключить транк'}).click();
+  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Закрыть'}).locator('svg').count(),1);
   assert.equal(await page.getByRole('dialog').locator('[name=secret]').getAttribute('type'),'password');
-  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Подтвердить'}).isDisabled(),true);
+  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Сохранить настройки'}).isDisabled(),true);
   await page.keyboard.press('Escape');
   await page.locator('.workspace-control').click();
   const opening = page.waitForResponse(response=>response.url().endsWith('/v1/session/organization') && response.request().method()==='POST');
@@ -148,7 +157,7 @@ try {
   await heading(page,'Статистика');
   await page.locator('.sidebar').getByRole('link',{name:'Настройки',exact:true}).click();
   await heading(page,'Настройки');
-  assert.equal(await page.getByRole('button',{name:'Изменить реквизиты'}).isDisabled(),true);
+  assert.equal(await page.getByRole('button',{name:'Сохранить настройки'}).isDisabled(),true);
   await page.getByRole('link',{name:'Пользователи',exact:true}).click();
   assert.equal(await page.getByRole('link',{name:'Пользователи',exact:true}).getAttribute('aria-current'),'page');
   results.push('Cabinet widths, persistent theme, deep-link trunks, safe trunk dialog, server-validated organization switch and settings tabs');
