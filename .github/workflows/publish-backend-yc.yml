@@ -68,7 +68,7 @@ jobs:
       # The existing sashatel-staging-deploy account has registry push permission.
       - name: Obtain short-lived Yandex Cloud IAM token through GitHub OIDC
         id: yc-auth
-        uses: yc-actions/yc-iam-token@v1
+        uses: docker://ghcr.io/yc-actions/yc-iam-token-fed:1.0.0
         with:
           yc-sa-id: ajeja1u2timegoko4vn9
 
