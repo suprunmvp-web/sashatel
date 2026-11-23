@@ -118,6 +118,9 @@ try {
   await page.locator('#company-consent').check();
   await page.getByRole('button',{name:'Создать организацию',exact:true}).click();
   await heading(page,'Статистика');
+  const welcome = page.getByRole('dialog', {name: /Добро пожаловать/});
+  await welcome.getByRole('link', {name: 'К верификации'}).waitFor();
+  await welcome.getByRole('button', {name: 'Закрыть приветствие'}).click();
   const orgId=new URL(page.url()).pathname.split('/')[1];
   assert.match(orgId,/^[0-9a-f-]{36}$/);
   await page.reload();
@@ -211,6 +214,18 @@ try {
   const newPassword='integration-reset-password-456';
   await recovery.locator('[name=password]').fill(newPassword);
   await recovery.locator('[name=repeat]').fill(newPassword);
+  for (const name of ['password', 'repeat']) {
+    const field = recovery.locator(`[name=${name}]`);
+    const other = recovery.locator(`[name=${name === 'password' ? 'repeat' : 'password'}]`);
+    const toggle = recovery.locator(`[aria-controls="recovery-${name}"]`);
+    assert.equal(await toggle.locator('[data-icon="eye"] svg').count(), 1);
+    await toggle.click();
+    assert.equal(await field.getAttribute('type'), 'text');
+    assert.equal(await other.getAttribute('type'), 'password');
+    assert.equal(await field.inputValue(), newPassword);
+    await toggle.press('Space');
+    assert.equal(await field.getAttribute('type'), 'password');
+  }
   await recovery.locator('#recovery-form button[type=submit]').click();
   await heading(recovery,'Пароль изменён');
   await recovery.getByRole('link',{name:'Вернуться ко входу'}).click();
