@@ -148,14 +148,14 @@ try {
   await page.reload();
   await heading(page,'Транки');
   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
-  await page.getByRole('button',{name:'Подключить транк'}).click();
+  await page.getByRole('button',{name:'Создать транк'}).click();
   assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Закрыть'}).locator('svg').count(),1);
-  assert.equal(await page.getByRole('dialog').locator('[name=secret]').getAttribute('type'),'password');
-  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Сохранить настройки'}).isDisabled(),true);
+  assert.deepEqual(await page.getByRole('dialog').locator('input').evaluateAll(inputs=>inputs.map(input=>input.name)),['name']);
+  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Создать',exact:true}).isDisabled(),true);
   await page.keyboard.press('Escape');
   await page.locator('.workspace-control').click();
   const opening = page.waitForResponse(response=>response.url().endsWith('/v1/session/organization') && response.request().method()==='POST');
-  await page.getByRole('dialog').getByRole('button',{name:'ООО «Проверка интеграции»'}).click();
+  await page.getByRole('group',{name:'Выбор организации'}).getByRole('button',{name:/ООО «Проверка интеграции»/}).click();
   assert.equal((await opening).status(),200);
   await heading(page,'Статистика');
   await page.locator('.sidebar').getByRole('link',{name:'Настройки',exact:true}).click();
