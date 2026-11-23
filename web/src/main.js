@@ -63,7 +63,8 @@ function organizationActions(organization){
  const finance=internalRole==='admin'?
    button('credit','Пополнить баланс','<path d="M12 5v14M5 12h14"/>')+
    button('debit','Списать с баланса','<path d="M5 12h14"/>')+
-   button('payment-date','Дата следующей оплаты','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>') : '';
+   button('payment-date','Дата следующей оплаты','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>')+
+   (organization.verification_status==='verified'?'<hr>'+button('unverify','Снять верификацию','<path d="M9 10V7a3 3 0 0 1 5.7-1.3M4 10h16v11H4zM12 14v3M18 3l3 3M21 3l-3 3"/>'):'') : '';
  if(!finance&&!canReview)return '';
  return '<button type="button" class="icon-button admin-org-action-trigger" popovertarget="'+menuId+'" aria-label="Действия организации '+esc(organization.legal_name)+'">'+icon('ellipsis')+'</button>'+
   '<div popover class="admin-org-action-menu" id="'+menuId+'" aria-label="Действия организации">'+finance+
@@ -249,7 +250,7 @@ function operation(action,organization){
    '<label>Название организации<input id="uxOrgName" name="name" maxlength="180" placeholder="ООО «Название»" required></label>'+
    '<label>ИНН<input id="uxOrgInn" name="inn" inputmode="numeric" pattern="[0-9]{10}|[0-9]{12}" placeholder="10 или 12 цифр" required></label>'+
    '<div class="admin-manager-field"><span id="uxOrgManagerLabel">Ответственный менеджер</span>'+
-   '<button type="button" class="button secondary admin-manager-choice" id="uxOrgManagerButton" aria-labelledby="uxOrgManagerLabel uxOrgManagerValue" disabled><span id="uxOrgManagerValue">Не назначен</span>'+icon('chevron-down')+'</button></div></div>';
+   renderPeoplePicker('uxOrgManagerButton',{label:'Не назначен',searchLabel:'Поиск менеджера',dialogLabel:'Ответственный менеджер'})+'</div></div>';
  }
  if(action==='credit'||action==='debit'){
   name=action==='credit'?'Пополнить баланс':'Списать с баланса';
@@ -259,14 +260,26 @@ function operation(action,organization){
  }
  if(action==='payment-date'){
   name='Дата следующей оплаты';submit='Сохранить дату';
-  fields='<label>Дата следующей оплаты<input id="uxPaymentDate" name="date" type="date" required></label>';
+  fields=renderPeriod('Выбрать дату',true);
  }
+ if(action==='unverify'){
+  name='Снять верификацию?';submit='Снять верификацию';
+  fields='<div class="admin-dialog-form"><label>Причина снятия<input id="uxRevokeReason" maxlength="180" required></label></div>';
+ }
+ if(!name)return;
  const trigger=document.activeElement;
  dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
   (description?'<p class="cabinet-muted">'+esc(description)+'</p>':'')+'<div class="dialog-fields">'+fields+'</div>'+
   (action==='invoice'?invoiceMethod:'')+'<footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" value="submit">'+esc(submit)+'</button></footer></form>';
  const form=dialog.querySelector('form');
  const validInvoice=action==='invoice'?wireInvoiceForm(form,org?.inn):null;
+ if(action==='payment-date'){
+  const save=form.querySelector('[value=submit]');
+  save.disabled=true;
+  wirePeriod(form,true);
+  form.addEventListener('periodchange',event=>{save.disabled=!event.detail.length;});
+ }
+ if(action==='client')wirePeoplePickers(form);
  form.onsubmit=event=>{
   if(event.submitter?.value!=='submit')return;
   event.preventDefault();
@@ -277,7 +290,7 @@ function operation(action,organization){
  dialog.querySelector('[name=secret]')?.setAttribute('autocomplete','new-password');
  if(action==='invite')wireClientInvite(form);
 
- dialog.onclose=()=>{if(dialog.open)return;dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();trigger?.focus({preventScroll:true});};
+ dialog.onclose=()=>{if(dialog.open)return;dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();if(document.activeElement===document.body)trigger?.focus({preventScroll:true});};
 }
 function reviewOrganizationDialog(id,decision,trigger){
  const organization=internalOrganizations.find(o=>o.id===id);
@@ -307,7 +320,7 @@ function reviewOrganizationDialog(id,decision,trigger){
      notify(decision==='verified'?'Организация верифицирована':'Заявка отклонена','success');
    }catch(error){showError(error.message||'Не удалось провести проверку.');submit.disabled=false;}
  };
- dialog.onclose=()=>{if(dialog.open)return;dialog.replaceChildren();trigger?.focus({preventScroll:true});};
+ dialog.onclose=()=>{if(dialog.open)return;dialog.replaceChildren();if(document.activeElement===document.body)trigger?.focus({preventScroll:true});};
  dialog.showModal();
 }
 function showError(message){notify(message,'error');}

@@ -2,21 +2,22 @@ import {esc} from './components.js';
 import {renderRecordingButton} from './cabinet-recording.js';
 
 // Date and call-filter markup from SashaTel-UI-Review-v2.html.
-export function renderPeriod(label='Выберите даты'){
- return `<div class="date-control">
-<button aria-controls="datePopover" aria-expanded="false" aria-haspopup="dialog" class="date-trigger" id="dateTrigger" type="button">
+export function renderPeriod(label='Выберите даты',single=false){
+ const prefix=single?'payment-':'';
+ return `<div class="date-control${single?' single-date-control':''}">
+<button aria-controls="${prefix}datePopover" aria-expanded="false" aria-haspopup="dialog" class="date-trigger" id="${prefix}dateTrigger" type="button">
 <svg aria-hidden="true" viewbox="0 0 24 24"><rect height="16" rx="2" width="18" x="3" y="5"></rect><path d="M7 3v4m10-4v4M3 10h18"></path></svg>
-<span id="dateLabel">${label}</span>
+<span id="${prefix}dateLabel">${esc(label)}</span>
 <svg aria-hidden="true" class="date-chevron" viewbox="0 0 24 24"><path d="m7 10 5 5 5-5"></path></svg>
 </button>
-<div aria-label="Выбор периода статистики" class="date-popover" hidden="" id="datePopover" role="dialog">
+<div aria-label="${single?'Дата следующей оплаты':'Выбор периода'}" class="date-popover" hidden="" id="${prefix}datePopover" role="dialog">
 
 <div class="calendar-area">
-<div class="calendar-head"><button aria-label="Предыдущие месяцы" id="calendarPrev" type="button"><svg viewbox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></button><span class="calendar-titles"><strong id="calendarMonth"></strong><strong id="calendarMonthNext"></strong></span><button aria-label="Следующие месяцы" id="calendarNext" type="button"><svg viewbox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></button></div>
-<div class="calendar-pair"><div class="calendar-grid" id="calendarDays"></div><div class="calendar-grid" id="calendarDaysNext"></div></div>
+<div class="calendar-head"><button aria-label="Предыдущие месяцы" id="${prefix}calendarPrev" type="button"><svg viewbox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></button><span class="calendar-titles"><strong id="${prefix}calendarMonth"></strong>${single?'':'<strong id="calendarMonthNext"></strong>'}</span><button aria-label="Следующие месяцы" id="${prefix}calendarNext" type="button"><svg viewbox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<div class="calendar-pair"><div class="calendar-grid" id="${prefix}calendarDays"></div>${single?'':'<div class="calendar-grid" id="calendarDaysNext"></div>'}</div>
 
 </div>
-<div class="date-footer"><span id="dateError" role="status"></span><button id="dateReset" type="button" hidden>Сбросить</button><button id="dateCancel" type="button">Отмена</button><button class="date-apply" id="dateApply" type="button">Применить</button></div>
+<div class="date-footer"><span id="${prefix}dateError" role="status"></span><button id="${prefix}dateReset" type="button" hidden>Сбросить</button><button id="${prefix}dateCancel" type="button">Отмена</button><button class="date-apply" id="${prefix}dateApply" type="button">Применить</button></div>
 </div>
 </div>`;
 }
@@ -152,14 +153,16 @@ const dayFormat=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short'});
 const monthFormat=new Intl.DateTimeFormat('ru-RU',{month:'long',year:'numeric'});
 const weekdays=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 
-export function wirePeriod(root){
- const trigger=root.querySelector('#dateTrigger');
+export function wirePeriod(root,single=false){
+ const prefix=single?'payment-':'';
+ const find=id=>root.querySelector('#'+prefix+id);
+ const trigger=find('dateTrigger');
  if(!trigger)return;
- const panel=root.querySelector('#datePopover');
- const label=root.querySelector('#dateLabel');
+ const panel=find('datePopover');
+ const label=find('dateLabel');
  const defaultLabel=label.textContent;
- const apply=root.querySelector('#dateApply');
- const reset=root.querySelector('#dateReset');
+ const apply=find('dateApply');
+ const reset=find('dateReset');
  let month=new Date();
  month=new Date(month.getFullYear(),month.getMonth(),1);
  let range=[],draft=[];
@@ -173,8 +176,9 @@ export function wirePeriod(root){
   for(const [offset,gridId,titleId] of [[0,'calendarDays','calendarMonth'],[1,'calendarDaysNext','calendarMonthNext']]){
    const first=new Date(month.getFullYear(),month.getMonth()+offset,1);
    const year=first.getFullYear(),number=first.getMonth();
-   const grid=root.querySelector('#'+gridId);
-   root.querySelector('#'+titleId).textContent=monthFormat.format(first);
+   const grid=find(gridId);
+   if(!grid)continue;
+   find(titleId).textContent=monthFormat.format(first);
    grid.replaceChildren(...weekdays.map(day=>Object.assign(document.createElement('span'),{textContent:day})));
    for(let i=0;i<(first.getDay()+6)%7;i++)grid.append(document.createElement('span'));
    for(let day=1;day<=new Date(year,number+1,0).getDate();day++){
@@ -186,7 +190,7 @@ export function wirePeriod(root){
     button.setAttribute('aria-pressed',String(draft.some(d=>sameDay(d,date))));
     if(draft.length===2&&date>=draft[0]&&date<=draft[1])button.classList.add('in-range');
     button.onclick=()=>{
-     draft=draft.length===1?[draft[0],date].sort((a,b)=>a-b):[date];
+     draft=!single&&draft.length===1?[draft[0],date].sort((a,b)=>a-b):[date];
      draw();
      [...grid.querySelectorAll('button')][day-1]?.focus();
     };
@@ -202,16 +206,16 @@ export function wirePeriod(root){
   draw();
   panel.hidden=false;
   trigger.setAttribute('aria-expanded','true');
-  root.querySelector('#calendarPrev').focus();
+  find('calendarPrev').focus();
  };
- for(const [id,step] of [['calendarPrev',-1],['calendarNext',1]])root.querySelector('#'+id).onclick=()=>{
+ for(const [id,step] of [['calendarPrev',-1],['calendarNext',1]])find(id).onclick=()=>{
   month=new Date(month.getFullYear(),month.getMonth()+step,1);draw();
  };
  apply.onclick=()=>{
   range=draft.slice();
   const [first,last=first]=range;
   label.textContent=sameDay(first,last)?first.toLocaleDateString('ru-RU'):`${dayFormat.format(first)} — ${dayFormat.format(last)} ${last.getFullYear()}`;
-  publish([first,last]);
+  publish(single?[first]:[first,last]);
   close();
  };
  function publish(dates){
@@ -219,8 +223,8 @@ export function wirePeriod(root){
   trigger.dispatchEvent(new CustomEvent('periodchange',{bubbles:true,detail:dates.map(localDate)}));
  }
  reset.onclick=()=>{range=[];draft=[];label.textContent=defaultLabel;publish([]);close();};
- root.querySelector('#dateCancel').onclick=close;
- panel.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();close();}});
+ find('dateCancel').onclick=close;
+ panel.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close();}});
  panel.closest('.date-control').addEventListener('focusout',event=>{
   if(event.relatedTarget&&!event.currentTarget.contains(event.relatedTarget)){panel.hidden=true;trigger.setAttribute('aria-expanded','false');}
  });
