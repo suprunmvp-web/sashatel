@@ -257,8 +257,6 @@ body.platform { --sidebar:248px; }
 .cabinet-admin-organizations { container: organizations / inline-size; }
 .cabinet-admin-organizations .section-heading { justify-content: start; gap: 12px; }
 #adminOrgTotal,#adminStaffCount { color: var(--sub); font-size: 12px; }
-.admin-staff-person { display: flex; align-items: center; gap: 11px; }
-.admin-staff-person > span { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 9px; background: var(--hover); border: 1px solid var(--line); font-size: 11px; font-weight: 600; }
 .admin-staff table { min-width: 1050px; }
 .admin-staff td { height: 69px; white-space: nowrap; }
 .admin-org-search { width: min(280px,100%); margin: 0; }
@@ -409,6 +407,45 @@ body.platform { --sidebar:248px; }
 #operation-dialog .ux-role-choice:has(input:checked) .ux-role-radio { border: 5px solid var(--fg); }
 #operation-dialog .ux-role-copy { display: grid; gap: 3px; }
 #operation-dialog .ux-role-choice small { color: var(--sub); }
+
+.platform #operation-dialog:has(.staff-edit-form) {
+  box-sizing: border-box;
+  width: 420px;
+  max-width: calc(100% - 24px);
+  padding: clamp(16px,4vw,24px);
+}
+#operation-dialog .staff-edit-form { display: grid; gap: 20px; }
+#operation-dialog .staff-edit-form header { align-items: start; gap: 12px; }
+#operation-dialog .staff-dialog-heading { min-width: 0; }
+#operation-dialog .staff-dialog-heading h2 { font-size: 20px; font-weight: 600; line-height: 1.2; letter-spacing: -.025em; }
+#operation-dialog .staff-dialog-heading p { margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
+#operation-dialog .staff-edit-form header .icon-button {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--sub);
+}
+#operation-dialog .staff-edit-form header .icon-button:hover { background: var(--hover); color: var(--fg); }
+#operation-dialog .staff-edit-form .admin-dialog-form { gap: 14px; }
+#operation-dialog .staff-edit-form .admin-dialog-form label { display: grid; gap: 6px; min-width: 0; }
+#operation-dialog .staff-edit-form .admin-dialog-form input { width: 100%; min-height: 42px; border-radius: 9px; }
+#operation-dialog .staff-edit-form .ux-role-choices { gap: 8px; }
+#operation-dialog .staff-edit-form .ux-role-choices legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#operation-dialog .staff-edit-form .ux-role-choice { min-height: 56px; gap: 12px; padding: 10px 12px; border-radius: 10px; }
+#operation-dialog .staff-edit-form .ux-role-choice:hover { background: var(--hover); }
+#operation-dialog .staff-edit-form .ux-role-choice:has(:checked) { border-color: var(--sub); }
+#operation-dialog .staff-edit-form .ux-role-copy { min-width: 0; overflow-wrap: anywhere; }
+#operation-dialog .staff-edit-form .ux-role-copy small { font-size: 12px; line-height: 1.4; }
+#operation-dialog .staff-edit-form .dialog-actions { padding-top: 14px; border-top: 1px solid var(--line); }
+@media (max-width: 480px) {
+  #operation-dialog .staff-edit-form { gap: 16px; }
+  #operation-dialog .staff-edit-form header .icon-button { width: 44px; height: 44px; }
+  #operation-dialog .staff-edit-form .admin-dialog-form input { min-height: 44px; font-size: 16px; }
+  #operation-dialog .staff-edit-form .dialog-actions .button { flex: 1; min-height: 44px; }
+}
+
 .ws-finance-kpis { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 0 0 22px; padding: 16px 0; border-block: 1px solid var(--line); }
 .ws-finance-kpis > div { display: grid; gap: 6px; min-width: 0; padding-inline: 16px; }
 .ws-finance-kpis > div:first-child { padding-inline-start: 0; }

@@ -92,14 +92,13 @@ function adminPage(){
  if(!internalRoles.some(([role])=>role===internalRole))return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
  if(page==='profile'||page==='security')return accountPage(page);
  if(page==='employees'){
-  const fullName=[account.first_name,account.last_name].filter(Boolean).join(' ')||'—';
-  const initials=fullName.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toLocaleUpperCase('ru');
+  const fullName=[account.last_name,account.first_name].filter(Boolean).join(' ')||'—';
   const emailStatus=account.email_verified===true
    ? '<span class="admin-verification" data-verified="true">'+icon('circle-check')+'Да</span>'
    : account.email_verified===false?'<span class="admin-verification">'+adminMinus+'Нет</span>':'—';
   const roleName=internalRoles.find(([value])=>value===internalRole)[1];
   const role=internalRole==='admin'?'<button class="admin-staff-role" type="button" data-action="internal-role">'+roleName+icon('chevron-down')+'</button>':roleName;
-  const row=['<div class="admin-staff-person"><span aria-hidden="true">'+esc(initials)+'</span><strong>'+esc(fullName)+'</strong></div>',esc(account.email||'—'),role,esc(account.phone||'—'),emailStatus,'—',internalRole==='admin'?staffActions():''];
+  const row=['<strong>'+esc(fullName)+'</strong>',esc(account.email||'—'),role,esc(account.phone||'—'),emailStatus,'—',internalRole==='admin'?staffActions():''];
   return '<section class="admin-staff"><div class="section-heading ux-staff-header"><span id="adminStaffCount" role="status">1 из 1</span>'+
    '<label class="workspace-search">'+icon('search')+'<input id="adminStaffSearch" type="search" placeholder="Поиск сотрудника" aria-label="Поиск сотрудников"></label></div>'+
    table(['Фамилия Имя','Email','Роль','Телефон','Email подтверждён','Дата регистрации',''],[row])+'</section>';
@@ -228,13 +227,14 @@ function operation(action,organization){
   fields=`<div class="admin-dialog-form"><label>Фамилия Имя<input id="uxStaffName" type="text" required placeholder="Имя и фамилия"/></label><label>Email<input id="uxStaffEmail" type="email" required placeholder="name@sashatel.example"/></label><label>Телефон<input id="uxStaffPhone" type="tel" placeholder="+7 ..."/></label><label>Имя пользователя в Telegram<input id="uxStaffTelegram" maxlength="33" placeholder="@username"/></label></div>`+
    internalRoleChoices('uxStaffRole','reviewer');
  }
- if(action==='internal-role'||action==='internal-contacts'){
+ const staffDialog=action==='internal-role'||action==='internal-contacts';
+ if(staffDialog){
   if(internalRole!=='admin')return;
   description=[[account.first_name,account.last_name].filter(Boolean).join(' '),account.email].filter(Boolean).join(' · ');
   name=action==='internal-role'?'Изменить роль':'Контакты сотрудника';
   submit='Сохранить';
   fields=action==='internal-role'?internalRoleChoices('uxRole',internalRole):
-   '<div class="admin-dialog-form"><label>Телефон<input id="staffContactPhone" type="tel" value="'+esc(account.phone||'')+'"></label>'+
+   '<div class="admin-dialog-form"><label>Телефон<input id="staffContactPhone" type="tel" placeholder="+7 900 123 45 67" value="'+esc(account.phone||'')+'"></label>'+
    '<label>Имя пользователя в Telegram<input id="staffContactTelegram" type="text" autocomplete="off" maxlength="33" placeholder="@username"></label></div>';
  }
  if(action==='invite'){
@@ -268,8 +268,12 @@ function operation(action,organization){
  }
  if(!name)return;
  const trigger=document.activeElement;
- dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
-  (description?'<p class="cabinet-muted">'+esc(description)+'</p>':'')+'<div class="dialog-fields">'+fields+'</div>'+
+ const context=description?'<p class="cabinet-muted">'+esc(description)+'</p>':'';
+ const heading='<h2 id="dialog-title">'+esc(name)+'</h2>';
+ dialog.innerHTML='<form method="dialog"'+(staffDialog?' class="staff-edit-form"':'')+'><header>'+
+  (staffDialog?'<div class="staff-dialog-heading">'+heading+context+'</div>':heading)+
+  '<button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
+  (staffDialog?'':context)+'<div class="dialog-fields">'+fields+'</div>'+
   (action==='invoice'?invoiceMethod:'')+'<footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" value="submit">'+esc(submit)+'</button></footer></form>';
  const form=dialog.querySelector('form');
  const validInvoice=action==='invoice'?wireInvoiceForm(form,org?.inn):null;
