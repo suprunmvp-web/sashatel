@@ -148,8 +148,8 @@ try {
   await page.reload();
   await heading(page,'Транки');
   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
-  await page.getByRole('button',{name:'Создать транк'}).click();
-  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Закрыть'}).locator('svg').count(),1);
+  await page.getByRole('button',{name:'Подключить транк'}).click();
+  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Закрыть'}).count(),1);
   assert.deepEqual(await page.getByRole('dialog').locator('input').evaluateAll(inputs=>inputs.map(input=>input.name)),['name']);
   assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Создать транк',exact:true}).isDisabled(),false);
   await page.keyboard.press('Escape');
@@ -161,8 +161,8 @@ try {
   await page.locator('.sidebar').getByRole('link',{name:'Настройки',exact:true}).click();
   await heading(page,'Настройки');
   assert.equal(await page.getByRole('button',{name:'Сохранить настройки'}).isDisabled(),true);
-  await page.getByRole('link',{name:'Пользователи',exact:true}).click();
-  assert.equal(await page.getByRole('link',{name:'Пользователи',exact:true}).getAttribute('aria-current'),'page');
+  await page.getByRole('tab',{name:'Пользователи',exact:true}).click();
+  assert.equal(await page.getByRole('tab',{name:'Пользователи',exact:true}).getAttribute('aria-selected'),'true');
   results.push('Cabinet widths, persistent theme, deep-link trunks, safe trunk dialog, server-validated organization switch and settings tabs');
 
   // Internal permissions are derived from Backend, never a URL query or a client role.

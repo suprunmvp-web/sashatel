@@ -27,13 +27,24 @@ export function cabinetWorkspace({admin,org,organizations}) {
   </div>`;
 }
 
+const referenceNavIcons = {
+  statistics: `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19v-6M9 19V7M14 19v-9M19 19V4M3 21h18"></path></svg>`,
+  trunks: `<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="4.5" cy="6.5" fill="currentColor" r="1" stroke="none"></circle><circle cx="4.5" cy="12" fill="currentColor" r="1" stroke="none"></circle><circle cx="4.5" cy="17.5" fill="currentColor" r="1" stroke="none"></circle><path d="M9 6.5h11M9 12h11M9 17.5h11"></path></svg>`,
+  history: `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 9A8.5 8.5 0 1 1 4 16M3.5 4.5V9H8M12 7.5V12l3 2"/></svg>`,
+  integrations: `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 4v5M15 4v5M7 9h10v4a5 5 0 0 1-10 0V9zM12 18v3M5 9h14"></path></svg>`,
+  billing: `<svg aria-hidden="true" viewBox="0 0 24 24"><rect height="14" rx="2.5" width="18" x="3" y="5"></rect><path d="M3 10h18"></path></svg>`,
+  organization: `<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.85 2.85-.06-.06a1.7 1.7 0 0 0-1.89-.34 1.7 1.7 0 0 0-1 1.56V22h-4v-1.05A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.85-2.85.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H2v-4h1.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.33-1.88l-.06-.06 2.85-2.85.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V2h4v1.05A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.33l.06-.06 2.85 2.85-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H22v4h-1.05A1.7 1.7 0 0 0 19.4 15Z"></path></svg>`,
+  support: `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.95L3 21l1.5-5.2A8.5 8.5 0 1 1 21 11.5Z"></path></svg>`,
+  documentation: `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 20.5a6 6 0 0 0-5-2H3V4h4a6 6 0 0 1 5 2 6 6 0 0 1 5-2h4v14.5h-4a6 6 0 0 0-5 2ZM12 6v14.5"></path></svg>`,
+};
+
 export function cabinetNavigation({admin,nav,current,url}) {
-  const groups = admin ? [['Платформа',nav]] : [
+  const groups = admin ? [['Рабочее пространство',nav]] : [
     ['Главное',nav.slice(0,4)], ['Финансы',nav.slice(4,5)], ['Помощь и настройки',nav.slice(5)]
   ];
   return '<nav aria-label="Основная навигация">'+groups.map(([label,items])=>
     '<div class="cabinet-nav-group'+(label==='Помощь и настройки'?' cabinet-utility':'')+'"><div class="cabinet-nav-label">'+label+'</div>'+
-    items.map(([id,glyph,text])=>link(url(id),icon(glyph)+'<span>'+text+'</span>',current===id)
+    items.map(([id,glyph,text])=>link(url(id),(referenceNavIcons[id]||icon(glyph))+'<span class="cabinet-nav-text">'+text+'</span>',current===id)
       .replace('<a ','<a aria-label="'+text+'" title="'+text+'" ')).join('')+'</div>'
   ).join('')+'</nav>';
 }
