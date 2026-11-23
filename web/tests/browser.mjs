@@ -139,7 +139,7 @@ try {
   await page.getByRole('button',{name:'Меню кабинета'}).click();
   assert.equal(await page.locator('.sidebar').isVisible(),true);
   await page.keyboard.press('Escape');
-  assert.equal(await page.locator('.sidebar').isVisible(),false);
+  await page.locator('.sidebar').waitFor({state:'hidden'});
   await page.setViewportSize({width:1440,height:900});
   await page.getByRole('button',{name:'Переключить тему'}).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
@@ -178,11 +178,13 @@ try {
   await page.goto(base+'/admin/');
   await heading(page,'Обзор');
   await page.getByText('ООО «Проверка интеграции»').waitFor();
-  await page.locator('[data-review-org="'+orgId+'"][data-review-decision="verified"]').click();
+  const orgReview=page.locator('[data-review-org="'+orgId+'"][data-review-decision="verified"]');
+  await orgReview.locator('xpath=../preceding-sibling::button').click();
+  await orgReview.click();
   await page.locator('[name=evidence]').fill('Документы, проверенные сотрудником SashaTel');
   await page.locator('[name=explanation]').fill('Установлено право заявителя представлять компанию');
   await page.getByRole('button',{name:'Подтвердить организацию'}).click();
-  await page.getByText('Верифицирована',{exact:true}).waitFor();
+  await page.getByText('Организация верифицирована',{exact:true}).waitFor();
   await page.goto(base+'/'+orgId+'/');
   await heading(page,'Статистика');
   assert.equal(await page.locator('.cabinet-notice').count(),0,'verified org remains marked unverified');
