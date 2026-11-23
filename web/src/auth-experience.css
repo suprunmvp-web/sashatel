@@ -176,7 +176,6 @@ body:not(.platform) #country-search:focus,
 body:not(.platform) #country-search:focus-visible {
   outline: none;
   border-color: #80808a;
-  box-shadow: 0 0 0 1px #80808a;
 }
 
 /* Shared notice language: consistent permanent banners and transient toasts. */

@@ -106,6 +106,8 @@ body.platform { --sidebar:248px; }
 .platform input:not([type=checkbox],[type=radio]),.platform select,.platform .role-picker summary { min-height:40px; padding:9px 12px; font-size:14px; font-weight:400; line-height:1.4; }
 .platform input[readonly] { cursor:default; }
 .platform :is(.button,input,select,summary):focus-visible { outline:2px solid var(--sub); outline-offset:2px; }
+.platform input[type=search]:focus-visible { outline:none; }
+.platform :is(.workspace-search,.calls-search,.tc-search-field,.picker-search):focus-within { --search-field-border:var(--sub); }
 .platform .table-empty { max-width:none; padding:30px 14px; text-align:center; white-space:normal; color:var(--sub); }
 .section-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
 .section-heading h2 { margin:0; }
@@ -217,7 +219,7 @@ body.platform { --sidebar:248px; }
 .workspace-admin .org-label { display: grid; flex: 1; }
 .workspace-admin-divider,.profile-picker hr { border: 0; border-top: 1px solid var(--line); margin: 5px 0; }
 .workspace-search input { border: 0; background: none; }
-.workspace-search { min-height: 40px; padding: 0 10px; margin: 4px 0; border: 1px solid var(--line); border-radius: 9px; }
+.workspace-search { min-height: 40px; padding: 0 10px; margin: 4px 0; border: 1px solid var(--search-field-border,var(--line)); border-radius: 9px; }
 .profile-trigger { anchor-name: --profile-trigger; display: flex; align-items: center; gap: 8px; width: 100%; color: inherit; border: 0; border-radius: 12px; background: none; text-align: start; cursor: pointer; }
 .profile-trigger:hover { background: var(--hover); }
 .profile-picker { position: fixed; position-anchor: --profile-trigger; inset: auto auto 12px 12px; bottom: anchor(bottom, 12px); left: var(--sidebar); margin: 0 0 0 10px; position-try-fallbacks: --profile-above; width: min(236px, calc(100vw - 28px)); max-height: 70dvh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; padding: 7px; background: var(--surface); color: var(--fg); box-shadow: 0 12px 38px #0003; }
@@ -317,7 +319,7 @@ body.platform { --sidebar:248px; }
 /* Reporting controls share the reference's two-month calendar. */
 .platform :is(.date-trigger,.calls-filter-btn,.calls-search) {
   display: inline-flex; align-items: center; gap: 9px; min-height: 40px;
-  padding: 0 12px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 0 12px; border: 1px solid var(--search-field-border,var(--line)); border-radius: 10px;
   background: var(--surface); color: var(--fg); font-size: 13px;
 }
 .platform .date-trigger { gap:12px; min-height:39px; padding-inline:13px; font-size:12px; font-weight:500; white-space:nowrap; }
@@ -518,7 +520,7 @@ body.platform { --sidebar:248px; }
 .tc-number-toolbar { margin: 16px 0; }
 .tc-number-tools { flex: 1; }
 .tc-number-filter { position:relative; }
-.platform :is(.tc-search-field,#tcNumberFilterBtn,#tcNumberExport) { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 10px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--fg); }
+.platform :is(.tc-search-field,#tcNumberFilterBtn,#tcNumberExport) { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 10px; border:1px solid var(--search-field-border,var(--line)); border-radius:9px; background:var(--surface); color:var(--fg); }
 .tc-number-toolbar svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.7; flex:none; }
 .platform .tc-search-field input { min-height:38px; max-width:100%; padding:0; background:none; border:0; }
 .tc-number-filter-pop { position:absolute; z-index:5; margin-top:6px; width:max-content; min-width:140px; padding:5px; background:var(--surface); border:1px solid var(--line); border-radius:9px; }
@@ -615,7 +617,7 @@ body.platform { --sidebar:248px; }
   align-items: center;
   gap: 8px;
   padding-inline: 9px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--search-field-border,var(--line));
   border-radius: 8px;
   margin-bottom: 5px;
   color: var(--sub);
