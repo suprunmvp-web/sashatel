@@ -1,3 +1,4 @@
+import {renderAccountPage, wireProfileEditor} from './cabinet-account.js';
 import {wireStatisticsChart} from './cabinet-statistics-chart.js';
 import {wireRecordingPlayer} from './cabinet-recording.js';
 import {renderSettingsTabs, settingsUsersMarkup, clientInviteFields, wireClientInvite} from './cabinet-settings.js';
@@ -20,11 +21,7 @@ try{collapsed=localStorage.getItem('sashatel.web.sidebar')==='collapsed';}catch{
 const base=()=>admin?'/admin/':'/'+org.id+'/';
 const url=section=>base()+(section==='overview'||section==='statistics'?'':section+'/')+previewSuffix;
 const currentNav=()=>!admin&&page==='employees'?'organization':page;
-const title=()=>nav.find(n=>n[0]===currentNav())?.[2]||({profile:'Профиль',security:'Безопасность',organization:'Организация'}[page]||'Страница не найдена');
-function accountPage(section){
- if(section==='profile')return '<dl class="summary">'+[['Имя',account.first_name],['Фамилия',account.last_name],['Email',account.email],['Телефон',account.phone]].map(([k,v])=>'<dt>'+k+'</dt><dd>'+esc(v??'Не указано')+'</dd>').join('')+'</dl><p class="hint">Телефон не подтверждён. Он не используется для входа и восстановления доступа.</p>';
- if(section==='security')return '<h2>Сессии и пароль</h2>'+link('/recovery/','Восстановить пароль')+button('Выйти из текущей сессии','logout');
-}
+const title=()=>nav.find(n=>n[0]===currentNav())?.[2]||({profile:'Мой профиль',security:'Безопасность',organization:'Организация'}[page]||'Страница не найдена');
 function clientPage(){
  if(page==='statistics')return renderStatistics();
  if(page==='history'){
@@ -45,11 +42,11 @@ function clientPage(){
  if(page==='billing')return billingMarkup;
  if(page==='support')return '<section class="ws-help-body"><h2>Поддержка SashaTel</h2><p>Для вопросов по верификации организации и SIP-подключению обратитесь к вашему менеджеру.</p></section>';
  if(page==='documentation')return '<section class="ws-help-body"><h2>Подключение телефонии</h2><p>Создайте транк, введите данные SIP-оператора и проверьте состояние подключения во вкладке «Информация». Для звонков нужны разрешённые исходящие номера.</p>'+link(url('trunks'),'Перейти к транкам')+'</section>';
- if(page==='profile'||page==='security')return accountPage(page);
+ if(page==='profile'||page==='security')return renderAccountPage(page,account,url);
  if(page==='organization')return renderSettingsTabs(false)+'<section id="settingsGeneral" class="requisites-panel settings-panel" role="tabpanel" aria-labelledby="settingsGeneralTab"><h2>Настройки организации</h2>'+
   '<form id="wsOrgForm" class="ws-form"><label>Название организации<input type="text" id="wsOrgName" name="legal_name" maxlength="180" required value="'+esc(org.legal_name)+'"></label>'+
   '<label>ИНН<input id="wsOrgInn" type="text" inputmode="numeric" readonly value="'+esc(org.inn)+'"></label>'+
-  '<div class="ws-form-actions"><button id="wsOrgSave" type="submit" class="button" disabled>Сохранить настройки</button><span id="wsOrgFeedback" role="status"></span></div></form></section>';
+  '<div class="ws-form-actions"><button id="wsOrgSave" type="submit" class="button" disabled>Сохранить настройки</button><button id="wsOrgCancel" type="button" class="button secondary" hidden>Отмена</button><span id="wsOrgFeedback" role="status"></span></div></form></section>';
  return empty('Страница не найдена','Выберите раздел в меню.');
 }
 const adminMinus='<svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>';
@@ -90,7 +87,7 @@ function staffActions(){
 }
 function adminPage(){
  if(!internalRoles.some(([role])=>role===internalRole))return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
- if(page==='profile'||page==='security')return accountPage(page);
+ if(page==='profile'||page==='security')return renderAccountPage(page,account,url);
  if(page==='employees'){
   const fullName=[account.last_name,account.first_name].filter(Boolean).join(' ')||'—';
   const emailStatus=account.email_verified===true
@@ -149,7 +146,7 @@ function render({focus=true}={}){
  document.body.className='platform'+(collapsed?' sidebar-collapsed':'');
  document.documentElement.dataset.theme=savedTheme();
  const heading=esc(title());
- const content=admin?adminPage():org.role==='employee'
+ const content=admin?adminPage():org.role==='employee'&&page!=='profile'&&page!=='security'
   ?empty('Кабинет организации','Управление доступно Владельцу и Администратору. Звонки — в Desktop.')
   :clientPage();
  document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar" id="cabinet-sidebar">'+
@@ -377,14 +374,22 @@ function wire(){
    selectSettings(keys[event.key]);
   };
  }
+ wireProfileEditor(document);
  const orgForm=document.querySelector('#wsOrgForm');
  if(orgForm){
   const name=orgForm.elements.legal_name;
   const submit=orgForm.querySelector('#wsOrgSave');
   const feedback=orgForm.querySelector('#wsOrgFeedback');
+  const cancel=orgForm.querySelector('#wsOrgCancel');
   orgForm.oninput=()=>{
+   cancel.hidden=name.value===name.defaultValue;
    submit.disabled=!name.value.trim()||name.value.trim()===org.legal_name;
    feedback.textContent='';
+  };
+  cancel.onclick=()=>{
+   orgForm.reset();
+   orgForm.oninput();
+   name.focus();
   };
   orgForm.onsubmit=event=>{
    event.preventDefault();
