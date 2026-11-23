@@ -35,7 +35,7 @@ function clientPage(){
   return table(['Дата и время','Сотрудник','Номер','Запись','Длительность','Результат'],[],'История звонков пока недоступна.');
  }
  if(page==='trunks'){
-  if(parts[2])return '<a href="'+url('trunks')+'">К транкам</a>'+tabs([['management','Управление'],['information','Информация'],['numbers','Номера']],parts[3]||'management',base()+'trunks/'+parts[2]+'/')+(parts[3]==='numbers'?table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],[])+missing('номеров'):parts[3]==='information'?table(['Параметр','Значение'],['Регистрация SIP','Доступность','Ошибка','Сервер / порт','Транспорт','Авторизация','Endpoint / AOR'].map(k=>[k,'Нет данных'])): '<div class="warning">До верификации организации транк нельзя активировать.</div><div class="actions">'+button('Включить транк','activate',true)+button('Изменить SIP-данные','trunk',true,true)+button('Удалить транк','delete',true,true)+'</div>'+missing('управления транком'));
+  if(parts[2])return '<a href="'+url('trunks')+'">К транкам</a>'+tabs([['management','Управление'],['information','Информация'],['numbers','Номера']],parts[3]||'management',base()+'trunks/'+parts[2]+'/')+(parts[3]==='numbers'?table(['Номер','Спам-метка','Инициации','Ответы','Дозвон'],[])+missing('номеров'):parts[3]==='information'?table(['Параметр','Значение'],['Регистрация SIP','Доступность','Ошибка','Сервер / порт','Транспорт','Авторизация','Endpoint / AOR'].map(k=>[k,'Нет данных'])): '<div class="warning">До верификации организации транк нельзя активировать.</div><div class="actions">'+button('Включить транк','activate',true)+button('Изменить SIP-данные','trunk-sip',false,true)+button('Удалить транк','delete',true,true)+'</div>'+missing('управления транком'));
   return table(['Название','Состояние','Действия'],[],'Список транков пока недоступен.');
  }
  if(page==='employees')return settingsNavigation()+'<section class="requisites-panel"><div class="section-heading"><h2>Пользователи организации</h2>'+
@@ -72,7 +72,7 @@ function adminPage(){
 }
 function pageAction(){
  if(admin||org.role==='employee'||parts[2])return '';
- if(page==='trunks')return button(icon('plus')+' Подключить транк','trunk');
+ if(page==='trunks')return button(icon('plus')+' Создать транк','trunk');
  if(page==='billing')return button('Пополнение по счёту','invoice');
  return '';
 }
@@ -85,7 +85,7 @@ function render({focus=true}={}){
   :clientPage();
  document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar" id="cabinet-sidebar">'+
   '<button type="button" class="icon-button drawer-close" data-action="close-drawer" aria-label="Закрыть меню">'+icon('x')+'</button>'+
-  cabinetWorkspace({admin,org})+cabinetNavigation({admin,nav,current:currentNav(),url})+cabinetProfile({account,org,url})+'</aside>'+
+  cabinetWorkspace({admin,org,organizations})+cabinetNavigation({admin,nav,current:currentNav(),url})+cabinetProfile({account,org,url})+'</aside>'+
   '<button type="button" class="drawer-scrim" data-action="close-drawer" aria-label="Закрыть меню" tabindex="-1" hidden></button>'+
   '<div class="platform-body"><header class="platform-top"><div class="platform-heading">'+
   '<button type="button" class="icon-button" data-action="sidebar" aria-label="Меню кабинета" aria-controls="cabinet-sidebar" aria-expanded="'+(!collapsed&&!matchMedia('(max-width:768px)').matches)+'">'+icon('panel-left')+'</button>'+
@@ -148,7 +148,18 @@ function operation(action){
  const dialog=document.querySelector('dialog');
  let name='',fields='',warning='',submit='Подтвердить';
  const field=(label,name,type='text')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" required></label>';
- if(action==='trunk'){name='Настройка SIP-транка';submit='Сохранить настройки';fields=field('Название','name')+field('Хост SIP-сервера','server')+field('SIP-логин','login')+field('SIP-пароль','secret','password')+field('Основной номер телефона','phone','tel');warning='Новый транк выключен. До верификации организации активация недоступна.';}
+ if(action==='trunk'){
+  name='Создать транк';
+  submit='Создать';
+  fields='<label class="trunk-name-field">Название<input name="name" placeholder="Введите название транка" maxlength="80" required autofocus></label>';
+  warning='Введите название нового транка. SIP-настройки находятся во вкладке «Управление».';
+ }
+ if(action==='trunk-sip'){
+  name='Настройки SIP';
+  submit='Сохранить настройки';
+  fields=field('Хост SIP-сервера','server')+field('Порт SIP-сервера','port','number')+field('SIP-логин','login')+field('SIP-пароль','secret','password');
+  warning='Используйте данные из кабинета SIP-оператора.';
+ }
  if(action==='invite'||action==='internal-invite'){
   name='Пригласить пользователя';
   submit='Отправить приглашение';
@@ -160,12 +171,11 @@ function operation(action){
  if(action==='invoice'){name='Пополнение по счёту';submit='Сформировать счёт';fields=field('Сумма, ₽','amount','number');warning='Формирование счёта не зачисляет деньги. Баланс меняется после фактического поступления.';}
  if(action==='client'){name='Создать клиента';fields=field('ИНН','inn')+'<label>Ответственный менеджер<select disabled><option>Список недоступен</option></select></label>';warning='Организация создаётся неверифицированной. Владелец клиента может отсутствовать до назначения.';}
  if(action==='admin-actions'){name='Действия организации';fields='<label>Операция<select id="admin-operation"><option value="credit">Пополнить баланс</option><option value="debit">Списать баланс</option>'+ (internalRole==='manager'?'':'<option value="payment-date">Изменить дату оплаты</option>')+'<option value="verify">Верифицировать</option><option value="unverify">Снять верификацию</option></select></label>'+field('Положительная сумма, ₽ / день оплаты','amount','number')+field('Основание','reason');warning='Изменение влияет на доступность новых звонков или расчёты. Уже выставленные документы не пересчитываются. Снятие верификации запретит активацию транков. Текущие разговоры не прерываются.';}
- if(action==='organizations'){name='Выберите организацию';fields=(organizations.length>1?'<label>Поиск организации<input id="workspace-search" type="search" placeholder="Поиск по ИНН или организации"></label>':'')+organizations.map(o=>'<button type="button" class="button secondary" data-select-org="'+esc(o.id)+'" data-inn="'+esc(o.inn)+'">'+esc(o.legal_name)+'</button>').join('');warning=organizations.length?'Выбор проверяется сервером.':'Доступных организаций нет.';}
  const trigger=document.activeElement;
- dialog.classList.toggle('workspace-dialog',action==='organizations');
+ dialog.classList.toggle('trunk-create-dialog',action==='trunk');
  dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
-  '<div class="dialog-fields">'+fields+'</div><p class="cabinet-muted">'+esc(warning)+'</p>'+
-  (action==='organizations'?'':'<p class="cabinet-muted">Операция пока недоступна.</p><footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" disabled>'+esc(submit)+'</button></footer>')+'</form>';
+  '<p class="cabinet-muted">'+esc(warning)+'</p><div class="dialog-fields">'+fields+'</div>'+
+  ('<p class="cabinet-muted">'+(action==='trunk'?'Создание транка по названию пока недоступно.':action==='trunk-sip'?'Сохранение SIP-настроек пока недоступно.':'Операция пока недоступна.')+'</p><footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" disabled>'+esc(submit)+'</button></footer>')+'</form>';
  hydrate(dialog);dialog.showModal();
  dialog.querySelector('[name=secret]')?.setAttribute('autocomplete','new-password');
  const rolePicker=dialog.querySelector('.role-picker');
@@ -173,11 +183,8 @@ function operation(action){
   rolePicker.onchange=event=>{rolePicker.querySelector('#client-role-value').textContent=event.target.value;rolePicker.open=false;rolePicker.querySelector('summary').focus();};
   rolePicker.onkeydown=event=>{if(event.key==='Escape'&&rolePicker.open){event.preventDefault();rolePicker.open=false;rolePicker.querySelector('summary').focus();}};
  }
- const search=dialog.querySelector('#workspace-search');
- if(search)search.oninput=()=>{const q=search.value.trim().toLocaleLowerCase('ru');dialog.querySelectorAll('[data-select-org]').forEach(item=>{item.hidden=!(item.textContent+' '+item.dataset.inn).toLocaleLowerCase('ru').includes(q);});};
  if(action==='admin-actions'){const select=dialog.querySelector('#admin-operation');const amount=dialog.querySelector('[name=amount]');select.onchange=()=>{amount.closest('label').hidden=['remove-limit','verify','unverify'].includes(select.value);};select.onchange();}
- dialog.onclose=()=>{dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();trigger?.focus({preventScroll:true});};
- dialog.querySelectorAll('[data-select-org]').forEach(el=>el.onclick=async()=>{el.disabled=true;try{const result=await api.openOrganization(el.dataset.selectOrg);location.assign('/'+result.organization.id+'/'+previewSuffix);}catch(e){dialog.close();showError(e.message);} });
+ dialog.onclose=()=>{dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();dialog.classList.remove('trunk-create-dialog');trigger?.focus({preventScroll:true});};
 }
 function reviewOrganizationDialog(id,decision){
  const organization=internalOrganizations.find(o=>o.id===id);
@@ -211,7 +218,29 @@ function reviewOrganizationDialog(id,decision){
  dialog.showModal();
 }
 function showError(message){notify(message,'error');}
+function wireWorkspacePicker(){
+ const picker=document.querySelector('#workspace-picker');
+ if(!picker)return;
+ const search=picker.querySelector('input');
+ const options=[...picker.querySelectorAll('[data-select-org]')];
+ if(search)search.oninput=()=>{
+   const query=search.value.trim().toLocaleLowerCase('ru');
+   for(const option of options)option.hidden=!(option.textContent+' '+option.dataset.inn).toLocaleLowerCase('ru').includes(query);
+   picker.querySelector('.workspace-no-results').hidden=options.some(option=>!option.hidden);
+ };
+ for(const option of options)option.onclick=async()=>{
+   for(const row of options)row.disabled=true;
+   try{
+     const result=await api.openOrganization(option.dataset.selectOrg);
+     location.assign('/'+result.organization.id+'/'+previewSuffix);
+   }catch(error){
+     for(const row of options)row.disabled=false;
+     showError(error.message);
+   }
+ };
+}
 function wire(){
+ wireWorkspacePicker();
  document.querySelectorAll('[data-action]').forEach(el=>el.onclick=async()=>{
  const action=el.dataset.action;
  if(action==='close-drawer'){setDrawer(false);return;}

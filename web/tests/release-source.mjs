@@ -20,7 +20,7 @@ for(const method of ['requestResetCode','verifyResetCode','completePasswordReset
  assert.ok(adapter.includes('api.'+method+'('), 'Recovery must use the HTTP adapter through '+method);
 }
 assert.match(html,/assets\/cabinet-reference\.css/);
-assert.match(main,/cabinetWorkspace\(\{admin,org\}\)/);
+assert.match(main,/cabinetWorkspace\(\{admin,org,organizations\}\)/);
 assert.match(main,/await api\.openOrganization/);
 assert.match(main,/await api\.reviewOrganization/);
 assert.match(await file('dist/assets/cabinet-reference.css'),/@font-face\s*\{\s*font-family:Geist/);

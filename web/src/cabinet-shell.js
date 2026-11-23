@@ -1,14 +1,29 @@
 import {esc, icon, link} from './components.js';
 
-export function cabinetWorkspace({admin,org}) {
+export function cabinetWorkspace({admin,org,organizations}) {
   const name = admin ? 'SashaTel' : org.legal_name;
   const displayName=name.replace(/^Индивидуальный предприниматель\s+/iu,'ИП ');
   const contents = '<span class="workspace-symbol"><img src="/assets/sashatel-symbol-transparent.svg" width="23" height="23" alt=""></span>'+
     '<span class="workspace-text"><strong>'+esc(displayName)+'</strong><small>'+
     (admin ? 'Внутренняя платформа' : 'Организация')+'</small></span>';
-  return '<div class="organization-head">'+(admin
-    ? '<div class="workspace-control">'+contents+'</div>'
-    : '<button type="button" class="workspace-control" data-action="organizations" title="'+esc(name)+'" aria-label="Выбрать организацию · '+esc(name)+'" aria-haspopup="dialog">'+contents+icon('chevron-down')+'</button>')+'</div>';
+  if (admin) return '<div class="organization-head"><div class="workspace-control">'+contents+'</div></div>';
+  const rows = organizations.map(item => {
+    const active = item.id === org.id;
+    const label = item.legal_name.replace(/^Индивидуальный предприниматель\s+/iu, 'ИП ');
+    return `<button type="button" class="workspace-option" data-select-org="${esc(item.id)}" data-inn="${esc(item.inn)}"${active ? ' aria-current="true"' : ''}>
+      <span class="workspace-option-symbol" aria-hidden="true">${icon('building-2')}</span>
+      <span class="workspace-option-label"><strong>${esc(label)}</strong><small>ИНН ${esc(item.inn)}</small></span>
+      ${active ? icon('check') : ''}
+    </button>`;
+  }).join('');
+  return `<div class="organization-head">
+    <button type="button" class="workspace-control" popovertarget="workspace-picker" title="${esc(name)}" aria-label="Выбрать организацию · ${esc(name)}">${contents}${icon('chevron-down')}</button>
+    <div id="workspace-picker" class="workspace-picker" popover role="group" aria-label="Выбор организации">
+      ${organizations.length > 1 ? '<label class="workspace-search">'+icon('search')+'<input type="search" aria-label="Поиск организации" placeholder="Название или ИНН"></label>' : ''}
+      ${rows || '<p>Доступных организаций нет.</p>'}
+      <p class="workspace-no-results" hidden>Ничего не найдено</p>
+    </div>
+  </div>`;
 }
 
 export function cabinetNavigation({admin,nav,current,url}) {
