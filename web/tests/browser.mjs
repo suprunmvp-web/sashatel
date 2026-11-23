@@ -117,10 +117,10 @@ try {
   await viewportMatrix(page,'lookup-selected');
   await page.locator('#company-consent').check();
   await page.getByRole('button',{name:'Создать организацию',exact:true}).click();
-  await heading(page,'Статистика');
   const welcome = page.getByRole('dialog', {name: /Добро пожаловать/});
   await welcome.getByRole('link', {name: 'К верификации'}).waitFor();
   await welcome.getByRole('button', {name: 'Закрыть приветствие'}).click();
+  await heading(page,'Статистика');
   const orgId=new URL(page.url()).pathname.split('/')[1];
   assert.match(orgId,/^[0-9a-f-]{36}$/);
   await page.reload();
