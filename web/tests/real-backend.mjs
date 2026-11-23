@@ -22,5 +22,8 @@ const auth=new WebAuth(pool,randomBytes(32),{async send(message){await writeFile
 });
 const server=createApi(new ControlPlane(pool),async()=>pool.query('SELECT 1'),undefined,{auth,origin:'http://localhost:4174'});
 server.listen(8080,'127.0.0.1');
-const timer=setInterval(()=>auth.deliverOne().catch(()=>{}),100);
+const timer=setInterval(()=>{
+  void auth.deliverOne().catch(()=>{});
+  void auth.deliverPasswordResetOne().catch(()=>{});
+},100);
 process.on('SIGTERM',()=>{clearInterval(timer);server.close(()=>pool.end());});
