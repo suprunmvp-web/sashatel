@@ -13,7 +13,7 @@ export function cabinetWorkspace({admin,org}) {
 
 export function cabinetNavigation({admin,nav,current,url}) {
   const groups = admin ? [['Платформа',nav]] : [
-    ['Главное',nav.slice(0,4)], ['Финансы',nav.slice(4,5)], ['Настройки',nav.slice(5)]
+    ['Главное',nav.slice(0,4)], ['Финансы',nav.slice(4,5)], ['Помощь и настройки',nav.slice(5)]
   ];
   return '<nav aria-label="Основная навигация">'+groups.map(([label,items])=>
     '<div class="cabinet-nav-group"><div class="cabinet-nav-label">'+label+'</div>'+
@@ -25,7 +25,17 @@ export function cabinetNavigation({admin,nav,current,url}) {
 export function verificationNotice(status) {
   if(status==='verified')return '';
   const rejected=status==='rejected';
-  return '<section class="cabinet-notice" role="status">'+'<span data-icon aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 7 3v6c0 5-3 8-7 10-4-2-7-5-7-10V5l7-3Zm0 6v4m0 4h.01"/></svg></span>'+
+  return '<section class="cabinet-notice" role="status">'+icon('shield-off')+
     '<strong>'+(rejected?'Верификация отклонена':'Требуется верификация')+'</strong>'+
     '<p>'+(rejected?'Обратитесь в поддержку, чтобы уточнить причину.':'Организация не верифицирована · телефония выключена')+'</p></section>';
+}
+
+export function cabinetProfile({account,org,url}){
+  const fullName=[account?.first_name,account?.last_name].filter(Boolean).join(' ')||'Аккаунт';
+  const initials=fullName.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
+  const role={owner:'Владелец',admin:'Администратор',employee:'Сотрудник'}[org?.role];
+  return '<details class="profile-menu cabinet-profile"><summary><span class="profile-initials" aria-hidden="true">'+esc(initials)+'</span>'+
+    '<span class="profile-identity"><strong>'+esc(fullName)+'</strong>'+(role?'<small>'+role+'</small>':'')+'</span>'+
+    icon('ellipsis')+'</summary><div>'+(org?link(url('profile'),'Профиль')+link(url('security'),'Безопасность')+link(url('organization'),'Организация'):'')+
+    '<button type="button" class="text-button" data-action="logout">Выйти</button></div></details>';
 }
