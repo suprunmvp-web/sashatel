@@ -1,6 +1,6 @@
 import {chromium} from '../../brandbook/onboarding/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,readdir,writeFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import pg from '../../.integration/backend/node_modules/pg/lib/index.js';
 
@@ -125,6 +125,34 @@ try {
   await noOverflow(page);
   results.push('Real auth, verified OTP, 4-digit suggestion threshold, debounce, 2 server results, stale dropdown reset, selected organization lookup, consent, DB persisted org, responsive 1440/1024/768/390');
 
+  for(const width of widths){
+    await page.setViewportSize({width,height:900});
+    await noOverflow(page);
+  }
+  await page.setViewportSize({width:1440,height:900});
+  await page.getByRole('button',{name:'Переключить тему'}).click();
+  assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+  await page.locator('.sidebar').getByRole('link',{name:'Транки',exact:true}).click();
+  await heading(page,'Транки');
+  await page.reload();
+  await heading(page,'Транки');
+  assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+  await page.getByRole('button',{name:'Создать транк'}).click();
+  assert.equal(await page.getByRole('dialog').locator('[name=secret]').getAttribute('type'),'password');
+  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Подтвердить'}).isDisabled(),true);
+  await page.keyboard.press('Escape');
+  await page.locator('.workspace-control').click();
+  const opening = page.waitForResponse(response=>response.url().endsWith('/v1/session/organization') && response.request().method()==='POST');
+  await page.getByRole('dialog').getByRole('button',{name:'ООО «Проверка интеграции»'}).click();
+  assert.equal((await opening).status(),200);
+  await heading(page,'Статистика');
+  await page.locator('.sidebar').getByRole('link',{name:'Настройки',exact:true}).click();
+  await heading(page,'Настройки');
+  assert.equal(await page.getByRole('button',{name:'Изменить реквизиты'}).isDisabled(),true);
+  await page.getByRole('link',{name:'Пользователи',exact:true}).click();
+  assert.equal(await page.getByRole('link',{name:'Пользователи',exact:true}).getAttribute('aria-current'),'page');
+  results.push('Cabinet widths, persistent theme, deep-link trunks, safe trunk dialog, server-validated organization switch and settings tabs');
+
   // Internal permissions are derived from Backend, never a URL query or a client role.
   await page.goto(base+'/admin/');
   await heading(page,'Доступ запрещён');
@@ -145,12 +173,44 @@ try {
   await page.getByText('Верифицирована',{exact:true}).waitFor();
   await page.goto(base+'/'+orgId+'/');
   await heading(page,'Статистика');
-  assert.equal(await page.locator('.status-label').count(),0,'verified org remains marked unverified');
+  assert.equal(await page.locator('.cabinet-notice').count(),0,'verified org remains marked unverified');
   results.push('Internal admin 403 for customer, DBA-gated reviewer role, verified organization persisted, customer sees updated status');
 
-  await page.goto(base+'/recovery/');
-  await heading(page,'Восстановление пароля');
-  await viewportMatrix(page,'recovery-email');
+  const recoveryContext=await browser.newContext({viewport:{width:1440,height:900}});
+  const recovery=await recoveryContext.newPage();
+  recovery.on('pageerror',error=>failures.push(error.message));
+  await recovery.goto(base+'/recovery/');
+  await heading(recovery,'Восстановление пароля');
+  await viewportMatrix(recovery,'recovery-email');
+  const seen=new Set(await readdir('/tmp/sashatel-web-mail'));
+  await recovery.locator('[name=email]').fill(email);
+  await recovery.getByRole('button',{name:'Отправить код подтверждения'}).click();
+  await heading(recovery,'Подтвердите вашу почту');
+  let resetMessage;
+  for(let i=0;i<100&&!resetMessage;i++){
+    for(const file of await readdir('/tmp/sashatel-web-mail')){
+      if(seen.has(file))continue;
+      try{resetMessage=JSON.parse(await readFile('/tmp/sashatel-web-mail/'+file,'utf8'));}catch{}
+      if(resetMessage)break;
+    }
+    if(!resetMessage)await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  assert.match(resetMessage?.code||'',/^\d{6}$/,'recovery email sink did not receive a code');
+  await recovery.locator('#recovery-code').fill(resetMessage.code);
+  await recovery.getByRole('button',{name:'Подтвердить',exact:true}).click();
+  await heading(recovery,'Новый пароль');
+  const newPassword='integration-reset-password-456';
+  await recovery.locator('[name=password]').fill(newPassword);
+  await recovery.locator('[name=repeat]').fill(newPassword);
+  await recovery.locator('#recovery-form button[type=submit]').click();
+  await heading(recovery,'Пароль изменён');
+  await recovery.getByRole('link',{name:'Вернуться ко входу'}).click();
+  await recovery.locator('[name=email]').fill(email);
+  await recovery.locator('[name=password]').fill(newPassword);
+  await recovery.getByRole('button',{name:'Войти',exact:true}).click();
+  await heading(recovery,'Статистика');
+  results.push('Password recovery code, password reset and fresh login against real Backend and PostgreSQL');
+  await recoveryContext.close();
   await context.close();
   assert.deepEqual(failures,[]);
   await writeFile(evidence+'/results.json',JSON.stringify({
