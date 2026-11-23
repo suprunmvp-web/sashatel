@@ -177,7 +177,7 @@ try {
   }finally{await adminDb.end();}
   await page.goto(base+'/admin/');
   await heading(page,'Обзор');
-  await page.getByText('ООО «Проверка интеграции»').waitFor();
+  await page.locator('.cabinet-admin-organizations').getByText('ООО «Проверка интеграции»',{exact:true}).waitFor();
   const orgReview=page.locator('[data-review-org="'+orgId+'"][data-review-decision="verified"]');
   await orgReview.locator('xpath=../preceding-sibling::button').click();
   await orgReview.click();
