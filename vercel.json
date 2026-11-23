@@ -27,5 +27,10 @@
         }
       ]
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "review/cabinet-parity-pr51": false
+    }
+  }
 }

@@ -151,7 +151,7 @@ try {
   await page.getByRole('button',{name:'Создать транк'}).click();
   assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Закрыть'}).locator('svg').count(),1);
   assert.deepEqual(await page.getByRole('dialog').locator('input').evaluateAll(inputs=>inputs.map(input=>input.name)),['name']);
-  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Создать',exact:true}).isDisabled(),true);
+  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Создать транк',exact:true}).isDisabled(),false);
   await page.keyboard.press('Escape');
   await page.locator('.workspace-control').click();
   const opening = page.waitForResponse(response=>response.url().endsWith('/v1/session/organization') && response.request().method()==='POST');

@@ -1,5 +1,5 @@
 import {api,isPreview} from './session.js';
-import {cabinetNavigation, cabinetWorkspace, cabinetProfile, verificationNotice, showCabinetWelcome} from './cabinet-shell.js';
+import {cabinetNavigation, cabinetWorkspace, cabinetProfile, cabinetFinance, verificationNotice, showCabinetWelcome} from './cabinet-shell.js';
 import {notify} from './notifications.js';
 import {esc,icon,link,button,table,empty,missing,tabs,metrics,hydrate} from './components.js';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,6 +17,10 @@ const currentNav=()=>!admin&&page==='employees'?'organization':page;
 const title=()=>nav.find(n=>n[0]===currentNav())?.[2]||({profile:'Профиль',security:'Безопасность',organization:'Организация'}[page]||'Страница не найдена');
 function settingsNavigation(){
  return '<nav class="tabs" aria-label="Настройки организации">'+link(url('organization'),'Общие',page==='organization')+link(url('employees'),'Пользователи',page==='employees')+'</nav>';
+}
+function accountPage(section){
+ if(section==='profile')return '<dl class="summary">'+[['Имя',account.first_name],['Фамилия',account.last_name],['Email',account.email],['Телефон',account.phone]].map(([k,v])=>'<dt>'+k+'</dt><dd>'+esc(v??'Не указано')+'</dd>').join('')+'</dl><p class="hint">Телефон не подтверждён. Он не используется для входа и восстановления доступа.</p>';
+ if(section==='security')return '<h2>Сессии и пароль</h2>'+link('/recovery/','Восстановить пароль')+button('Выйти из текущей сессии','logout');
 }
 function clientPage(){
  if(page==='statistics')return '<div class="statistics-page">'+
@@ -44,19 +48,19 @@ function clientPage(){
  if(page==='integrations')return '<section class="integration-unavailable">'+'<span class="integration-lock" aria-hidden="true"><img src="/assets/lock.svg" width="34" height="34" alt=""></span>'+'<p>Данный раздел находится в разработке. Мы вам сообщим, когда он появится. Благодарим за ожидание!</p></section>';
  if(page==='billing')return metrics(['Текущий расход','Оплатить до','Счетов в списке'])+
   '<h2>Счета и документы</h2>'+table(['Номер','Период','Сумма','Статус','Документ'],[],'Список счетов пока недоступен.');
- if(page==='profile')return '<dl class="summary">'+[['Имя',account.first_name],['Фамилия',account.last_name],['Email',account.email],['Телефон',account.phone]].map(([k,v])=>'<dt>'+k+'</dt><dd>'+esc(v??'Не указано')+'</dd>').join('')+'</dl><p class="hint">Телефон не подтверждён. Он не используется для входа и восстановления доступа.</p>';
- if(page==='security')return '<h2>Сессии и пароль</h2>'+missing('управления сессиями и восстановления пароля')+button('Выйти из текущей сессии','logout');
+ if(page==='profile'||page==='security')return accountPage(page);
  if(page==='organization')return settingsNavigation()+'<section class="requisites-panel"><h2>Настройки организации</h2>'+
   '<div class="dialog-fields"><label>Название организации<input readonly value="'+esc(org.legal_name)+'"></label>'+
   '<label>ИНН<input readonly value="'+esc(org.inn)+'"></label></div>'+
-  '<p class="cabinet-muted">Изменение реквизитов пока недоступно.</p>'+button('Сохранить настройки','requisites',true)+'</section>';
+  ''+button('Сохранить настройки','requisites',true)+'</section>';
  return empty('Страница не найдена','Выберите раздел в меню.');
 }
 function adminPage(){
  if(!internalRole)return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
+ if(page==='profile'||page==='security')return accountPage(page);
  if(page==='employees')return missing('реестра внутренних сотрудников');
  if(page!=='overview')return empty('Страница не найдена','Выберите раздел в меню.');
- const filter='<div class="filters"><label>Поиск организации<input type="search" id="organization-filter" placeholder="Название или ИНН"></label></div>';
+ const filter='<label class="workspace-search admin-org-search">'+icon('search')+'<input type="search" id="organization-filter" aria-label="Поиск организации" placeholder="Название или ИНН"></label>';
  const labels={unverified:'Ожидает проверки',verified:'Верифицирована',rejected:'Отклонена'};
  const rows=internalOrganizations.map(o=>[
   '<strong>'+esc(o.legal_name||'Без названия')+'</strong>',
@@ -67,11 +71,16 @@ function adminPage(){
    ? '<button type="button" class="button secondary" data-review-org="'+esc(o.id)+'" data-review-decision="verified">Подтвердить</button> <button type="button" class="button secondary" data-review-org="'+esc(o.id)+'" data-review-decision="rejected">Отклонить</button>'
    : '—'
  ]);
- return filter+table(['Организация','ИНН','Владелец','Проверка','Действия'],rows)+
-   (rows.length?'':empty('Организаций нет','Новые организации появятся здесь после регистрации клиентов.'));
+ const analytics='<section class="cabinet-admin-analytics" aria-labelledby="admin-analytics-title"><h2 id="admin-analytics-title">Показатели платформы</h2>'+
+  '<dl class="metrics"><div><dt>Организации</dt><dd>'+new Intl.NumberFormat('ru-RU').format(internalOrganizations.length)+'</dd></div>'+
+  '<div><dt>Потрачено минут</dt><dd>—</dd></div><div><dt>Выручка фактическая</dt><dd>—</dd></div></dl>'+
+  '<h3>Тарифицируемые минуты по дням</h3><div class="cabinet-admin-chart" aria-label="Нет данных по минутам"></div></section>';
+ return analytics+'<section class="cabinet-admin-organizations"><div class="section-heading"><h2>Организации</h2>'+filter+'</div>'+
+   table(['Организация','ИНН','Владелец','Верификация','Действия'],rows,'Организаций нет')+'</section>';
 }
 function pageAction(){
- if(admin||org.role==='employee'||parts[2])return '';
+ if(admin)return internalRole==='admin'&&page==='overview'?button(icon('plus')+' Создать клиента','client'):'';
+ if(org.role==='employee'||parts[2])return '';
  if(page==='trunks')return button(icon('plus')+' Создать транк','trunk');
  if(page==='billing')return button('Пополнение по счёту','invoice');
  return '';
@@ -85,7 +94,7 @@ function render({focus=true}={}){
   :clientPage();
  document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar" id="cabinet-sidebar">'+
   '<button type="button" class="icon-button drawer-close" data-action="close-drawer" aria-label="Закрыть меню">'+icon('x')+'</button>'+
-  cabinetWorkspace({admin,org,organizations})+cabinetNavigation({admin,nav,current:currentNav(),url})+cabinetProfile({account,org,url})+'</aside>'+
+  cabinetWorkspace({admin,org,organizations})+cabinetNavigation({admin,nav,current:currentNav(),url})+(admin?'':cabinetFinance())+cabinetProfile({account,org,url,internalRole:admin?internalRole:null})+'</aside>'+
   '<button type="button" class="drawer-scrim" data-action="close-drawer" aria-label="Закрыть меню" tabindex="-1" hidden></button>'+
   '<div class="platform-body"><header class="platform-top"><div class="platform-heading">'+
   '<button type="button" class="icon-button" data-action="sidebar" aria-label="Меню кабинета" aria-controls="cabinet-sidebar" aria-expanded="'+(!collapsed&&!matchMedia('(max-width:768px)').matches)+'">'+icon('panel-left')+'</button>'+
@@ -108,7 +117,7 @@ function setDrawer(open){
  (open?document.querySelector('.drawer-close'):toggle).focus({preventScroll:true});
 }
 document.addEventListener('keydown',event=>{
- if(event.key==='Escape'&&document.body.classList.contains('drawer-open')&&!document.querySelector('dialog[open]'))setDrawer(false);
+ if(event.key==='Escape'&&document.body.classList.contains('drawer-open')&&!document.querySelector('dialog[open], :popover-open'))setDrawer(false);
 });
 matchMedia('(max-width:768px)').addEventListener('change',event=>{
  if(!document.body.classList.contains('platform'))return;
@@ -150,9 +159,8 @@ function operation(action){
  const field=(label,name,type='text')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" required></label>';
  if(action==='trunk'){
   name='Создать транк';
-  submit='Создать';
-  fields='<label class="trunk-name-field">Название<input name="name" placeholder="Введите название транка" maxlength="80" required autofocus></label>';
-  warning='Введите название нового транка. SIP-настройки находятся во вкладке «Управление».';
+  submit='Создать транк';
+  fields='<label class="trunk-name-field">Название транка<input name="name" placeholder="Например, Основной SIP" maxlength="80" autocomplete="off" required autofocus></label>';
  }
  if(action==='trunk-sip'){
   name='Настройки SIP';
@@ -161,21 +169,30 @@ function operation(action){
   warning='Используйте данные из кабинета SIP-оператора.';
  }
  if(action==='invite'||action==='internal-invite'){
-  name='Пригласить пользователя';
-  submit='Отправить приглашение';
-  fields=field('Email','email','email')+'<div class="role-field"><span id="client-role-label">Роль</span><details class="role-picker"><summary aria-labelledby="client-role-label client-role-value"><span id="client-role-value">Менеджер</span>'+icon('chevron-down')+'</summary><div class="role-options">'+
+  name='Пригласить сотрудника';
+  submit='Добавить пользователя';
+  fields='<label>Email<input name="email" type="email" required placeholder="name@company.ru" autocomplete="off"></label>'+'<div class="role-field"><span id="client-role-label">Роль</span><details class="role-picker"><summary aria-labelledby="client-role-label client-role-value"><span id="client-role-value">Менеджер</span>'+icon('chevron-down')+'</summary><div class="role-options">'+
    ['Менеджер','Администратор'].map((role,index)=>'<label><input type="radio" name="role" value="'+role+'"'+(index===0?' checked':'')+'><span>'+role+'</span></label>').join('')+'</div></details></div>';
-  warning='Пароль задаёт сам пользователь.';
  }
- if(action==='integration'){name='Создать интеграцию';fields='<label>Тип<select><option>amoCRM</option><option>Битрикс24</option><option>Webhook/API</option></select></label>';warning='Авторизация CRM и секреты требуют защищённого Backend API.';}
+ if(action==='integration'){name='Создать интеграцию';fields='<label>Тип<select><option>amoCRM</option><option>Битрикс24</option><option>Webhook/API</option></select></label>';}
  if(action==='invoice'){name='Пополнение по счёту';submit='Сформировать счёт';fields=field('Сумма, ₽','amount','number');warning='Формирование счёта не зачисляет деньги. Баланс меняется после фактического поступления.';}
- if(action==='client'){name='Создать клиента';fields=field('ИНН','inn')+'<label>Ответственный менеджер<select disabled><option>Список недоступен</option></select></label>';warning='Организация создаётся неверифицированной. Владелец клиента может отсутствовать до назначения.';}
+ if(action==='client'){
+  name='Создать клиента';submit='Создать клиента';
+  fields='<label>Название организации<input name="name" maxlength="180" placeholder="ООО «Название»" required></label>'+
+   '<label>ИНН<input name="inn" inputmode="numeric" pattern="[0-9]{10}|[0-9]{12}" placeholder="10 или 12 цифр" required></label>'+
+   '<label>Ответственный менеджер<select disabled><option>Не назначен</option></select></label>';
+ }
  if(action==='admin-actions'){name='Действия организации';fields='<label>Операция<select id="admin-operation"><option value="credit">Пополнить баланс</option><option value="debit">Списать баланс</option>'+ (internalRole==='manager'?'':'<option value="payment-date">Изменить дату оплаты</option>')+'<option value="verify">Верифицировать</option><option value="unverify">Снять верификацию</option></select></label>'+field('Положительная сумма, ₽ / день оплаты','amount','number')+field('Основание','reason');warning='Изменение влияет на доступность новых звонков или расчёты. Уже выставленные документы не пересчитываются. Снятие верификации запретит активацию транков. Текущие разговоры не прерываются.';}
  const trigger=document.activeElement;
  dialog.classList.toggle('trunk-create-dialog',action==='trunk');
  dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+esc(name)+'</h2><button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
-  '<p class="cabinet-muted">'+esc(warning)+'</p><div class="dialog-fields">'+fields+'</div>'+
-  ('<p class="cabinet-muted">'+(action==='trunk'?'Создание транка по названию пока недоступно.':action==='trunk-sip'?'Сохранение SIP-настроек пока недоступно.':'Операция пока недоступна.')+'</p><footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" disabled>'+esc(submit)+'</button></footer>')+'</form>';
+  (warning?'<p class="cabinet-muted">'+esc(warning)+'</p>':'')+'<div class="dialog-fields">'+fields+'</div>'+
+  '<footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" value="submit">'+esc(submit)+'</button></footer></form>';
+ dialog.querySelector('form').onsubmit=event=>{
+  if(event.submitter?.value!=='submit')return;
+  event.preventDefault();
+  showError('Не удалось выполнить действие. Попробуйте ещё раз.');
+ };
  hydrate(dialog);dialog.showModal();
  dialog.querySelector('[name=secret]')?.setAttribute('autocomplete','new-password');
  const rolePicker=dialog.querySelector('.role-picker');
@@ -222,6 +239,14 @@ function wireWorkspacePicker(){
  const picker=document.querySelector('#workspace-picker');
  if(!picker)return;
  const search=picker.querySelector('input');
+ picker.addEventListener('toggle',event=>{
+   if(event.newState==='open')search.focus({preventScroll:true});
+ });
+ if(!admin&&!isPreview)void api.internalSession().then(({role})=>{
+   if(!['admin','reviewer'].includes(role))return;
+   picker.querySelector('.workspace-admin').hidden=false;
+   picker.querySelector('.workspace-admin-divider').hidden=false;
+ }).catch(()=>{});
  const options=[...picker.querySelectorAll('[data-select-org]')];
  if(search)search.oninput=()=>{
    const query=search.value.trim().toLocaleLowerCase('ru');

@@ -6,9 +6,8 @@ export function cabinetWorkspace({admin,org,organizations}) {
   const contents = '<span class="workspace-symbol"><img src="/assets/sashatel-symbol-transparent.svg" width="23" height="23" alt=""></span>'+
     '<span class="workspace-text"><strong>'+esc(displayName)+'</strong><small>'+
     (admin ? 'Внутренняя платформа' : 'Организация')+'</small></span>';
-  if (admin) return '<div class="organization-head"><div class="workspace-control">'+contents+'</div></div>';
   const rows = organizations.map(item => {
-    const active = item.id === org.id;
+    const active = item.id === org?.id;
     const label = item.legal_name.replace(/^Индивидуальный предприниматель\s+/iu, 'ИП ');
     return `<button type="button" class="workspace-option" data-select-org="${esc(item.id)}" data-inn="${esc(item.inn)}"${active ? ' aria-current="true"' : ''}>
       <span class="workspace-option-symbol" aria-hidden="true">${icon('building-2')}</span>
@@ -19,9 +18,11 @@ export function cabinetWorkspace({admin,org,organizations}) {
   return `<div class="organization-head">
     <button type="button" class="workspace-control" popovertarget="workspace-picker" title="${esc(name)}" aria-label="Выбрать организацию · ${esc(name)}">${contents}${icon('chevron-down')}</button>
     <div id="workspace-picker" class="workspace-picker" popover role="group" aria-label="Выбор организации">
-      ${organizations.length > 1 ? '<label class="workspace-search">'+icon('search')+'<input type="search" aria-label="Поиск организации" placeholder="Название или ИНН"></label>' : ''}
-      ${rows || '<p>Доступных организаций нет.</p>'}
-      <p class="workspace-no-results" hidden>Ничего не найдено</p>
+      <a href="/admin/" class="workspace-option workspace-admin" hidden><span class="org-avatar admin-avatar"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path></svg></span><span class="org-label"><b>SashaTel</b><small>Админский кабинет</small></span><span><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"></path></svg></span></a>
+      <hr class="workspace-admin-divider" hidden>
+      <label class="workspace-search"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg><input aria-label="Поиск организаций" autocomplete="off" id="orgSearch" placeholder="Название или ИНН" type="search"/></label>
+      <div class="workspace-results">${rows}</div>
+      <p class="workspace-no-results"${rows ? ' hidden' : ''}>Организации не найдены</p>
     </div>
   </div>`;
 }
@@ -31,7 +32,7 @@ export function cabinetNavigation({admin,nav,current,url}) {
     ['Главное',nav.slice(0,4)], ['Финансы',nav.slice(4,5)], ['Помощь и настройки',nav.slice(5)]
   ];
   return '<nav aria-label="Основная навигация">'+groups.map(([label,items])=>
-    '<div class="cabinet-nav-group"><div class="cabinet-nav-label">'+label+'</div>'+
+    '<div class="cabinet-nav-group'+(label==='Помощь и настройки'?' cabinet-utility':'')+'"><div class="cabinet-nav-label">'+label+'</div>'+
     items.map(([id,glyph,text])=>link(url(id),icon(glyph)+'<span>'+text+'</span>',current===id)
       .replace('<a ','<a aria-label="'+text+'" title="'+text+'" ')).join('')+'</div>'
   ).join('')+'</nav>';
@@ -45,14 +46,28 @@ export function verificationNotice(status) {
     '<p>'+(rejected?'Обратитесь в поддержку, чтобы уточнить причину.':'Организация не верифицирована · телефония выключена')+'</p></section>';
 }
 
-export function cabinetProfile({account,org,url}){
+export function cabinetFinance() {
+  return `<dl class="cabinet-finance" aria-label="Финансы организации">
+    <div><dt>Текущий расход</dt><dd aria-label="Данных нет">—</dd></div>
+    <div><dt>Следующая оплата</dt><dd aria-label="Данных нет">—</dd></div>
+  </dl>`;
+}
+
+export function cabinetProfile({account,org,url,internalRole}){
   const fullName=[account?.first_name,account?.last_name].filter(Boolean).join(' ')||'Аккаунт';
   const initials=fullName.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
-  const role={owner:'Владелец',admin:'Администратор',employee:'Сотрудник'}[org?.role];
-  return '<details class="profile-menu cabinet-profile"><summary><span class="profile-initials" aria-hidden="true">'+esc(initials)+'</span>'+
-    '<span class="profile-identity"><strong>'+esc(fullName)+'</strong>'+(role?'<small>'+role+'</small>':'')+'</span>'+
-    icon('ellipsis')+'</summary><div>'+(org?link(url('profile'),'Профиль')+link(url('security'),'Безопасность')+link(url('organization'),'Организация'):'')+
-    '<button type="button" class="text-button" data-action="logout">Выйти</button></div></details>';
+  const role=internalRole ? {admin:'Администратор',reviewer:'Проверяющий'}[internalRole] : {owner:'Владелец',admin:'Администратор',employee:'Сотрудник'}[org?.role];
+  return `<div class="cabinet-profile">
+    <button type="button" class="profile-trigger" popovertarget="profile-picker" aria-label="Меню профиля">
+      <span class="profile-initials" aria-hidden="true">${esc(initials)}</span>
+      <span class="profile-identity"><strong>${esc(fullName)}</strong>${role ? '<small>'+role+'</small>' : ''}</span>
+      ${icon('ellipsis')}
+    </button>
+    <div class="profile-picker" id="profile-picker" popover role="group" aria-label="Профиль">
+      ${org || internalRole ? link(url('profile'), `<svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Мой профиль`)+link(url('security'), `<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path></svg>Безопасность`)+'<hr>' : ''}
+      <button type="button" class="text-button" data-action="logout"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M13 8l4 4-4 4m4-4H8"></path></svg>Выйти из аккаунта</button>
+    </div>
+  </div>`;
 }
 
 export function showCabinetWelcome({account, org, organizationUrl, openTrunk}) {
