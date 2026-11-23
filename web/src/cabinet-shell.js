@@ -2,8 +2,9 @@ import {esc, icon, link} from './components.js';
 
 export function cabinetWorkspace({admin,org}) {
   const name = admin ? 'SashaTel' : org.legal_name;
+  const displayName=name.replace(/^Индивидуальный предприниматель\s+/iu,'ИП ');
   const contents = '<span class="workspace-symbol"><img src="/assets/sashatel-symbol-transparent.svg" width="23" height="23" alt=""></span>'+
-    '<span class="workspace-text"><strong>'+esc(name)+'</strong><small>'+
+    '<span class="workspace-text"><strong>'+esc(displayName)+'</strong><small>'+
     (admin ? 'Внутренняя платформа' : 'Организация')+'</small></span>';
   return '<div class="organization-head">'+(admin
     ? '<div class="workspace-control">'+contents+'</div>'
