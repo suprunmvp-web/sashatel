@@ -1,0 +1,47 @@
+@font-face { font-family:Geist; src:url("./fonts/geist-400.ttf") format("truetype"); font-weight:400; font-display:swap; }
+@font-face { font-family:Geist; src:url("./fonts/geist-500.ttf") format("truetype"); font-weight:500; font-display:swap; }
+@font-face { font-family:Geist; src:url("./fonts/geist-600.ttf") format("truetype"); font-weight:600; font-display:swap; }
+
+body.platform { --font:Geist,sans-serif; --mono:var(--font); --sidebar:244px; font-family:var(--font); }
+:root[data-theme=dark] body.platform { --bg:#0d0d0e; --surface:#161618; --fg:#f3f3f5; --sub:#aaabb3; --line:#35353c; --hover:#232326; }
+:root[data-theme=light] body.platform { --bg:#fff; --surface:#f5f5f6; --fg:#18181b; --sub:#53535e; --line:#dadade; --hover:#ebebee; }
+.platform .sidebar { overflow:auto; }
+.platform .organization-head { display:block; border:0; padding:0; margin-bottom:26px; }
+.workspace-control { display:flex; align-items:center; gap:9px; width:100%; min-width:0; padding:6px 4px; text-align:start; color:var(--fg); background:none; border:0; border-radius:10px; font:inherit; }
+button.workspace-control { cursor:pointer; }
+button.workspace-control:hover { background:var(--hover); }
+.workspace-symbol { display:grid; place-items:center; width:36px; height:36px; flex:none; background:#080809; border-radius:10px; }
+.workspace-text { flex:1; min-width:0; }
+.organization-head .workspace-text strong { font-size:13px; font-weight:600; }
+.organization-head .workspace-text small { font:400 11px/1.4 var(--font); }
+.cabinet-nav-group { display:grid; gap:4px; margin-bottom:13px; }
+.cabinet-nav-label { color:var(--sub); font-size:11px; font-weight:500; padding:0 10px 3px; }
+.platform .sidebar nav a { border:0; font-weight:500; }
+.platform .sidebar nav a[aria-current] { background:var(--hover); font-weight:600; }
+.platform-heading { min-width:0; display:flex; align-items:center; gap:10px; }
+.platform-heading>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.platform-heading .icon-button { width:32px; height:32px; flex:none; border:0; }
+.platform .page-heading { margin-bottom:24px; }
+.platform h1 { font-weight:600; }
+.platform .status-label { font-family:var(--font); }
+.cabinet-notice { display:grid; grid-template-columns:18px minmax(0,1fr); align-items:center; column-gap:10px; row-gap:3px; padding:13px 15px; margin:0 0 22px; background:var(--surface); border:1px solid var(--line); border-radius:12px; font-size:13px; }
+.cabinet-notice strong { font-weight:600; }
+.cabinet-notice p { grid-column:2; color:var(--sub); margin:0; }
+.platform .table-scroll { border:1px solid var(--line); border-radius:11px; }
+.platform .table-scroll th { font-size:12px; font-weight:500; }
+.platform .table-scroll td { font-size:13px; font-variant-numeric:tabular-nums; }
+.platform .metrics dd { font-weight:600; font-variant-numeric:tabular-nums; }
+.platform .tabs { display:inline-flex; gap:4px; border:0; border-radius:10px; padding:4px; margin:0 0 18px; background:var(--surface); }
+.platform .tabs a { border:0; padding:8px 12px; border-radius:7px; }
+.platform .tabs a[aria-current] { background:var(--bg); box-shadow:0 1px 3px #0002; font-weight:500; }
+.integration-unavailable,.requisites-panel { padding:24px; border:1px solid var(--line); border-radius:12px; }
+.integration-unavailable { min-height:245px; display:grid; place-content:center; justify-items:center; gap:12px; text-align:center; }
+.integration-unavailable p { max-width:390px; margin:0; color:var(--sub); }
+.sidebar-collapsed .workspace-control { justify-content:center; }
+.sidebar-collapsed .workspace-text,.sidebar-collapsed .workspace-control>[data-icon],.sidebar-collapsed .cabinet-nav-label { display:none; }
+@media(max-width:1100px) { body.platform { --sidebar:212px; } }
+@media(max-width:768px) {
+  body.platform,.platform.sidebar-collapsed { --sidebar:68px; }
+  .platform .workspace-control { justify-content:center; }
+  .platform .workspace-text,.platform .workspace-control>[data-icon],.platform .cabinet-nav-label,.platform-heading [data-action=sidebar] { display:none; }
+}
