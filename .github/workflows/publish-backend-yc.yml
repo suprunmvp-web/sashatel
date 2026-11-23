@@ -19,8 +19,8 @@ permissions:
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/feature/web-auth-production-20261121'
     runs-on: ubuntu-latest
-    environment: staging
     concurrency:
       group: backend-registry-publish-staging
       cancel-in-progress: false
@@ -64,18 +64,18 @@ jobs:
           gzip -dc "$ARCHIVE" | docker load
           docker image inspect "sashatel-backend:ci-${TESTED_SHA}" >/dev/null
 
-      # The service account must have container-registry.images.pusher on
-      # the intended registry. Configure the staging GitHub environment first.
+      # Yandex OIDC binding is restricted to the feature/web-auth-production-20261121 branch.
+      # The existing sashatel-staging-deploy account has registry push permission.
       - name: Obtain short-lived Yandex Cloud IAM token through GitHub OIDC
         id: yc-auth
         uses: yc-actions/yc-iam-token@v1
         with:
-          yc-sa-id: ${{ secrets.YC_REGISTRY_PUSH_SA_ID }}
+          yc-sa-id: ajeja1u2timegoko4vn9
 
       - name: Push tested image and record immutable digest
         env:
           TESTED_SHA: ${{ inputs.tested_sha }}
-          REGISTRY_ID: ${{ vars.YC_REGISTRY_ID }}
+          REGISTRY_ID: crpjs1v75pobqqd0ij5t
           YC_IAM_TOKEN: ${{ steps.yc-auth.outputs.token }}
         run: |
           set -euo pipefail
