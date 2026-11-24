@@ -6,14 +6,14 @@ import {billingMarkup, invoiceFields, invoiceMethod, invoiceIcon, wireInvoiceFor
 import {renderPeriod, renderStatistics, renderCallFilters, renderCallDetails, renderPeoplePicker, wirePeoplePickers, wireCallHistory, wirePeriod} from './cabinet-reporting.js';
 import {showTrunkDialog, trunkManagementMarkup, renderTrunkInformation, renderTrunkNumbers, wireTrunkNumbers, trunkLandingMarkup, renderTrunkHeader} from './trunk-dialog.js';
 import {api,isPreview} from './session.js';
-import {cabinetNavigation, cabinetWorkspace, cabinetProfile, cabinetFinance, verificationNotice, showCabinetWelcome} from './cabinet-shell.js';
+import {cabinetNavigation, cabinetWorkspace, cabinetProfile, cabinetFinance, verificationNotice, showCabinetWelcome, internalRoleLabels} from './cabinet-shell.js';
 import {notify} from './notifications.js';
 import {esc,icon,link,button,table,empty,missing,tabs,metrics,hydrate} from './components.js';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const query=new URLSearchParams(location.search),previewSuffix=isPreview?'?preview=1'+(query.get('role')?'&role='+encodeURIComponent(query.get('role')):''):'';
 let parts=location.pathname.split('/').filter(Boolean);const admin=parts[0]==='admin';
 let account=null,org=null,organizations=[],internalOrganizations=[],internalRole=isPreview?(query.get('role')||'reviewer'):null;
-if(!['admin','reviewer'].includes(internalRole))internalRole=null;
+if(!Object.hasOwn(internalRoleLabels,internalRole))internalRole=null;
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
 const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','chart-no-axes-column','Статистика'],['trunks','list-trunks','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки'],['support','message-circle','Поддержка'],['documentation','book-open','Документация']];
 let collapsed=false, stopRecording;
@@ -54,7 +54,7 @@ const adminMenuIcon=path=>'<svg class="cabinet-icon" viewBox="0 0 24 24" aria-hi
 function organizationActions(organization){
  const id=esc(organization.id);
  const menuId='org-actions-'+id;
- const canReview=organization.verification_status==='unverified';
+ const canReview=organization.verification_status==='unverified'&&['owner','admin','reviewer'].includes(internalRole);
  const button=(action,label,path)=>'<button type="button" data-admin-org-action="'+action+'" data-org-id="'+id+'">'+adminMenuIcon(path)+label+'</button>';
  const review=(decision,label,glyph)=>'<button type="button" data-review-org="'+id+'" data-review-decision="'+decision+'">'+icon(glyph)+label+'</button>';
  const finance=internalRole==='admin'?
@@ -86,14 +86,14 @@ function staffActions(){
   '<button type="button" disabled>'+adminMenuIcon('<path d="M4 7h16M10 4h4m-8 3 1 13h10l1-13"/>')+'Отозвать доступ</button></div>';
 }
 function adminPage(){
- if(!internalRoles.some(([role])=>role===internalRole))return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
+ if(!Object.hasOwn(internalRoleLabels,internalRole))return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
  if(page==='profile'||page==='security')return renderAccountPage(page,account,url);
  if(page==='employees'){
   const fullName=[account.last_name,account.first_name].filter(Boolean).join(' ')||'—';
   const emailStatus=account.email_verified===true
    ? '<span class="admin-verification" data-verified="true">'+icon('circle-check')+'Да</span>'
    : account.email_verified===false?'<span class="admin-verification">'+adminMinus+'Нет</span>':'—';
-  const roleName=internalRoles.find(([value])=>value===internalRole)[1];
+  const roleName=internalRoleLabels[internalRole];
   const role=internalRole==='admin'?'<button class="admin-staff-role" type="button" data-action="internal-role">'+roleName+icon('chevron-down')+'</button>':roleName;
   const row=['<strong>'+esc(fullName)+'</strong>',esc(account.email||'—'),role,esc(account.phone||'—'),emailStatus,'—',internalRole==='admin'?staffActions():''];
   return '<section class="admin-staff"><div class="section-heading ux-staff-header"><span id="adminStaffCount" role="status">1 из 1</span>'+
@@ -523,6 +523,40 @@ function wireAdminOrganizationList(){
  next.onclick=()=>{current++;update();};
  update();
 }
+const httpErrorCopy = {
+ 400: ['Некорректный запрос', 'Проверьте введённые данные и повторите попытку.'],
+ 401: ['Войдите в аккаунт', 'Для этой страницы нужна активная сессия.'],
+ 402: ['Требуется оплата', 'Проверьте статус оплаты в личном кабинете.'],
+ 403: ['Доступ запрещён', 'Если вам нужен доступ, обратитесь к администратору.'],
+ 404: ['Страница не найдена', 'Проверьте адрес или откройте страницу через кабинет.'],
+ 405: ['Действие недоступно', 'Обновите страницу и попробуйте ещё раз.'],
+ 408: ['Время ожидания истекло', 'Повторите попытку.'],
+ 409: ['Данные изменились', 'Обновите страницу перед повторной попыткой.'],
+ 410: ['Страница больше недоступна', 'Откройте нужный раздел через кабинет.'],
+ 413: ['Запрос слишком большой', 'Уменьшите размер данных и повторите попытку.'],
+ 422: ['Запрос не принят', 'Проверьте введённые данные.'],
+ 429: ['Слишком много запросов', 'Подождите немного перед следующей попыткой.'],
+ 500: ['Ошибка на сервере', 'Повторите попытку позже.'],
+ 502: ['Нет ответа от сервиса', 'Повторите попытку позже.'],
+ 503: ['Сервис временно недоступен', 'Повторите попытку позже.'],
+ 504: ['Сервис не ответил вовремя', 'Повторите попытку позже.'],
+};
+function renderPlatformError(error){
+ const status=Number(error?.status);
+ const hasHttpError=Number.isInteger(status)&&status>=400&&status<=599;
+ const [heading,description]=hasHttpError
+  ? httpErrorCopy[status]??(status<500
+   ? ['Запрос не выполнен', 'Обновите страницу и попробуйте ещё раз.']
+   : ['Ошибка на сервере', 'Повторите попытку позже.'])
+  : error?.code==='NETWORK_UNKNOWN'
+   ? ['Не удалось связаться с сервисом', 'Проверьте подключение и повторите попытку.']
+   : ['Не удалось загрузить страницу', 'Обновите страницу и попробуйте ещё раз.'];
+ const main=document.querySelector('main');
+ main.removeAttribute('aria-busy');
+ document.title=heading+' — SashaTel';
+ main.innerHTML='<section class="platform-error-page" role="alert"><div class="platform-error-copy"><h1>'+esc(heading)+'</h1><p>'+esc(description)+'</p></div>'+
+  (hasHttpError?'<span class="platform-error-code" role="img" aria-label="Код ошибки '+status+'">'+status+'</span>':'')+'</section>';
+}
 async function start(){
  const legalPages={
    '/legal/terms/':'Пользовательское соглашение',
@@ -568,10 +602,9 @@ async function start(){
   }
   // Multiple organizations need an explicit choice; zero organizations go to onboarding.
   await import('./auth.js');
- }catch(e){const code=Number(e.status)||({'PERMISSION_DENIED':403,'USER_REVOKED':403,'RESOURCE_NOT_FOUND':404,'ACCESS_EXPIRED':401,'AUTH_UNAVAILABLE':503,'NETWORK_UNKNOWN':503}[e.code]||503);
- const label=({401:'Требуется авторизация',403:'Доступ запрещён',404:'Страница не найдена',429:'Слишком много запросов',500:'Внутренняя ошибка сервера',503:'Сервис временно недоступен'})[code]||'Не удалось выполнить запрос';
- const desc=({401:'Войдите в аккаунт, чтобы продолжить.',403:'У вас нет доступа к этой странице.',404:'Проверьте адрес страницы.',429:'Попробуйте повторить запрос позже.',500:'Произошла ошибка. Повторите попытку позже.',503:'Сервис временно недоступен. Повторите попытку позже.'})[code]||'Попробуйте повторить запрос позже.';
- document.querySelector('main').innerHTML='<section class="platform-error-page" role="alert"><div class="platform-error-copy"><p class="platform-error-kicker">Код ошибки: '+esc(code)+'</p><h1>'+esc(label)+'</h1><p>'+esc(desc)+'</p></div><div class="platform-error-code" aria-hidden="true">'+esc(code)+'</div></section>';}
+ }catch(error){
+  renderPlatformError(error);
+ }
 }
 addEventListener('pageshow',e=>{if(e.persisted&&!isPreview)location.reload();});
 addEventListener('visibilitychange',async()=>{if(document.hidden||isPreview||!account)return;try{await api.resume();}catch(e){document.querySelector('#page-content')?.replaceChildren();showError(e.message);}});

@@ -66,10 +66,17 @@ export function cabinetFinance() {
   </dl>`;
 }
 
+export const internalRoleLabels = {
+  owner:'Владелец системы',
+  admin:'Администратор',
+  manager:'Менеджер',
+  reviewer:'Проверяющий',
+};
+
 export function cabinetProfile({account,org,url,internalRole}){
   const fullName=[account?.first_name,account?.last_name].filter(Boolean).join(' ')||'Аккаунт';
   const initials=fullName.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
-  const role=internalRole ? {admin:'Администратор',reviewer:'Проверяющий'}[internalRole] : {owner:'Владелец',admin:'Администратор',employee:'Сотрудник'}[org?.role];
+  const role=internalRole ? internalRoleLabels[internalRole] : {owner:'Владелец',admin:'Администратор',employee:'Сотрудник'}[org?.role];
   return `<div class="cabinet-profile">
     <button type="button" class="profile-trigger" popovertarget="profile-picker" aria-label="Меню профиля">
       <span class="profile-initials" aria-hidden="true">${esc(initials)}</span>
