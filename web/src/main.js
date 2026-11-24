@@ -14,6 +14,7 @@ const query=new URLSearchParams(location.search),previewSuffix=isPreview?'?previ
 let parts=location.pathname.split('/').filter(Boolean);const admin=parts[0]==='admin';
 let account=null,org=null,organizations=[],internalOrganizations=[],internalRole=isPreview?(query.get('role')||'reviewer'):null;
 if(!Object.hasOwn(internalRoleLabels,internalRole))internalRole=null;
+let canCreateInternalOrganization=false;
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
 const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','chart-no-axes-column','Статистика'],['trunks','list-trunks','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки'],['support','message-circle','Поддержка'],['documentation','book-open','Документация']];
 let collapsed=false, stopRecording;
@@ -108,8 +109,8 @@ function adminPage(){
   renderPeoplePicker('orgManagerFilter',{label:'Все менеджеры',searchLabel:'Поиск менеджера',dialogLabel:'Фильтр по ответственному'})+'</div>';
  const rows=internalOrganizations.map(o=>[
   membershipIds.has(o.id)
-   ? '<a class="admin-org-link" data-open-org="'+esc(o.id)+'" href="/'+encodeURIComponent(o.id)+'/'+esc(previewSuffix)+'">'+esc(o.legal_name||'Без названия')+'</a>'
-   : '<strong>'+esc(o.legal_name||'Без названия')+'</strong>',
+   ? '<a class="admin-org-link" data-open-org="'+esc(o.id)+'" href="/'+encodeURIComponent(o.id)+'/'+esc(previewSuffix)+'">'+esc(o.display_name||o.legal_name||'Без названия')+'</a>'
+   : '<strong>'+esc(o.display_name||o.legal_name||'Без названия')+'</strong>',
   '<span class="mono">'+esc(o.inn||'—')+'</span>',
   '<span class="admin-verification" data-verified="'+String(o.verification_status==='verified')+'">'+(o.verification_status==='verified'?icon('circle-check'):adminMinus)+esc(labels[o.verification_status]||'—')+'</span>',
   '—',
@@ -151,7 +152,7 @@ function render({focus=true}={}){
   :clientPage();
  document.body.innerHTML='<a class="skip" href="#content">К содержанию</a><aside class="sidebar" id="cabinet-sidebar">'+
   '<button type="button" class="icon-button drawer-close" data-action="close-drawer" aria-label="Закрыть меню">'+icon('x')+'</button>'+
-  cabinetWorkspace({admin,org,organizations})+(admin&&internalRole==='admin'?'<button class="button admin-create-client" type="button" data-action="client" aria-label="Создать клиента"><svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Создать клиента</span></button>':'')+cabinetNavigation({admin,nav,current:currentNav(),url})+(admin?'':cabinetFinance())+cabinetProfile({account,org,url,internalRole:admin?internalRole:null})+'</aside>'+
+  cabinetWorkspace({admin,org,organizations})+(admin&&canCreateInternalOrganization?'<button class="button admin-create-client" type="button" data-action="client" aria-label="Создать клиента"><svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Создать клиента</span></button>':'')+cabinetNavigation({admin,nav,current:currentNav(),url})+(admin?'':cabinetFinance())+cabinetProfile({account,org,url,internalRole:admin?internalRole:null})+'</aside>'+
   '<button type="button" class="drawer-scrim" data-action="close-drawer" aria-label="Закрыть меню" tabindex="-1" hidden></button>'+
   '<div class="platform-body"><header class="platform-top"><div class="platform-heading">'+
   '<button type="button" class="icon-button" data-action="sidebar" aria-label="Меню кабинета" aria-controls="cabinet-sidebar" aria-expanded="'+(!collapsed&&!matchMedia('(max-width:768px)').matches)+'"><svg class="cabinet-icon" viewBox="0 0 24 24" aria-hidden="true"><rect height="16" rx="2" width="18" x="3" y="4"/><path d="M9 4v16"/></svg></button>'+
@@ -242,12 +243,12 @@ function operation(action,organization){
  if(action==='integration'){name='Создать интеграцию';fields='<label>Тип<select><option>amoCRM</option><option>Битрикс24</option><option>Webhook/API</option></select></label>';}
  if(action==='invoice'){name='Пополнение по счёту';submit='Сформировать счёт';fields=invoiceFields;}
  if(action==='client'){
+  if(!admin||!canCreateInternalOrganization)return;
   name='Создать клиента';submit='Создать клиента';
   fields='<div class="admin-dialog-form">'+
-   '<label>Название организации<input id="uxOrgName" name="name" maxlength="180" placeholder="ООО «Название»" required></label>'+
-   '<label>ИНН<input id="uxOrgInn" name="inn" inputmode="numeric" pattern="[0-9]{10}|[0-9]{12}" placeholder="10 или 12 цифр" required></label>'+
-   '<div class="admin-manager-field"><span id="uxOrgManagerLabel">Ответственный менеджер</span>'+
-   renderPeoplePicker('uxOrgManagerButton',{label:'Не назначен',searchLabel:'Поиск менеджера',dialogLabel:'Ответственный менеджер'})+'</div></div>';
+   '<label>ИНН<input name="inn" inputmode="numeric" pattern="[0-9]{10}|[0-9]{12}" maxlength="12" placeholder="10 или 12 цифр" required autofocus></label>'+
+   '<label>Название в кабинете<input name="display_name" maxlength="180" placeholder="ООО «Название»" required></label>'+
+   '<p class="cabinet-muted">Юридические реквизиты заполним по ИНН.</p><p class="error" role="alert" hidden></p></div>';
  }
  if(action==='credit'||action==='debit'){
   name=action==='credit'?'Пополнить баланс':'Списать с баланса';
@@ -280,10 +281,10 @@ function operation(action,organization){
   wirePeriod(form,true);
   form.addEventListener('periodchange',event=>{save.disabled=!event.detail.length;});
  }
- if(action==='client')wirePeoplePickers(form);
- form.onsubmit=event=>{
+ form.onsubmit=async event=>{
   if(event.submitter?.value!=='submit')return;
   event.preventDefault();
+  if(action==='client'){await submitInternalOrganization(dialog,form,event.submitter);return;}
   if(validInvoice&&!validInvoice())return;
   showError(action==='invoice'?'Не удалось сформировать счёт. Попробуйте ещё раз.':'Не удалось выполнить действие. Попробуйте ещё раз.');
  };
@@ -292,6 +293,35 @@ function operation(action,organization){
  if(action==='invite')wireClientInvite(form);
 
  dialog.onclose=()=>{if(dialog.open)return;dialog.querySelectorAll('input').forEach(el=>{el.value='';});dialog.replaceChildren();if(document.activeElement===document.body)trigger?.focus({preventScroll:true});};
+}
+async function submitInternalOrganization(dialog,form,submit){
+ const error=form.querySelector('[role=alert]');
+ const data=new FormData(form);
+ const inn=String(data.get('inn')).trim(),display_name=String(data.get('display_name')).trim();
+ error.hidden=true;
+ const controls=Array.from(form.elements).filter(control=>!control.disabled);
+ controls.forEach(control=>{control.disabled=true;});
+ dialog.oncancel=event=>event.preventDefault();
+ form.setAttribute('aria-busy','true');
+ submit.textContent='Создаём…';
+ let created;
+ try{
+  created=(await api.createInternalOrganization({inn,display_name})).organization;
+ }catch(e){
+  error.textContent=e.message||'Не удалось создать организацию.';
+  error.hidden=false;
+  return;
+ }finally{
+  controls.forEach(control=>{control.disabled=false;});
+  dialog.oncancel=null;
+  form.removeAttribute('aria-busy');
+  submit.textContent='Создать клиента';
+ }
+ internalOrganizations=[created,...internalOrganizations.filter(item=>item.id!==created.id)];
+ dialog.close();
+ if(location.pathname!=='/admin/')history.pushState(null,'','/admin/');
+ navigate(location.pathname);
+ notify('Клиент создан','success');
 }
 function reviewOrganizationDialog(id,decision,trigger){
  const organization=internalOrganizations.find(o=>o.id===id);
@@ -576,6 +606,7 @@ async function start(){
     if(!isPreview){
       const internal=await api.internalSession();
       internalRole=internal.role;
+      canCreateInternalOrganization=internal.capabilities?.includes('organizations:create')===true;
       internalOrganizations=await api.internalOrganizations();
     }
     render();return;

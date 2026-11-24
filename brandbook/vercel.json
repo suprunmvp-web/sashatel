@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "review/cabinet-parity-pr51": false,
-      "ui/sashatel-approved-cabinet": false
+      "ui/sashatel-approved-cabinet": false,
+      "review/internal-client-creation-web": false
     }
   }
 }

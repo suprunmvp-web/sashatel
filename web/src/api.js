@@ -3,7 +3,7 @@
 export class ApiError extends Error{
  constructor(code,message,retryAfter=0,status=0,requestId=null){super(message);Object.assign(this,{code,status,retryAfter,requestId});}
 }
-const messages={INVALID_PROFILE:'Проверьте имя и фамилию.',INVALID_PHONE:'Проверьте номер телефона и код страны.',INVALID_EMAIL:'Проверьте email.',INVALID_PASSWORD:'Пароль: от 8 до 128 символов.',INVALID_CREDENTIALS:'Проверьте email и пароль.',CODE_INVALID_OR_EXPIRED:'Код неверный или истёк. Запросите новый код.',RESET_INVALID_OR_EXPIRED:'Время восстановления истекло. Запросите новый код.',RATE_LIMITED:'Лимит запросов. Повторите позже.',RESOURCE_NOT_FOUND:'Данные не найдены или недоступны.',AUTH_UNAVAILABLE:'Сервис временно недоступен. Повторите позже.',EMAIL_DELIVERY_UNAVAILABLE:'Сервис отправки писем недоступен. Предыдущий код сохраняется.',ORGANIZATION_LOOKUP_UNAVAILABLE:'Сервис реквизитов временно недоступен.',INN_INVALID:'Проверьте ИНН.',LOOKUP_EXPIRED:'Реквизиты устарели. Повторите поиск.',ORGANIZATION_ALREADY_EXISTS:'Организация с этим ИНН уже существует.',SESSION_REVOKED:'Сессия завершена. Войдите снова.',REFRESH_REUSED:'Сессия завершена. Войдите снова.',REFRESH_EXPIRED:'Сессия истекла. Войдите снова.',ORGANIZATION_CONTEXT_CHANGED:'Активная организация изменилась в другой вкладке. Выберите организацию ещё раз.',ORGANIZATION_SUSPENDED:'Организация заблокирована.',INTERNAL_ACCESS_DENIED:'У вас нет доступа к админскому кабинету.',ALREADY_REVIEWED:'Заявку уже рассмотрели.',VERIFIED_ORGANIZATION_EXISTS:'Организация с этим ИНН уже верифицирована.',INVALID_REVIEW:'Проверьте основание и комментарий к решению.',PERMISSION_DENIED:'Недостаточно прав.',USER_REVOKED:'Доступ отозван.',EMAIL_UNVERIFIED:'Подтвердите email.',ALREADY_AUTHENTICATED:'Аккаунт уже авторизован. Обновите страницу.'};
+const messages={INVALID_DISPLAY_NAME:'Введите название организации от 1 до 180 символов.',IDEMPOTENCY_CONFLICT:'Данные запроса изменились. Проверьте форму и повторите попытку.',INVALID_PROFILE:'Проверьте имя и фамилию.',INVALID_PHONE:'Проверьте номер телефона и код страны.',INVALID_EMAIL:'Проверьте email.',INVALID_PASSWORD:'Пароль: от 8 до 128 символов.',INVALID_CREDENTIALS:'Проверьте email и пароль.',CODE_INVALID_OR_EXPIRED:'Код неверный или истёк. Запросите новый код.',RESET_INVALID_OR_EXPIRED:'Время восстановления истекло. Запросите новый код.',RATE_LIMITED:'Лимит запросов. Повторите позже.',RESOURCE_NOT_FOUND:'Данные не найдены или недоступны.',AUTH_UNAVAILABLE:'Сервис временно недоступен. Повторите позже.',EMAIL_DELIVERY_UNAVAILABLE:'Сервис отправки писем недоступен. Предыдущий код сохраняется.',ORGANIZATION_LOOKUP_UNAVAILABLE:'Сервис реквизитов временно недоступен.',INN_INVALID:'Проверьте ИНН.',LOOKUP_EXPIRED:'Реквизиты устарели. Повторите поиск.',ORGANIZATION_ALREADY_EXISTS:'Организация с этим ИНН уже существует.',SESSION_REVOKED:'Сессия завершена. Войдите снова.',REFRESH_REUSED:'Сессия завершена. Войдите снова.',REFRESH_EXPIRED:'Сессия истекла. Войдите снова.',ORGANIZATION_CONTEXT_CHANGED:'Активная организация изменилась в другой вкладке. Выберите организацию ещё раз.',ORGANIZATION_SUSPENDED:'Организация заблокирована.',INTERNAL_ACCESS_DENIED:'У вас нет доступа к админскому кабинету.',ALREADY_REVIEWED:'Заявку уже рассмотрели.',VERIFIED_ORGANIZATION_EXISTS:'Организация с этим ИНН уже верифицирована.',INVALID_REVIEW:'Проверьте основание и комментарий к решению.',PERMISSION_DENIED:'Недостаточно прав.',USER_REVOKED:'Доступ отозван.',EMAIL_UNVERIFIED:'Подтвердите email.',ALREADY_AUTHENTICATED:'Аккаунт уже авторизован. Обновите страницу.'};
 export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage=globalThis.sessionStorage}={}){
  let csrf=null,csrfPromise=null,refreshPromise=null,context=null,account=null,generation=0;
  const device=(()=>{try{let id=localStorage.getItem('sashatel.web.device');if(!id){id=crypto.randomUUID();localStorage.setItem('sashatel.web.device',id);}return id;}catch{return crypto.randomUUID();}})();
@@ -38,7 +38,7 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
    challenge:c?{id:c.challenge_id,expiresAt:Date.parse(c.expires_at),resendAt:Date.parse(c.resend_at),...c}:null,
    pendingCreate:pending()?.account_id===data.account?.id?pending():null};
  }
- let registerReceipt=null,resendReceipt=null;
+ let registerReceipt=null,resendReceipt=null,internalOrganizationReceipt=null;
  async function stableKey(payload,old){const bytes=new TextEncoder().encode(JSON.stringify(payload));const sum=await crypto.subtle.digest('SHA-256',bytes);const signature=Array.from(new Uint8Array(sum)).join(',');return old?.signature===signature?old:{signature,key:crypto.randomUUID()};}
  return {
   async resume(){return view(await bootstrap());},
@@ -70,6 +70,22 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
   },
   async logout(){generation++;await request('/auth/logout',{body:{}});invalidate();},
   async internalSession(){return request('/internal/session');},
+  async createInternalOrganization({inn,display_name}){
+   const storageKey='sashatel.web.pending-internal-organization';
+   let saved=internalOrganizationReceipt;
+   try{saved=JSON.parse(storage.getItem(storageKey))??saved;}catch{}
+   const receipt=await stableKey({account_id:account?.id,inn,display_name},saved);
+   internalOrganizationReceipt=receipt;
+   try{storage.setItem(storageKey,JSON.stringify(receipt));}catch{}
+   const lookup=await request('/organizations/lookup',{body:{inn}});
+   const result=await request('/internal/organizations',{body:{lookup_id:lookup.lookup_id,inn,display_name},key:receipt.key});
+   if(typeof result?.organization?.id!=='string')throw new ApiError('INVALID_RESPONSE','Не удалось подтвердить создание клиента. Повторите попытку.');
+   if(internalOrganizationReceipt?.key===receipt.key)internalOrganizationReceipt=null;
+   try{
+    if(JSON.parse(storage.getItem(storageKey))?.key===receipt.key)storage.removeItem(storageKey);
+   }catch{}
+   return result;
+  },
   async internalOrganizations(){return (await request('/internal/organizations')).items;},
   async reviewOrganization(organization_id,decision,evidence_reference,explanation){
     return request('/internal/organizations/review',{body:{organization_id,decision,evidence_reference,explanation}});

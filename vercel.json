@@ -30,7 +30,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "review/cabinet-parity-pr51": false
+      "review/cabinet-parity-pr51": false,
+      "review/internal-client-creation-web": false
     }
   }
 }
