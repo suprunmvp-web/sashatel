@@ -1,0 +1,118 @@
+name: Publish tested Backend image to Yandex Container Registry
+
+# One-time release of the verified PR #54 artifact on the already trusted ref.
+on:
+  push:
+    branches:
+      - feature/web-auth-production-20261121
+    paths:
+      - '.github/workflows/publish-backend-yc.yml'
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+jobs:
+  publish:
+    if: github.repository == 'suprunmvp-web/sashatel' && github.ref == 'refs/heads/feature/web-auth-production-20261121'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sashatel-staging-image
+      cancel-in-progress: false
+    env:
+      RUN_ID: '45271754330'
+      ARTIFACT_ID: '14863869338'
+      TESTED_SHA: 777599d94eb27a09b3c1a6050a83d921290210b8
+      SOURCE_HEAD: 588f15b7418d4d5e0e2e8180d0700f3ea42c6af5
+      APPROVED_MERGE: 76196bce86a7eb6e132d9ac8455d52c3d7e709b0
+      ZIP_SHA256: f4bd7e9b2637450a9dff9d3e3a790e52a3c62adb214656426ec604bb4090303b
+      YC_SERVICE_ACCOUNT_ID: ajeja1u2timegoko4vn9
+      OIDC_AUDIENCE: https://github.com/suprunmvp-web
+      IMAGE: cr.yandex/crpjs1v75pobqqd0ij5t/sashatel-backend
+    steps:
+      - name: Validate provenance and verify the downloaded archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          repo="repos/$GITHUB_REPOSITORY"
+          gh api "$repo/actions/runs/$RUN_ID" | jq -e '
+            .name == "Backend Control Plane" and
+            .path == ".github/workflows/backend-control-plane.yml" and
+            .conclusion == "success" and .event == "pull_request" and
+            .head_sha == env.SOURCE_HEAD and
+            .repository.full_name == env.GITHUB_REPOSITORY and
+            .head_repository.full_name == env.GITHUB_REPOSITORY
+          '
+          gh api "$repo/commits/$TESTED_SHA" > tested-commit.json
+          gh api "$repo/commits/$APPROVED_MERGE" > approved-commit.json
+          jq -e --slurpfile approved approved-commit.json '
+            .sha == env.TESTED_SHA and (.parents | length) == 2 and
+            .parents[1].sha == env.SOURCE_HEAD and
+            $approved[0].sha == env.APPROVED_MERGE and
+            .commit.tree.sha == $approved[0].commit.tree.sha
+          ' tested-commit.json
+          gh api "$repo/actions/artifacts/$ARTIFACT_ID" | jq -e '
+            .id == (env.ARTIFACT_ID | tonumber) and
+            .workflow_run.id == (env.RUN_ID | tonumber) and
+            .workflow_run.head_sha == env.SOURCE_HEAD and
+            .expired == false and
+            .name == ("sashatel-backend-" + env.TESTED_SHA) and
+            .digest == ("sha256:" + env.ZIP_SHA256)
+          '
+          gh api "$repo/actions/artifacts/$ARTIFACT_ID/zip" > backend.zip
+          printf '%s  backend.zip\n' "$ZIP_SHA256" | sha256sum --check -
+          archive="sashatel-backend-$TESTED_SHA.tar.gz"
+          unzip -p backend.zip "$archive" > "$archive"
+          checksum="$(unzip -p backend.zip "$archive.sha256" | cut -d ' ' -f 1)"
+          [[ "$checksum" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  %s\n' "$checksum" "$archive" | sha256sum --check -
+          docker load --input "$archive"
+          docker image inspect "sashatel-backend:ci-$TESTED_SHA" >/dev/null
+
+      - name: Exchange GitHub OIDC for short-lived Yandex IAM token
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/yc-exchange.json"' EXIT
+          response="$(curl --fail --silent --show-error --get \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --data-urlencode "audience=$OIDC_AUDIENCE" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL")"
+          github_jwt="$(jq -er '.value' <<< "$response")"
+          unset response
+          status="$(curl --silent --show-error \
+            --output "$RUNNER_TEMP/yc-exchange.json" --write-out '%{http_code}' \
+            -X POST 'https://auth.yandex.cloud/oauth/token' \
+            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+            --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' \
+            --data-urlencode "audience=$YC_SERVICE_ACCOUNT_ID" \
+            --data-urlencode "subject_token=$github_jwt" \
+            --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          unset github_jwt
+          if [[ "$status" != 200 ]]; then
+            echo "Yandex OIDC exchange failed: HTTP $status"
+            exit 1
+          fi
+          iam_token="$(jq -er '.access_token' "$RUNNER_TEMP/yc-exchange.json")"
+          rm -f "$RUNNER_TEMP/yc-exchange.json"
+          echo "::add-mask::$iam_token"
+          export DOCKER_CONFIG="$RUNNER_TEMP/backend-publisher-docker"
+          mkdir -p "$DOCKER_CONFIG"
+          echo "DOCKER_CONFIG=$DOCKER_CONFIG" >> "$GITHUB_ENV"
+          printf '%s' "$iam_token" | docker login --username iam --password-stdin cr.yandex
+          unset iam_token
+      - name: Publish the verified image and record its registry digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'docker logout cr.yandex >/dev/null' EXIT
+          docker tag "sashatel-backend:ci-$TESTED_SHA" "$IMAGE:$TESTED_SHA"
+          docker push "$IMAGE:$TESTED_SHA"
+          digest="$(docker image inspect "$IMAGE:$TESTED_SHA" --format '{{range .RepoDigests}}{{println .}}{{end}}' | grep -F "$IMAGE@sha256:")"
+          [[ "${digest#"$IMAGE@"}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'Immutable image: %s\n' "$digest" | tee -a "$GITHUB_STEP_SUMMARY"

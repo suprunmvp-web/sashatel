@@ -2,53 +2,84 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
-import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {randomBytes,randomUUID,randomInt} from 'node:crypto';
+import {randomBytes,randomInt} from 'node:crypto';
 import {setTimeout as pause} from 'node:timers/promises';
 
-test('S1 server entrypoint starts with secret files and delivers only to the test sink',async()=>{
+test('server boots with file-backed Resend configuration and exposes health and CSRF',async()=>{
   assert(process.env.DATABASE_URL);
   const directory=await mkdtemp(join(tmpdir(),'sashatel-server-'));
-  const urlFile=join(directory,'database'),keyFile=join(directory,'key'),sink=join(directory,'sink');
+  const urlFile=join(directory,'database');
+  const keyFile=join(directory,'key');
+  const emailKeyFile=join(directory,'resend-key');
   await writeFile(urlFile,process.env.DATABASE_URL,{mode:0o600});
   await writeFile(keyFile,randomBytes(32).toString('hex'),{mode:0o600});
-  const port=randomInt(20000,40000),base='http://127.0.0.1:'+port;
+  // A synthetic key only. This test must NOT send any external email.
+  await writeFile(emailKeyFile,'test-only-not-a-real-api-key',{mode:0o600});
+
+  const port=randomInt(20000,40000);
+  const base='http://127.0.0.1:'+port;
   const child=spawn(process.execPath,['server.ts'],{
     cwd:new URL('.',import.meta.url),
-    env:{...process.env,DATABASE_URL_FILE:urlFile,AUTH_KEY_FILE:keyFile,WEB_ORIGIN:'https://platform.example.test',
-      EMAIL_SINK_DIRECTORY:sink,EMAIL_MODE:'sink',LIVE_CALL_DISPATCH:'disabled',PORT:String(port)},
+    env:{
+      ...process.env,
+      DATABASE_URL_FILE:urlFile,
+      AUTH_KEY_FILE:keyFile,
+      RESEND_API_KEY_FILE:emailKeyFile,
+      EMAIL_FROM:'SashaTel <auth@example.test>',
+      EMAIL_MODE:'resend',
+      WEB_ORIGIN:'https://platform.example.test',
+      LIVE_CALL_DISPATCH:'disabled',
+      PORT:String(port),
+    },
     stdio:['ignore','ignore','pipe'],
   });
+
   let failure='';
   child.stderr.on('data',chunk=>{failure+=chunk.toString();});
   try {
     let ready=false;
     for(let i=0;i<100&&!ready;i++) {
-      if(child.exitCode!==null) throw new Error('Server exited during startup');
+      if(child.exitCode!==null) throw new Error('Server exited during startup: '+failure);
       try {ready=(await fetch(base+'/ready')).status===200;} catch {}
       if(!ready) await pause(50);
     }
-    assert(ready,'S1 readiness did not pass');
+    assert(ready,'Server readiness did not pass: '+failure);
     assert.equal((await fetch(base+'/live')).status,200);
+
     const csrfResponse=await fetch(base+'/v1/auth/csrf');
-    const cookie=csrfResponse.headers.getSetCookie()[0].split(';')[0],{csrf_token}=await csrfResponse.json();
-    const response=await fetch(base+'/v1/auth/register',{method:'POST',
-      headers:{cookie,origin:'https://platform.example.test','x-csrf-token':csrf_token,'content-type':'application/json','idempotency-key':randomUUID()},
-      body:JSON.stringify({first_name:'Server',last_name:'Test',email:randomUUID()+'@example.test',phone:'+79261234567',password:'server-test-password'})});
-    assert.equal(response.status,202);
-    const {challenge_id}=await response.json();
-    let delivered=false;
-    for(let i=0;i<100&&!delivered;i++) {
-      try {const message=JSON.parse(await readFile(join(sink,challenge_id+'.json'),'utf8'));delivered=/^[0-9]{6}$/.test(message.code);} catch {}
-      if(!delivered) await pause(50);
-    }
-    assert(delivered);
+    assert.equal(csrfResponse.status,200);
+    assert(csrfResponse.headers.getSetCookie().some(value=>value.includes('HttpOnly')));
+    const {csrf_token}=await csrfResponse.json();
+    assert.equal(typeof csrf_token,'string');
     assert.equal(failure,'');
   } finally {
     child.kill('SIGTERM');
     if(child.exitCode===null) await once(child,'exit');
+    await rm(directory,{recursive:true,force:true});
+  }
+});
+
+test('database pool absorbs idle-client errors and redacts internal error details',async()=>{
+  const {databasePool}=await import('./db.ts');
+  const directory=await mkdtemp(join(tmpdir(),'sashatel-pool-'));
+  const file=join(directory,'url');
+  await writeFile(file,process.env.DATABASE_URL!,{mode:0o600});
+  const pool=await databasePool(file);
+  const output:string[]=[];
+  const old=console.error;
+  try {
+    console.error=(...args:unknown[])=>{output.push(args.map(String).join(' '));};
+    assert.equal(pool.emit('error',Object.assign(new Error('connection URL: secret'),{code:'57P01'})),true);
+    assert.equal((await pool.query('SELECT 1 AS ok')).rows[0].ok,1);
+    assert.equal(output.length,1);
+    assert.match(output[0],/postgres_idle_client_error/);
+    assert(!output[0].includes('secret'));
+  } finally {
+    console.error=old;
+    await pool.end();
     await rm(directory,{recursive:true,force:true});
   }
 });

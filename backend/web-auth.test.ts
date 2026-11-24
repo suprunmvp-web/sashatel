@@ -37,8 +37,12 @@ test('Web onboarding with real PostgreSQL',async t=>{
   await t.test('validation, durable sink error/retry and per-challenge attempts survive failures',async()=>{
     const ctx=await actor(),email=randomUUID()+'@example.test';
     await assert.rejects(auth.register(ctx,{...profile,email,phone:'+123'},randomUUID()),code('INVALID_PHONE'));
+    await assert.rejects(auth.register(ctx,{...profile,email,password:'short7!'},randomUUID()),code('INVALID_PASSWORD'));
+    // Exercise the minimum using the existing challenge, without adding another queued job.
+    const shortProfile={...profile,email,password:'eight123'};
     const key=randomUUID();
-    const [a,b]=await Promise.all([auth.register(ctx,{...profile,email},key),auth.register(ctx,{...profile,email},key)]);
+    const [a,b]=await Promise.all([auth.register(ctx,shortProfile,key),auth.register(ctx,shortProfile,key)]);
+    assert.equal(a.status,202);
     assert.deepEqual(a.body,b.body);
     const id=(a.body as any).challenge_id;
     failMail=true;await auth.deliverOne();failMail=false;
@@ -50,6 +54,20 @@ test('Web onboarding with real PostgreSQL',async t=>{
     for(let i=0;i<5;i++) await assert.rejects(auth.verify(ctx,{challenge_id:id,code:'invalid'.slice(0,6).replace(/./g,'9')}),code('CODE_INVALID_OR_EXPIRED'));
     await assert.rejects(auth.verify(ctx,{challenge_id:id,code:messages.get(id)!.code}),code('CODE_INVALID_OR_EXPIRED'));
     assert.equal((await admin.query('SELECT attempts FROM web_auth.challenges WHERE id=$1',[id])).rows[0].attempts,5);
+  });
+  await t.test('expired access cookie triggers refresh rather than anonymous onboarding',async()=>{
+    const {ctx}=await registered();
+    const refreshCookie=ctx.refresh;
+    ctx.access=undefined; // Browser removes five-minute access cookie, keeps seven-day refresh.
+    await assert.rejects(auth.bootstrap(ctx),code('ACCESS_EXPIRED'));
+    const renewed=await auth.refresh(ctx);
+    assert.equal(renewed.status,200);
+    assert.equal((renewed.body as any).account.email_verified,true);
+    ctx.access=renewed.cookies!.access;
+    ctx.refresh=renewed.cookies!.refresh;
+    const resumed=await auth.bootstrap(ctx);
+    assert.ok((resumed.body as any).account);
+    assert.notEqual(ctx.refresh,refreshCookie);
   });
   await t.test('one verify wins, lost response restores same family and logout fences receipt',async()=>{
     const ctx=await actor(),email=randomUUID()+'@example.test';
@@ -168,16 +186,31 @@ test('Web onboarding with real PostgreSQL',async t=>{
       const headers={cookie:signedCookie,origin:'https://platform.example.test','x-csrf-token':csrf_token,'content-type':'application/json'};
       const looked=await fetch(base+'/v1/organizations/lookup',{method:'POST',headers,body:JSON.stringify({inn:'7707083893'})});
       assert.equal(looked.status,200);
-      // This INN belongs to an earlier test. The HTTP route must preserve the stable conflict.
+      // Same INN is allowed while the prior organization remains unverified.
       const lookupReceipt=await looked.json();
       const created=await fetch(base+'/v1/organizations',{method:'POST',headers:{...headers,'idempotency-key':randomUUID()},body:JSON.stringify({lookup_id:lookupReceipt.lookup_id,confirm:true})});
-      assert.equal(created.status,409);
-      assert.equal((await created.json()).code,'ORGANIZATION_ALREADY_EXISTS');
+      assert.equal(created.status,201);
+      assert.equal((await created.json()).organization.verification_status,'unverified');
       const logout=await fetch(base+'/v1/auth/logout',{method:'POST',headers,body:'{}'});
       assert.equal(logout.status,204);
       const login=await fetch(base+'/v1/auth/login',{method:'POST',headers:{...headers,cookie},body:JSON.stringify({email:input.email,password:input.password,device_id:randomUUID()})});
       assert.equal(login.status,200);
       assert.equal((await login.json()).account.phone,'+79261234567');
+      // 21 unrelated clients share the same reverse-proxy TCP address.
+      // None may inherit an unrelated visitor's rate limit.
+      for(let i=0;i<21;i++){
+        const fresh=await fetch(base+'/v1/auth/csrf');
+        const challenge=await fresh.json();
+        const visitor=fresh.headers.getSetCookie()[0].split(';')[0];
+        const attempted=await fetch(base+'/v1/auth/login',{
+          method:'POST',
+          headers:{cookie:visitor,origin:'https://platform.example.test',
+            'x-csrf-token':challenge.csrf_token,'content-type':'application/json'},
+          body:JSON.stringify({email:randomUUID()+'@example.test',
+            password:'invalid-test-password',device_id:randomUUID()})
+        });
+        assert.equal(attempted.status,401,'shared proxy IP must not block other visitors');
+      }
     } finally {await new Promise<void>(resolve=>api.close(()=>resolve()));}
   });
 });

@@ -11,10 +11,21 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const token = () => randomBytes(32).toString('hex');
 const deadline = (seconds: number) => new Date(Date.now()+seconds*1000);
 export interface MailPort {
-  send(message: {id:string;email:string;code:string|null}): Promise<void>;
+  send(message: {id:string;email:string;code:string|null;purpose?:'verify'|'password_reset'}): Promise<void>;
+}
+// Provider failures that must not be retried (invalid sender, forbidden API key, etc.).
+// Network timeouts and unknown outcomes remain retryable.
+export class MailDeliveryError extends Error {
+  readonly retryable:boolean;
+  constructor(retryable:boolean) {
+    super(retryable?'MAIL_TRANSIENT_FAILURE':'MAIL_PERMANENT_FAILURE');
+    this.name='MailDeliveryError';
+    this.retryable=retryable;
+  }
 }
 export interface LookupPort {
   lookup(inn:string): Promise<{legal_name:string;legal_address:string}|null>;
+  suggest?(query:string): Promise<Array<{inn:string;legal_name:string;legal_address:string}>>;
 }
 export type WebResult = {status:number;body?:unknown;cookies?:Record<string,string>;replayed?:boolean};
 type Context = {browser:string;access?:string;refresh?:string;requestId:string};
@@ -43,7 +54,7 @@ function profile(input:Record<string,unknown>) {
     return result;
   };
   if(typeof input.email!=='string'||input.email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) throw new ApiError(422,'INVALID_EMAIL');
-  if(typeof input.password!=='string'||[...input.password].length<12||[...input.password].length>128||Buffer.byteLength(input.password)>512) throw new ApiError(422,'INVALID_PASSWORD');
+  if(typeof input.password!=='string'||[...input.password].length<8||[...input.password].length>128||Buffer.byteLength(input.password)>512) throw new ApiError(422,'INVALID_PASSWORD');
   if(typeof input.phone!=='string'||!/^\+[0-9 ()-]+$/.test(input.phone)||input.phone.length>40) throw new ApiError(422,'INVALID_PHONE');
   const phone=parsePhoneNumberFromString(input.phone.replace(/[ ()-]/g,''));
   if(!phone?.isValid()) throw new ApiError(422,'INVALID_PHONE');
@@ -93,11 +104,16 @@ export class WebAuth {
     await this.pool.query('INSERT INTO web_auth.browsers(hash,expires_at) VALUES($1,$2)',[hash(value),deadline(86400)]);
     return value;
   }
-  async tx<T>(ctx:Context,fn:(db:PoolClient)=>Promise<T>) {
+  async tx<T>(ctx:Context,fn:(db:PoolClient)=>Promise<T>,readOnly=false) {
     const db=await this.pool.connect();
     try {
       await db.query('BEGIN');
-      const locked=await db.query('SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp() FOR UPDATE',[hash(ctx.browser)]);
+      // Read-only views must not serialize behind one shared browser row.
+      // Mutations retain the exclusive lock to protect challenges and refresh.
+      const statement=readOnly
+        ? 'SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp()'
+        : 'SELECT hash FROM web_auth.browsers WHERE hash=$1 AND expires_at>clock_timestamp() FOR UPDATE';
+      const locked=await db.query(statement,[hash(ctx.browser)]);
       if(!locked.rowCount) throw new ApiError(401,'SESSION_REVOKED');
       const value=await fn(db);await db.query('COMMIT');return value;
     } catch(error) {
@@ -128,13 +144,13 @@ export class WebAuth {
     await db.query('INSERT INTO web_auth.audit(actor_user_id,organization_id,action,target_id,request_id,changes) VALUES($1,$2,$3,$4,$5,$6)',
       [user,org,action,target,ctx.requestId,changes]);
   }
-  async identity(db:PoolClient,ctx:Context) {
+  async identity(db:PoolClient,ctx:Context,readOnly=false) {
     if(!ctx.access) throw new ApiError(401,'SESSION_REVOKED');
     const {rows:[family]}=await db.query(`SELECT *,access_expires>clock_timestamp() AS fresh FROM web_auth.families
-      WHERE access_hash=$1 AND browser_hash=$2 FOR UPDATE`,[hash(ctx.access),hash(ctx.browser)]);
+      WHERE access_hash=$1 AND browser_hash=$2 ${readOnly?'':'FOR UPDATE'}`,[hash(ctx.access),hash(ctx.browser)]);
     if(!family||family.revoked_at) throw new ApiError(401,'SESSION_REVOKED');
     if(!family.fresh) throw new ApiError(401,'ACCESS_EXPIRED');
-    const {rows:[user]}=await db.query('SELECT * FROM control.users WHERE id=$1 FOR UPDATE',[family.user_id]);
+    const {rows:[user]}=await db.query('SELECT * FROM control.users WHERE id=$1 '+(readOnly?'':'FOR UPDATE'),[family.user_id]);
     if(!user?.active) throw new ApiError(403,'USER_REVOKED');
     if(!user.email_verified_at) throw new ApiError(403,'EMAIL_UNVERIFIED');
     return {family,user};
@@ -259,6 +275,10 @@ export class WebAuth {
   async bootstrap(ctx:Context) {
     return this.tx(ctx,async db=>{
       const {rows:[browser]}=await db.query('SELECT *,completion_expires>clock_timestamp() AS valid FROM web_auth.browsers WHERE hash=$1',[hash(ctx.browser)]);
+      // Browsers remove the short-lived access cookie after five minutes.
+      // A remaining refresh cookie means this is an expiring session, not an anonymous visitor.
+      // Signal the client to rotate credentials rather than showing onboarding again.
+      if(!ctx.access&&ctx.refresh) throw new ApiError(401,'ACCESS_EXPIRED');
       if(ctx.access) {
         const {family,user}=await this.identity(db,ctx);
         await this.closeCompletion(db,ctx);
@@ -267,6 +287,151 @@ export class WebAuth {
       const challenge=browser.challenge_id?await this.challengeStatus(db,ctx,browser.challenge_id):null;
       return {status:200,body:{account:null,family_id:null,context:null,challenge,verification_completion_available:!!browser.completion&&!!browser.valid}};
     });
+  }
+
+  async requestPasswordReset(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['email']);
+    const email=required(input,'email',254).trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(422,'INVALID_EMAIL');
+    return this.tx(ctx,async db=>{
+      // The result is identical whether or not the account exists.
+      await this.limit(db,'password-reset-browser:'+hash(ctx.browser),6,3600);
+      const {rows:[user]}=await db.query(
+        'SELECT id FROM control.users WHERE lower(login)=$1 AND active AND email_verified_at IS NOT NULL',
+        [email],
+      );
+      if(user) {
+        // Silently suppress excessive requests without disclosing account presence.
+        const {rows:[recent]}=await db.query(
+          "SELECT count(*)::int AS total FROM web_auth.password_resets WHERE user_id=$1 AND created_at>clock_timestamp()-interval '1 hour'",
+          [user.id],
+        );
+        if(recent.total<5) {
+          await db.query(
+            'UPDATE web_auth.password_resets SET consumed_at=clock_timestamp(),reset_hash=NULL WHERE user_id=$1 AND consumed_at IS NULL',
+            [user.id],
+          );
+          const id=randomUUID(),code=randomInt(0,1000000).toString().padStart(6,'0');
+          await db.query(
+            'INSERT INTO web_auth.password_resets(id,user_id,browser_hash,email,code_hash,expires_at) VALUES($1,$2,$3,$4,$5,$6)',
+            [id,user.id,hash(ctx.browser),email,this.fingerprint([id,code]),deadline(600)],
+          );
+          await db.query('INSERT INTO web_auth.password_reset_mail_jobs(reset_id,envelope) VALUES($1,$2)',
+            [id,this.seal({email,code})]);
+          await this.audit(db,ctx,'account.password_reset_requested',user.id,null,id);
+        }
+      }
+      return {status:202,body:{accepted:true,resend_after:60}};
+    });
+  }
+  async verifyPasswordReset(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['email','code']);
+    const email=required(input,'email',254).trim().toLowerCase();
+    const code=required(input,'code',6);
+    if(!/^\d{6}$/.test(code)) throw new ApiError(400,'CODE_INVALID_OR_EXPIRED');
+    return this.tx(ctx,async db=>{
+      await this.limit(db,'password-reset-verify:'+hash(ctx.browser),20,3600);
+      const {rows:[row]}=await db.query(
+        `SELECT r.* FROM web_auth.password_resets r
+          WHERE r.email=$1 AND r.browser_hash=$2
+          ORDER BY r.created_at DESC LIMIT 1 FOR UPDATE`,
+        [email,hash(ctx.browser)],
+      );
+      if(!row||row.consumed_at||row.verified_at||row.attempts>=5||
+         new Date(row.expires_at).getTime()<=Date.now())
+        throw new ApiError(400,'CODE_INVALID_OR_EXPIRED');
+      await db.query('UPDATE web_auth.password_resets SET attempts=attempts+1 WHERE id=$1',[row.id]);
+      if(row.code_hash!==this.fingerprint([row.id,code]))
+        throw new CommitError(400,'CODE_INVALID_OR_EXPIRED');
+      const reset_token=token();
+      await db.query(
+        'UPDATE web_auth.password_resets SET verified_at=clock_timestamp(),reset_hash=$2 WHERE id=$1',
+        [row.id,hash(reset_token)],
+      );
+      await this.audit(db,ctx,'account.password_reset_verified',row.user_id,null,row.id);
+      return {status:200,body:{reset_token,expires_in:600}};
+    });
+  }
+  async completePasswordReset(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['email','reset_token','password']);
+    const email=required(input,'email',254).trim().toLowerCase();
+    const reset_token=required(input,'reset_token',256);
+    const password=required(input,'password',512);
+    if([...password].length<8||[...password].length>128||Buffer.byteLength(password)>512)
+      throw new ApiError(422,'INVALID_PASSWORD');
+    const password_hash=await passwordHash(password);
+    return this.tx(ctx,async db=>{
+      const {rows:[row]}=await db.query(
+        `SELECT * FROM web_auth.password_resets
+          WHERE email=$1 AND browser_hash=$2 AND reset_hash=$3
+            AND verified_at IS NOT NULL AND consumed_at IS NULL
+            AND expires_at>clock_timestamp()
+          FOR UPDATE`,
+        [email,hash(ctx.browser),hash(reset_token)],
+      );
+      if(!row) throw new ApiError(400,'RESET_INVALID_OR_EXPIRED');
+      const {rows:[user]}=await db.query('SELECT id FROM control.users WHERE id=$1 AND active FOR UPDATE',[row.user_id]);
+      if(!user) throw new ApiError(400,'RESET_INVALID_OR_EXPIRED');
+      await db.query('UPDATE control.users SET password_hash=$2 WHERE id=$1',[user.id,password_hash]);
+      await db.query('UPDATE web_auth.families SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE user_id=$1',[user.id]);
+      await db.query(
+        'UPDATE web_auth.password_resets SET consumed_at=clock_timestamp(),reset_hash=NULL WHERE user_id=$1 AND consumed_at IS NULL',
+        [user.id],
+      );
+      await db.query(
+        `UPDATE web_auth.browsers SET completion=NULL,completion_family=NULL,completion_expires=NULL
+         WHERE hash IN (SELECT browser_hash FROM web_auth.families WHERE user_id=$1)`,
+        [user.id],
+      );
+      await this.audit(db,ctx,'account.password_reset_completed',user.id,null,row.id);
+      return {status:200,body:{password_changed:true},cookies:{access:'',refresh:''}};
+    });
+  }
+  async deliverPasswordResetOne() {
+    const leaseToken=randomUUID();
+    const {rows:[job]}=await this.pool.query(
+      `WITH candidate AS (
+        SELECT j.reset_id FROM web_auth.password_reset_mail_jobs j
+        WHERE j.completed_at IS NULL AND j.available_at<=clock_timestamp()
+          AND (j.lease_until IS NULL OR j.lease_until<=clock_timestamp())
+        ORDER BY j.available_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED
+       )
+       UPDATE web_auth.password_reset_mail_jobs j
+       SET lease_token=$1,lease_until=clock_timestamp()+interval '30 seconds'
+       FROM candidate,web_auth.password_resets r
+       WHERE j.reset_id=candidate.reset_id AND r.id=j.reset_id
+       RETURNING j.reset_id,j.envelope,j.attempts,r.consumed_at,r.expires_at`,
+      [leaseToken],
+    );
+    if(!job)return;
+    const active=!job.consumed_at&&new Date(job.expires_at).getTime()>Date.now();
+    if(!active) {
+      await this.pool.query(
+        'UPDATE web_auth.password_reset_mail_jobs SET completed_at=clock_timestamp(),envelope=NULL,lease_token=NULL,lease_until=NULL WHERE reset_id=$1 AND lease_token=$2',
+        [job.reset_id,leaseToken],
+      );
+      return;
+    }
+    try {
+      const message=this.open(job.envelope);
+      await this.mail.send({id:job.reset_id,email:message.email,code:message.code,purpose:'password_reset'});
+      await this.pool.query(
+        'UPDATE web_auth.password_reset_mail_jobs SET completed_at=clock_timestamp(),envelope=NULL,lease_token=NULL,lease_until=NULL WHERE reset_id=$1 AND lease_token=$2',
+        [job.reset_id,leaseToken],
+      );
+    } catch(error) {
+      const permanent=error instanceof MailDeliveryError&&!error.retryable;
+      await this.pool.query(
+        `UPDATE web_auth.password_reset_mail_jobs
+         SET attempts=attempts+1,
+             available_at=clock_timestamp()+make_interval(secs=>LEAST(240,60*power(2,LEAST(attempts,2)))::int),
+             completed_at=CASE WHEN $3::boolean OR attempts>=4 THEN clock_timestamp() ELSE NULL END,
+             envelope=CASE WHEN $3::boolean OR attempts>=4 THEN NULL ELSE envelope END,
+             lease_token=NULL,lease_until=NULL
+         WHERE reset_id=$1 AND lease_token=$2`,
+        [job.reset_id,leaseToken,permanent],
+      );
+    }
   }
   async login(ctx:Context,input:Record<string,unknown>) {
     exact(input,['email','password','device_id']);
@@ -334,7 +499,7 @@ export class WebAuth {
   async scope(db:PoolClient,tenant:string) {await db.query("SELECT set_config('control.tenant',$1,true)",[tenant]);}
   async organization(db:PoolClient,userId:string,id:string) {
     await this.scope(db,id);
-    const {rows:[row]}=await db.query(`SELECT o.id,o.inn,o.legal_name,o.verification_status,o.active,m.id AS membership_id,
+    const {rows:[row]}=await db.query(`SELECT o.id,o.inn,o.legal_name,coalesce(o.display_name,o.legal_name) AS display_name,o.verification_status,o.active,m.id AS membership_id,
        CASE WHEN o.owner_membership_id=m.id THEN 'owner' ELSE m.role_id END AS role
       FROM control.organizations o JOIN control.memberships m ON m.organization_id=o.id
       WHERE o.id=$1 AND m.user_id=$2 AND m.active`,[id,userId]);
@@ -349,13 +514,11 @@ export class WebAuth {
   }
   async organizations(ctx:Context) {
     return this.tx(ctx,async db=>{
-      const {user}=await this.identity(db,ctx);
-      // Narrow SECURITY DEFINER function lists IDs only for this authenticated account.
-      const {rows}=await db.query('SELECT organization_id FROM web_auth.own_organization_ids($1)',[user.id]);
-      const items=[];
-      for(const row of rows) items.push(await this.organization(db,user.id,row.organization_id));
-      return {status:200,body:{items}};
-    });
+      const {user}=await this.identity(db,ctx,true);
+      // One bounded, account-scoped query instead of N tenant-switching queries.
+      const {rows}=await db.query('SELECT * FROM web_auth.account_organizations($1)',[user.id]);
+      return {status:200,body:{items:rows}};
+    },true);
   }
   async selectOrganization(ctx:Context,input:Record<string,unknown>) {
     exact(input,['organization_id','expected_context_epoch']);
@@ -369,6 +532,50 @@ export class WebAuth {
       family.organization_id=id;family.context_epoch++;
       await db.query('UPDATE web_auth.families SET organization_id=$2,context_epoch=$3 WHERE id=$1',[family.id,id,family.context_epoch]);
       return {status:200,body:{context:await this.context(db,family)}};
+    });
+  }
+  async renameOrganization(ctx:Context,id:string,input:Record<string,unknown>) {
+    exact(input,['display_name']);
+    if(!uuid.test(id)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    const name=typeof input.display_name==='string'?input.display_name.trim():'';
+    if(!name||[...name].length>180||/[\p{Cc}\p{Cf}]/u.test(name)) throw new ApiError(422,'INVALID_DISPLAY_NAME');
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+      if(family.organization_id!==id) throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+      try {
+        const {rows:[row]}=await db.query('SELECT web_auth.rename_organization($1,$2,$3) AS changes',[user.id,id,name]);
+        if(row.changes) await this.audit(db,ctx,'organization.display_name_changed',user.id,id,id,row.changes);
+      } catch(error) {
+        if((error as {code?:string}).code==='42501') throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+        throw error;
+      }
+      return {status:200,body:{organization:await this.organization(db,user.id,id)}};
+    });
+  }
+  async suggestOrganizations(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['query']);
+    const query=required(input,'query',12);
+    if(!/^[0-9]{4,12}$/.test(query)) throw new ApiError(422,'INN_INVALID');
+    // Authenticate and rate-limit by verified account before calling paid DaData API.
+    await this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      await this.limit(db,'party-suggest:'+user.id,40,60);
+    });
+    if(!this.lookup.suggest) throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
+    let items:Array<{inn:string;legal_name:string;legal_address:string}>;
+    try {
+      items=await this.lookup.suggest(query);
+    } catch {
+      throw new ApiError(503,'ORGANIZATION_LOOKUP_UNAVAILABLE');
+    }
+    return this.tx(ctx,async db=>{
+      await this.identity(db,ctx);
+      const {rows}=await db.query(
+        'SELECT inn FROM web_auth.verified_inns($1::text[])',
+        [items.map(item=>item.inn)],
+      );
+      const claimed=new Set(rows.map(row=>row.inn as string));
+      return {status:200,body:{items:items.map(item=>({...item,verified:claimed.has(item.inn)}))}};
     });
   }
   async lookupOrganization(ctx:Context,input:Record<string,unknown>) {
@@ -396,6 +603,216 @@ export class WebAuth {
       return {status:200,body:{organization:await this.organization(db,user.id,receipt.organization_id)}};
     });
   }
+  async internalSession(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
+      if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+      const capabilities=['organizations:list'];
+      if(['owner','admin','reviewer'].includes(role.role)) capabilities.push('organizations:review');
+      if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen','organizations:create');
+      if(['owner','admin','manager'].includes(role.role)) capabilities.push('client_context:read');
+      if(role.role==='owner') capabilities.push('staff:manage');
+      return {status:200,body:{role:role.role,capabilities}};
+    },true);
+  }
+  async internalStaff(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      try {
+        const {rows}=await db.query('SELECT * FROM web_auth.list_internal_staff($1)',[user.id]);
+        return {status:200,body:{items:rows}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        throw error;
+      }
+    },true);
+  }
+  async setInternalStaff(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['user_id','role']);
+    const target=required(input,'user_id',36);
+    if(!uuid.test(target)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    const role=input.role;
+    if(role!==null&&role!=='admin'&&role!=='manager') throw new ApiError(422,'INVALID_ROLE');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows:[row]}=await db.query('SELECT web_auth.set_internal_staff($1,$2,$3) AS changes',[user.id,target,role]);
+        if(row.changes) await this.audit(db,ctx,'internal.staff_access_changed',user.id,null,target,row.changes);
+        return {status:204};
+      } catch(error) {
+        const failure=error as {code?:string,message?:string};
+        if(failure.code==='42501') throw new ApiError(403,failure.message==='PROTECTED_OWNER'?'PROTECTED_OWNER':'INTERNAL_ACCESS_DENIED');
+        if(failure.code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        throw error;
+      }
+    });
+  }
+  async internalClientContext(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx,true);
+      const {rows:[row]}=await db.query('SELECT web_auth.internal_client_view($1,$2) AS context',[user.id,family.id]);
+      if(!row.context) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+      return {status:200,body:{context:row.context}};
+    },true);
+  }
+  async openInternalClient(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['organization_id']);
+    const orgId=required(input,'organization_id',36);
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+      const id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query('SELECT web_auth.open_internal_client($1,$2,$3,$4) AS context',[user.id,family.id,orgId,id]);
+        if(!row.context) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        await this.audit(db,ctx,'internal.client_context_opened',user.id,orgId,id,{expires_at:row.context.expires_at});
+        return {status:201,body:{context:row.context}};
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'INTERNAL_CONTEXT_ACTIVE');
+        throw error;
+      }
+    });
+  }
+  async closeInternalClient(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['context_id']);
+    const id=required(input,'context_id',36);
+    if(!uuid.test(id)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+      const {rows:[row]}=await db.query('SELECT web_auth.close_internal_client($1,$2,$3) AS organization_id',[user.id,family.id,id]);
+      if(row.organization_id) await this.audit(db,ctx,'internal.client_context_closed',user.id,row.organization_id,id);
+      return {status:204};
+    });
+  }
+  async internalOrganizations(ctx:Context,page:{offset?:number;limit?:number}={}) {
+    const offset=page.offset??0,limit=page.limit??200;
+    if(!Number.isSafeInteger(offset)||offset<0||offset>100000||
+       !Number.isSafeInteger(limit)||limit<1||limit>200) throw new ApiError(422,'INVALID_PAGE');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      try {
+        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations_page($1,$2,$3)',[user.id,offset,limit]);
+        const more=rows.length>limit;
+        return {status:200,body:{items:rows.slice(0,limit),next_offset:more?offset+limit:null}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        throw error;
+      }
+    },true);
+  }
+  async reviewOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    exact(input,['decision','evidence_reference','explanation']);
+    const decision=required(input,'decision',16);
+    const evidence=required(input,'evidence_reference',500).trim();
+    const explanation=required(input,'explanation',2000).trim();
+    if(!['verified','rejected'].includes(decision)||evidence.length<5||explanation.length<8)
+      throw new ApiError(422,'INVALID_REVIEW');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx),id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.review_organization($1,$2,$3,$4,$5,$6) AS status',
+          [user.id,orgId,decision,evidence,explanation,id],
+        );
+        await this.audit(db,ctx,'internal.organization_review',user.id,orgId,orgId,{decision,review_id:id,evidence_reference:evidence,explanation});
+        return {status:200,body:{organization_id:orgId,verification_status:row.status,review_id:id}};
+      } catch(error) {
+        const code=(error as {code?:string,message?:string}).code;
+        const message=(error as {message?:string}).message||'';
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'ALREADY_REVIEWED');
+        if(code==='23505') throw new ApiError(409,'VERIFIED_ORGANIZATION_EXISTS');
+        if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
+        throw error;
+      }
+    });
+  }
+  async reopenOrganization(ctx:Context,orgId:string,input:Record<string,unknown>) {
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    exact(input,['evidence_reference','explanation']);
+    const evidence=required(input,'evidence_reference',500).trim();
+    const explanation=required(input,'explanation',2000).trim();
+    if(evidence.length<5||explanation.length<8) throw new ApiError(422,'INVALID_REVIEW');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx),id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.reopen_organization_review($1,$2,$3,$4,$5) AS status',
+          [user.id,orgId,evidence,explanation,id],
+        );
+        await this.audit(db,ctx,'internal.organization_reopened',user.id,orgId,orgId,
+          {review_id:id,evidence_reference:evidence,explanation});
+        return {status:200,body:{organization_id:orgId,verification_status:row.status,review_id:id}};
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'REOPEN_REQUIRES_REJECTED');
+        if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
+        throw error;
+      }
+    });
+  }
+  async createInternalOrganization(ctx:Context,input:Record<string,unknown>,key:string) {
+    exact(input,['lookup_id','inn','display_name']);
+    const lookupId=required(input,'lookup_id',36);
+    const inn=required(input,'inn',12);
+    const displayName=required(input,'display_name',360).trim();
+    if(!uuid.test(lookupId)||!uuid.test(key)) throw new ApiError(400,'INVALID_REQUEST');
+    if(!validInn(inn)) throw new ApiError(422,'INN_INVALID');
+    if(!displayName||[...displayName].length>180||/[\p{Cc}\p{Cf}]/u.test(displayName))
+      throw new ApiError(422,'INVALID_DISPLAY_NAME');
+
+    return this.tx(ctx,async db=>{
+      // Identity locks the account row, the same row that staff-role changes lock.
+      const {user}=await this.identity(db,ctx);
+      const {rows:[staff]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
+      if(!['owner','admin'].includes(staff?.role)) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+      const fingerprint=this.fingerprint(['internal.organization_created',inn,displayName]);
+      const {rows:[receipt]}=await db.query(
+        'SELECT fingerprint,organization_id FROM web_auth.org_receipts WHERE user_id=$1 AND key=$2',[user.id,key],
+      );
+      let id=receipt?.organization_id;
+      if(receipt){
+        if(receipt.fingerprint!==fingerprint) throw new ApiError(409,'IDEMPOTENCY_CONFLICT');
+        await this.scope(db,id);
+      }else{
+        const {rows:[lookup]}=await db.query(
+          `SELECT legal_name,legal_address,expires_at>clock_timestamp() AS fresh
+           FROM web_auth.lookups WHERE id=$1 AND user_id=$2 AND inn=$3`,[lookupId,user.id,inn],
+        );
+        if(!lookup) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(!lookup.fresh) throw new ApiError(409,'LOOKUP_EXPIRED');
+        await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[inn]);
+        const {rowCount:claimed}=await db.query('SELECT inn FROM web_auth.verified_inns($1::text[])',[[inn]]);
+        if(claimed) throw new ApiError(409,'ORGANIZATION_ALREADY_EXISTS');
+
+        id=randomUUID();
+        await this.scope(db,id);
+        await db.query(
+          `INSERT INTO control.organizations(id,max_calls,inn,legal_name,legal_address,display_name)
+           VALUES($1,1,$2,$3,$4,$5)`,[id,inn,lookup.legal_name,lookup.legal_address,displayName],
+        );
+        await db.query('INSERT INTO control.subscriptions(organization_id,active,telephony) VALUES($1,false,false)',[id]);
+        await db.query(
+          'INSERT INTO web_auth.org_receipts(user_id,key,fingerprint,organization_id) VALUES($1,$2,$3,$4)',
+          [user.id,key,fingerprint,id],
+        );
+        await this.audit(db,ctx,'internal.organization_created',user.id,id,id,{verification_status:'unverified'});
+      }
+      const {rows:[organization]}=await db.query(
+        `SELECT id,inn,legal_name,coalesce(display_name,legal_name) AS display_name,verification_status,active
+         FROM control.organizations WHERE id=$1`,[id],
+      );
+      return {status:receipt?200:201,body:{organization},replayed:!!receipt};
+    });
+  }
   async createOrganization(ctx:Context,input:Record<string,unknown>,key:string) {
     const lookup=required(input,'lookup_id',36);
     if(!uuid.test(lookup)||!uuid.test(key)||input.confirm!==true||Object.keys(input).length!==2) throw new ApiError(400,'INVALID_REQUEST');
@@ -409,6 +826,11 @@ export class WebAuth {
       const {rows:[row]}=await db.query('SELECT *,expires_at>clock_timestamp() AS fresh FROM web_auth.lookups WHERE id=$1 AND user_id=$2',[lookup,user.id]);
       if(!row) throw new ApiError(404,'RESOURCE_NOT_FOUND');
       if(!row.fresh) throw new ApiError(409,'LOOKUP_EXPIRED');
+      // Serialize creation/review for the same INN to prevent racing a verified claim.
+      await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[row.inn]);
+      // Recheck at creation time: UI disabled controls are not a security boundary.
+      const {rows:[claimed]}=await db.query('SELECT inn FROM web_auth.verified_inns($1::text[])',[[row.inn]]);
+      if(claimed) throw new ApiError(409,'ORGANIZATION_ALREADY_EXISTS');
       const id=randomUUID(),member=randomUUID();
       await this.scope(db,id);
       try {
@@ -425,29 +847,120 @@ export class WebAuth {
       return {status:201,body:{organization:await this.organization(db,user.id,id)}};
     });
   }
+  
   async deliverOne() {
-    const db=await this.pool.connect();
+    const leaseToken = randomUUID();
+
+    // Atomic claim: only one worker owns this job.
+    const { rows: [job] } = await this.pool.query(`
+      WITH candidate AS (
+        SELECT j.challenge_id
+        FROM web_auth.mail_jobs j
+        WHERE j.completed_at IS NULL
+          AND j.available_at <= clock_timestamp()
+          AND (
+            j.lease_until IS NULL
+            OR j.lease_until <= clock_timestamp()
+          )
+        ORDER BY j.available_at
+        LIMIT 1
+        FOR UPDATE OF j SKIP LOCKED
+      )
+      UPDATE web_auth.mail_jobs j
+      SET lease_token = $1,
+          lease_until = clock_timestamp() + interval '30 seconds'
+      FROM candidate, web_auth.challenges c, web_auth.browsers b
+      WHERE j.challenge_id = candidate.challenge_id
+        AND c.id = j.challenge_id
+        AND b.hash = c.browser_hash
+      RETURNING
+        j.challenge_id,
+        j.envelope,
+        j.attempts,
+        c.expires_at,
+        c.consumed_at,
+        b.challenge_id AS active_challenge_id,
+        EXISTS (
+          SELECT 1
+          FROM control.users u
+          WHERE lower(u.login) = c.email
+        ) AS existing
+    `, [leaseToken]);
+
+    if (!job) return;
+
+    const current =
+      !job.consumed_at &&
+      job.challenge_id === job.active_challenge_id &&
+      new Date(job.expires_at).getTime() > Date.now();
+
+    if (!current) {
+      await this.pool.query(`
+        UPDATE web_auth.mail_jobs
+        SET completed_at = clock_timestamp(),
+            envelope = NULL,
+            lease_token = NULL,
+            lease_until = NULL
+        WHERE challenge_id = $1
+          AND lease_token = $2
+      `, [job.challenge_id, leaseToken]);
+      return;
+    }
+
     try {
-      await db.query('BEGIN');
-      const {rows:[job]}=await db.query(`SELECT j.*,c.email,c.expires_at,c.consumed_at,
-        EXISTS(SELECT 1 FROM control.users u WHERE lower(u.login)=c.email) AS existing
-        FROM web_auth.mail_jobs j JOIN web_auth.challenges c ON c.id=j.challenge_id
-        WHERE j.completed_at IS NULL AND j.available_at<=clock_timestamp() ORDER BY j.available_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED`);
-      if(!job) {await db.query('COMMIT');return;}
-      if(job.consumed_at||new Date(job.expires_at).getTime()<=Date.now()) {
-        await db.query('UPDATE web_auth.mail_jobs SET completed_at=clock_timestamp(),envelope=NULL WHERE challenge_id=$1',[job.challenge_id]);
-      } else {
-        try {
-          const message=this.open(job.envelope);
-          await this.mail.send({id:job.challenge_id,email:message.email,code:job.existing?null:message.code});
-          await db.query("UPDATE web_auth.challenges SET delivery='accepted' WHERE id=$1",[job.challenge_id]);
-          await db.query('UPDATE web_auth.mail_jobs SET completed_at=clock_timestamp(),envelope=NULL WHERE challenge_id=$1',[job.challenge_id]);
-        } catch {
-          await db.query("UPDATE web_auth.challenges SET delivery='failed' WHERE id=$1",[job.challenge_id]);
-          await db.query("UPDATE web_auth.mail_jobs SET attempts=attempts+1,available_at=clock_timestamp()+interval '60 seconds' WHERE challenge_id=$1",[job.challenge_id]);
-        }
-      }
-      await db.query('COMMIT');
-    } catch(error) {await db.query('ROLLBACK');throw error;} finally {db.release();}
+      // No PostgreSQL transaction is open during network I/O.
+      const message = this.open(job.envelope);
+
+      await this.mail.send({
+        id: job.challenge_id,
+        email: message.email,
+        code: job.existing ? null : message.code,
+      });
+
+      await this.pool.query(`
+        WITH finished AS (
+          UPDATE web_auth.mail_jobs
+          SET completed_at = clock_timestamp(),
+              envelope = NULL,
+              lease_token = NULL,
+              lease_until = NULL
+          WHERE challenge_id = $1
+            AND lease_token = $2
+          RETURNING challenge_id
+        )
+        UPDATE web_auth.challenges c
+        SET delivery = 'accepted'
+        FROM finished
+        WHERE c.id = finished.challenge_id
+      `, [job.challenge_id, leaseToken]);
+    } catch (error) {
+      const permanent=error instanceof MailDeliveryError && !error.retryable;
+      await this.pool.query(`
+        WITH failed AS (
+          UPDATE web_auth.mail_jobs
+          SET attempts = attempts + 1,
+              available_at = clock_timestamp() +
+                (make_interval(secs => LEAST(240,60*power(2,LEAST(attempts,2)))::int)
+                 + make_interval(secs => floor(random()*10)::int)),
+              completed_at = CASE
+                WHEN $3::boolean OR attempts >= 4 THEN clock_timestamp()
+                ELSE NULL
+              END,
+              envelope = CASE
+                WHEN $3::boolean OR attempts >= 4 THEN NULL
+                ELSE envelope
+              END,
+              lease_token = NULL,
+              lease_until = NULL
+          WHERE challenge_id = $1
+            AND lease_token = $2
+          RETURNING challenge_id
+        )
+        UPDATE web_auth.challenges c
+        SET delivery = 'failed'
+        FROM failed
+        WHERE c.id = failed.challenge_id
+      `, [job.challenge_id, leaseToken, permanent]);
+    }
   }
 }
