@@ -93,6 +93,46 @@ test('staff transition, company display name and temporary access stay tenant-sc
  assert.deepEqual(requisites,{inn:'7707083893',legal_name:'ООО Юридическое',legal_address:'Москва'});
  assert.equal((await auth.organizations(customer.ctx)).body.items[0].display_name,'Короткое имя');
 
+ await t.test('internal client creation binds the lookup to staff and writes once',async()=>{
+  const inn='7736050003',lookupId=randomUUID(),key=randomUUID();
+  await admin.query(`INSERT INTO web_auth.lookups VALUES($1,$2,$3,'ООО По ИНН','Москва',clock_timestamp()+interval '10 minutes')`,
+    [lookupId,owner.id,inn]);
+  const payload={lookup_id:lookupId,inn,display_name:'  Клиент в кабинете  '};
+  const endpoint='http://127.0.0.1:'+address.port+'/v1/internal/organizations';
+  const post=(ctx:typeof owner.ctx,overrides:Record<string,string>={})=>fetch(endpoint,{
+   method:'POST',body:JSON.stringify(payload),
+   headers:{'content-type':'application/json',origin,'idempotency-key':key,'x-csrf-token':auth.csrf(ctx.browser),
+    cookie:'__Host-sashatel-browser='+ctx.browser+'; __Host-sashatel-access='+ctx.access,...overrides},
+  });
+  assert((await auth.internalSession(owner.ctx)).body.capabilities.includes('organizations:create'));
+  assert((await auth.internalSession(internalAdmin.ctx)).body.capabilities.includes('organizations:create'));
+  assert(!(await auth.internalSession(manager.ctx)).body.capabilities.includes('organizations:create'));
+  assert.equal((await post(owner.ctx,{origin:'https://other.example.test'})).status,403);
+  assert.equal((await post(owner.ctx,{'x-csrf-token':'wrong-token'})).status,403);
+  for(const actor of [customer,reviewer,manager])assert.equal((await post(actor.ctx)).status,403);
+  assert.equal((await post(internalAdmin.ctx)).status,404);
+  await assert.rejects(auth.createInternalOrganization(owner.ctx,{...payload,inn:'7736050001'},key),error('INN_INVALID'));
+  const anotherSession=await newSession(owner.id);
+  const responses=await Promise.all([post(owner.ctx),post(anotherSession.ctx)]);
+  assert.deepEqual(responses.map(response=>response.status).sort(),[200,201]);
+  const [first,second]=await Promise.all(responses.map(response=>response.json()));
+  assert.deepEqual(first,second);
+  const newId=first.organization.id;
+  assert.equal(first.organization.legal_name,'ООО По ИНН');
+  assert.equal(first.organization.display_name,'Клиент в кабинете');
+  assert.equal(first.organization.verification_status,'unverified');
+  await assert.rejects(auth.createInternalOrganization(owner.ctx,{...payload,display_name:'Другое имя'},key),error('IDEMPOTENCY_CONFLICT'));
+  const replay=await auth.createInternalOrganization(owner.ctx,{...payload,lookup_id:randomUUID()},key);
+  assert.equal(replay.body.organization.id,newId);
+  const {rows:[state]}=await admin.query(`SELECT o.owner_membership_id, s.telephony, s.active AS subscription_active,
+    (SELECT count(*)::int FROM control.memberships m WHERE m.organization_id=o.id) AS memberships,
+    (SELECT count(*)::int FROM web_auth.audit a WHERE a.organization_id=o.id AND a.actor_user_id=$2 AND a.action='internal.organization_created') AS events
+    FROM control.organizations o JOIN control.subscriptions s ON s.organization_id=o.id WHERE o.id=$1`,[newId,owner.id]);
+  assert.deepEqual(state,{owner_membership_id:null,telephony:false,subscription_active:false,memberships:0,events:1});
+  await auth.reviewOrganization(owner.ctx,newId,decision);
+  await assert.rejects(auth.createInternalOrganization(owner.ctx,payload,randomUUID()),error('ORGANIZATION_ALREADY_EXISTS'));
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);

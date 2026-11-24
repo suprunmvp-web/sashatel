@@ -102,6 +102,7 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/organizations/lookup':result=await auth.lookupOrganization(ctx,body);break;
         case '/v1/organizations/suggest':result=await auth.suggestOrganizations(ctx,body);break;
         case '/v1/organizations':result=await auth.createOrganization(ctx,body,key);break;
+        case '/v1/internal/organizations':result=await auth.createInternalOrganization(ctx,body,key);break;
         case '/v1/internal/staff/access':result=await auth.setInternalStaff(ctx,body);break;
         case '/v1/internal/client-context/open':result=await auth.openInternalClient(ctx,body);break;
         case '/v1/internal/client-context/close':result=await auth.closeInternalClient(ctx,body);break;

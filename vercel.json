@@ -1,0 +1,8 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "review/internal-client-creation-backend": false,
+      "feature/web-auth-production-20261121": false
+    }
+  }
+}

@@ -610,7 +610,7 @@ export class WebAuth {
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       const capabilities=['organizations:list'];
       if(['owner','admin','reviewer'].includes(role.role)) capabilities.push('organizations:review');
-      if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen');
+      if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen','organizations:create');
       if(['owner','admin','manager'].includes(role.role)) capabilities.push('client_context:read');
       if(role.role==='owner') capabilities.push('staff:manage');
       return {status:200,body:{role:role.role,capabilities}};
@@ -757,6 +757,60 @@ export class WebAuth {
         if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
         throw error;
       }
+    });
+  }
+  async createInternalOrganization(ctx:Context,input:Record<string,unknown>,key:string) {
+    exact(input,['lookup_id','inn','display_name']);
+    const lookupId=required(input,'lookup_id',36);
+    const inn=required(input,'inn',12);
+    const displayName=required(input,'display_name',360).trim();
+    if(!uuid.test(lookupId)||!uuid.test(key)) throw new ApiError(400,'INVALID_REQUEST');
+    if(!validInn(inn)) throw new ApiError(422,'INN_INVALID');
+    if(!displayName||[...displayName].length>180||/[\p{Cc}\p{Cf}]/u.test(displayName))
+      throw new ApiError(422,'INVALID_DISPLAY_NAME');
+
+    return this.tx(ctx,async db=>{
+      // Identity locks the account row, the same row that staff-role changes lock.
+      const {user}=await this.identity(db,ctx);
+      const {rows:[staff]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
+      if(!['owner','admin'].includes(staff?.role)) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+      const fingerprint=this.fingerprint(['internal.organization_created',inn,displayName]);
+      const {rows:[receipt]}=await db.query(
+        'SELECT fingerprint,organization_id FROM web_auth.org_receipts WHERE user_id=$1 AND key=$2',[user.id,key],
+      );
+      let id=receipt?.organization_id;
+      if(receipt){
+        if(receipt.fingerprint!==fingerprint) throw new ApiError(409,'IDEMPOTENCY_CONFLICT');
+        await this.scope(db,id);
+      }else{
+        const {rows:[lookup]}=await db.query(
+          `SELECT legal_name,legal_address,expires_at>clock_timestamp() AS fresh
+           FROM web_auth.lookups WHERE id=$1 AND user_id=$2 AND inn=$3`,[lookupId,user.id,inn],
+        );
+        if(!lookup) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(!lookup.fresh) throw new ApiError(409,'LOOKUP_EXPIRED');
+        await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[inn]);
+        const {rowCount:claimed}=await db.query('SELECT inn FROM web_auth.verified_inns($1::text[])',[[inn]]);
+        if(claimed) throw new ApiError(409,'ORGANIZATION_ALREADY_EXISTS');
+
+        id=randomUUID();
+        await this.scope(db,id);
+        await db.query(
+          `INSERT INTO control.organizations(id,max_calls,inn,legal_name,legal_address,display_name)
+           VALUES($1,1,$2,$3,$4,$5)`,[id,inn,lookup.legal_name,lookup.legal_address,displayName],
+        );
+        await db.query('INSERT INTO control.subscriptions(organization_id,active,telephony) VALUES($1,false,false)',[id]);
+        await db.query(
+          'INSERT INTO web_auth.org_receipts(user_id,key,fingerprint,organization_id) VALUES($1,$2,$3,$4)',
+          [user.id,key,fingerprint,id],
+        );
+        await this.audit(db,ctx,'internal.organization_created',user.id,id,id,{verification_status:'unverified'});
+      }
+      const {rows:[organization]}=await db.query(
+        `SELECT id,inn,legal_name,coalesce(display_name,legal_name) AS display_name,verification_status,active
+         FROM control.organizations WHERE id=$1`,[id],
+      );
+      return {status:receipt?200:201,body:{organization},replayed:!!receipt};
     });
   }
   async createOrganization(ctx:Context,input:Record<string,unknown>,key:string) {
