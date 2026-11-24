@@ -610,7 +610,7 @@ export class WebAuth {
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       const capabilities=['organizations:list'];
       if(['owner','admin','reviewer'].includes(role.role)) capabilities.push('organizations:review');
-      if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen','organizations:create');
+      if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen','organizations:create','organizations:assign_manager');
       if(['owner','admin','manager'].includes(role.role)) capabilities.push('client_context:read');
       if(role.role==='owner') capabilities.push('staff:manage');
       return {status:200,body:{role:role.role,capabilities}};
@@ -688,14 +688,77 @@ export class WebAuth {
       return {status:204};
     });
   }
-  async internalOrganizations(ctx:Context,page:{offset?:number;limit?:number}={}) {
+  async responsibleManagerCandidates(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      try {
+        const {rows}=await db.query(
+          'SELECT * FROM web_auth.responsible_manager_candidates($1)',
+          [user.id]
+        );
+        return {status:200,body:{items:rows}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501')
+          throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        throw error;
+      }
+    },true);
+  }
+
+  async setResponsibleManager(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['organization_id','user_id']);
+    const org=required(input,'organization_id',36);
+    const target=input.user_id;
+
+    if(!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    if(target!==null && (typeof target!=='string'||!uuid.test(target)))
+      throw new ApiError(422,'INVALID_RESPONSIBLE_MANAGER');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.set_responsible_manager($1,$2,$3) AS changes',
+          [user.id,org,target]
+        );
+
+        if(row.changes)
+          await this.audit(
+            db,ctx,'internal.responsible_manager_changed',
+            user.id,org,org,row.changes
+          );
+
+        return {status:204};
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+        if(code==='42501')
+          throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002')
+          throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='22023')
+          throw new ApiError(422,'INVALID_RESPONSIBLE_MANAGER');
+        throw error;
+      }
+    });
+  }
+
+  async internalOrganizations(
+    ctx:Context,
+    page:{offset?:number;limit?:number;manager?:string}={}
+  ) {
+    if(page.manager!==undefined &&
+       page.manager!=='unassigned' &&
+       !uuid.test(page.manager))
+      throw new ApiError(422,'INVALID_PAGE');
     const offset=page.offset??0,limit=page.limit??200;
     if(!Number.isSafeInteger(offset)||offset<0||offset>100000||
        !Number.isSafeInteger(limit)||limit<1||limit>200) throw new ApiError(422,'INVALID_PAGE');
     return this.tx(ctx,async db=>{
       const {user}=await this.identity(db,ctx,true);
       try {
-        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations_page($1,$2,$3)',[user.id,offset,limit]);
+        const {rows}=await db.query('SELECT * FROM web_auth.internal_organizations_page($1,$2,$3,$4)',[user.id,offset,limit,page.manager??null]);
         const more=rows.length>limit;
         return {status:200,body:{items:rows.slice(0,limit),next_offset:more?offset+limit:null}};
       } catch(error) {

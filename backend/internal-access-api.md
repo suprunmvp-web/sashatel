@@ -39,3 +39,37 @@
 - `POST /v1/internal/client-context/close`, тело `{"context_id":"uuid"}`. Идемпотентно возвращает 204. UI возвращает сотрудника в админку после ответа.
 
 Контекст действует 15 минут, привязан к Web-сессии и конкретной организации, переоценивает доступ при чтении и закрывается при отзыве служебной роли. Открытие и явное закрытие записываются в аудит. Первый этап поддерживает только чтение карточки через служебный маршрут. Другие клиентские маршруты проверяют обычное членство. Записи о членстве при открытии служебного контекста не создаются.
+
+
+## Responsible manager
+
+GET /v1/internal/responsible-managers
+
+Owner/Admin only. Returns 200:
+{items:[{user_id,email,role}]}
+
+POST /v1/internal/organizations/responsible-manager
+
+Owner/Admin only. Origin, CSRF and JSON required.
+
+Request: {organization_id: UUID, user_id: UUID or null}
+
+Returns 204. Null removes the assignment.
+Repeated identical assignment does not duplicate audit events.
+
+Errors:
+- 403 INTERNAL_ACCESS_DENIED
+- 404 RESOURCE_NOT_FOUND
+- 422 INVALID_RESPONSIBLE_MANAGER
+
+GET /v1/internal/organizations supports manager=UUID
+or manager=unassigned. Filtering precedes pagination.
+
+New fields:
+- responsible_manager_id
+- responsible_manager_email
+- responsible_manager_active
+
+Disabled staff assignments remain visible for reassignment.
+Refresh the organizations list after a successful mutation.
+Capability: organizations:assign_manager.

@@ -133,6 +133,68 @@ test('staff transition, company display name and temporary access stay tenant-sc
   await assert.rejects(auth.createInternalOrganization(owner.ctx,payload,randomUUID()),error('ORGANIZATION_ALREADY_EXISTS'));
  });
 
+ await t.test('responsible manager assignment and audit',async()=>{
+  const candidates=(await auth.responsibleManagerCandidates(owner.ctx)).body.items;
+
+  assert(candidates.some(row=>row.user_id===manager.id));
+  assert(!candidates.some(row=>row.user_id===customer.id));
+
+  await assert.rejects(
+   auth.responsibleManagerCandidates(manager.ctx),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setResponsibleManager(manager.ctx,{
+    organization_id:org,user_id:manager.id
+   }),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setResponsibleManager(owner.ctx,{
+    organization_id:org,user_id:customer.id
+   }),
+   error('INVALID_RESPONSIBLE_MANAGER')
+  );
+
+  await auth.setResponsibleManager(owner.ctx,{
+   organization_id:org,user_id:manager.id
+  });
+
+  await auth.setResponsibleManager(owner.ctx,{
+   organization_id:org,user_id:manager.id
+  });
+
+  const fresh=await newSession(owner.id);
+
+  const assigned=(await auth.internalOrganizations(
+   fresh.ctx,{manager:manager.id}
+  )).body.items;
+
+  assert.deepEqual(assigned.map(row=>row.id),[org]);
+  assert.equal(assigned[0].responsible_manager_active,true);
+
+  await auth.setResponsibleManager(internalAdmin.ctx,{
+   organization_id:org,user_id:internalAdmin.id
+  });
+
+  await auth.setResponsibleManager(owner.ctx,{
+   organization_id:org,user_id:null
+  });
+
+  assert((await auth.internalOrganizations(
+   owner.ctx,{manager:'unassigned'}
+  )).body.items.some(row=>row.id===org));
+
+  const {rows:[events]}=await admin.query(
+   "SELECT count(*)::int AS count FROM web_auth.audit WHERE organization_id=$1 AND action='internal.responsible_manager_changed'",
+   [org]
+  );
+
+  assert.equal(events.count,3);
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);

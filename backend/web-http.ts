@@ -44,11 +44,13 @@ export function webHandler(auth:WebAuth,origin:string) {
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
+        else if(path==='/v1/internal/responsible-managers')
+          send(await auth.responsibleManagerCandidates(ctx));
         else if(path==='/v1/internal/staff') send(await auth.internalStaff(ctx));
         else if(path==='/v1/internal/client-context') send(await auth.internalClientContext(ctx));
         else if(path==='/v1/internal/organizations') {
           const query=new URL(req.url??path,'http://localhost').searchParams;
-          if([...query.keys()].some(key=>!['offset','limit'].includes(key)) ||
+          if([...query.keys()].some(key=>!['offset','limit','manager'].includes(key)) ||
              [...query.keys()].some(key=>query.getAll(key).length!==1))
             throw new ApiError(422,'INVALID_PAGE');
           const value=(name:string)=>{
@@ -57,7 +59,7 @@ export function webHandler(auth:WebAuth,origin:string) {
             if(!/^(?:0|[1-9][0-9]{0,5})$/.test(input)) throw new ApiError(422,'INVALID_PAGE');
             return Number(input);
           };
-          send(await auth.internalOrganizations(ctx,{offset:value('offset'),limit:value('limit')}));
+          send(await auth.internalOrganizations(ctx,{offset:value('offset'),limit:value('limit'),manager:query.get('manager')??undefined}));
         }
         else if(path.startsWith('/v1/organizations/creation-status/')) send(await auth.creationStatus(ctx,path.split('/').at(-1)!));
         else if(path.startsWith('/v1/auth/email/challenges/')) send(await auth.tx(ctx,async db=>({status:200,body:await auth.challengeStatus(db,ctx,path.split('/').at(-1)!,true)})));
@@ -103,6 +105,8 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/organizations/suggest':result=await auth.suggestOrganizations(ctx,body);break;
         case '/v1/organizations':result=await auth.createOrganization(ctx,body,key);break;
         case '/v1/internal/organizations':result=await auth.createInternalOrganization(ctx,body,key);break;
+        case '/v1/internal/organizations/responsible-manager':
+          result=await auth.setResponsibleManager(ctx,body);break;
         case '/v1/internal/staff/access':result=await auth.setInternalStaff(ctx,body);break;
         case '/v1/internal/client-context/open':result=await auth.openInternalClient(ctx,body);break;
         case '/v1/internal/client-context/close':result=await auth.closeInternalClient(ctx,body);break;
