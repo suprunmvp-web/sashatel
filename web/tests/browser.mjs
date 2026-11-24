@@ -178,12 +178,12 @@ try {
   await page.goto(base+'/admin/');
   await heading(page,'Обзор');
   await page.locator('.cabinet-admin-organizations').getByText('ООО «Проверка интеграции»',{exact:true}).waitFor();
-  const orgReview=page.locator('[data-review-org="'+orgId+'"][data-review-decision="verified"]');
+  const orgReview=page.locator('[data-review-org="'+orgId+'"][data-review-action="review"]');
   await orgReview.locator('xpath=../preceding-sibling::button').click();
   await orgReview.click();
   await page.locator('[name=evidence]').fill('Документы, проверенные сотрудником SashaTel');
   await page.locator('[name=explanation]').fill('Установлено право заявителя представлять компанию');
-  await page.getByRole('button',{name:'Подтвердить организацию'}).click();
+  await page.getByRole('button',{name:'Подтвердить верификацию'}).click();
   await page.getByText('Организация верифицирована',{exact:true}).waitFor();
   await page.goto(base+'/'+orgId+'/');
   await heading(page,'Статистика');

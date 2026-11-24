@@ -70,6 +70,10 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
   },
   async logout(){generation++;await request('/auth/logout',{body:{}});invalidate();},
   async internalSession(){return request('/internal/session');},
+  async internalStaff(){return (await request('/internal/staff')).items;},
+  async internalClientContext(){return (await request('/internal/client-context')).context;},
+  async openInternalClientContext(organization_id){return (await request('/internal/client-context/open',{body:{organization_id}})).context;},
+  async closeInternalClientContext(context_id){await request('/internal/client-context/close',{body:{context_id}});},
   async createInternalOrganization({inn,display_name}){
    const storageKey='sashatel.web.pending-internal-organization';
    let saved=internalOrganizationReceipt;
@@ -87,6 +91,9 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
    return result;
   },
   async internalOrganizations(){return (await request('/internal/organizations')).items;},
+  async reopenOrganization(organization_id,evidence_reference,explanation){
+    return request('/internal/organizations/reopen',{body:{organization_id,evidence_reference,explanation}});
+  },
   async reviewOrganization(organization_id,decision,evidence_reference,explanation){
     return request('/internal/organizations/review',{body:{organization_id,decision,evidence_reference,explanation}});
   },

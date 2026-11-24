@@ -21,13 +21,14 @@ export function renderPeriod(label='Выберите даты',single=false){
 </div>
 </div>`;
 }
-export function renderPeoplePicker(id, {label, searchLabel, dialogLabel, glyph='',items=[]}) {
+export function renderPeoplePicker(id, {label, searchLabel, dialogLabel, glyph='',items=[],unavailable=''}) {
  const options=[['',label],...items.map(value=>[value,value])];
- return `<button type="button" class="calls-filter-btn people-picker-trigger" id="${id}" popovertarget="${id}Options" aria-haspopup="dialog">
+ return `<button type="button" class="calls-filter-btn people-picker-trigger" id="${id}" popovertarget="${id}Options" aria-controls="${id}Options" aria-expanded="false" aria-haspopup="dialog">
  ${glyph}<span>${esc(label)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
  <div id="${id}Options" class="people-picker" popover role="dialog" aria-label="${esc(dialogLabel)}">
   <label class="picker-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" autofocus autocomplete="off" aria-label="${esc(searchLabel)}" placeholder="${esc(searchLabel)}"></label>
-  <div class="manager-choices">${options.map(([value,text],index)=>`<button type="button" data-person="${esc(value)}" aria-pressed="${index===0}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L19 7"/></svg>${esc(text)}</button>`).join('')}</div>
+  <div class="manager-choices">${options.map(([value,text],index)=>`<button type="button" data-person="${esc(value)}" aria-pressed="${index===0}"${unavailable?' disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L19 7"/></svg>${esc(text)}</button>`).join('')}</div>
+  ${unavailable?`<p class="people-picker-note">${esc(unavailable)}</p>`:''}
   <p class="people-picker-empty" role="status" hidden>Ничего не найдено</p>
  </div>`;
 }
@@ -39,6 +40,7 @@ export function wirePeoplePickers(root) {
   const options=[...panel.querySelectorAll('button[data-person]')];
   const empty=panel.querySelector('.people-picker-empty');
   panel.addEventListener('toggle',event=>{
+   trigger.setAttribute('aria-expanded',String(event.newState==='open'));
    if(event.newState!=='open')return;
    search.value='';
    search.dispatchEvent(new Event('input'));

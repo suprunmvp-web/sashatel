@@ -610,7 +610,7 @@ body.platform { --sidebar:248px; }
   position-try-fallbacks: flip-block;
   inset: auto;
   margin: 4px 0;
-  width: min(245px,calc(100vw - 24px));
+  width: min(286px,calc(100vw - 24px));
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 6px;
@@ -676,13 +676,24 @@ body.platform { --sidebar:248px; }
   cursor: pointer;
 }
 .people-picker [hidden] { display: none !important; }
-.people-picker-empty { color: var(--sub); margin: 0; padding: 8px; }
+.people-picker-empty, .people-picker-note { color: var(--sub); margin: 0; padding: 8px; }
 .platform #orgManagerFilter { min-height:38px; padding:7px 9px; min-width:141px; border-radius:8px; justify-content:space-between; }
 
 .admin-staff-role { display: inline-flex; align-items: center; gap: 7px; min-height: 29px; padding-inline: 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg); font-size: 11px; cursor: pointer; }
 .admin-staff-role:hover { background: var(--hover); }
 .admin-staff-role svg { width: 13px; height: 13px; }
 .admin-org-action-menu button:disabled { opacity: .5; cursor: default; background: transparent; }
+.admin-org-menu-note { margin: 3px 10px 7px; color: var(--sub); font-size: 12px; }
+.platform [id^="org-manager-"].people-picker-trigger {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+}
+.platform [id^="org-manager-"].people-picker-trigger span { overflow: hidden; text-overflow: ellipsis; }
+.people-picker .manager-choices button:disabled { opacity: .65; cursor: default; }
+.internal-organization { max-width: 720px; }
+.internal-organization > .cabinet-muted { margin-top: 24px; }
+
 
 .record-dock { position: fixed; z-index: 3; inset: auto 0 0 var(--sidebar); background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -8px 30px #0001; }
 .platform:has(.record-dock:not([hidden])) main { padding-bottom: 176px; }
