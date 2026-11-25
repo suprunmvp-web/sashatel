@@ -204,3 +204,19 @@ payment and must not increase cash receipts.
 
 Voided invoice allocations require explicit reconciliation.
 This migration does not issue invoices automatically.
+
+
+## Organization staff directory
+
+GET /v1/organizations/{organization_id}/staff
+
+Requires an authenticated account with active Owner
+or Admin membership in the selected organization.
+
+Returns membership ID, user ID, first name, last name,
+email, phone, email verification, registration timestamp,
+role and active status.
+
+The existing employee role is exposed as manager.
+Historical registration timestamps remain null when unknown.
+No password hashes or authentication credentials are returned.

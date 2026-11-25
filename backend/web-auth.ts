@@ -648,6 +648,31 @@ export class WebAuth {
     return value;
   }
 
+  async organizationStaff(ctx:Context,org:string) {
+    if(!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx,true);
+
+      if(family.organization_id!==org)
+        throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.organization_staff($1,$2) AS items',
+          [user.id,org]
+        );
+
+        return {status:200,body:{items:row.items}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501')
+          throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+        throw error;
+      }
+    },true);
+  }
+
   async clientBilling(ctx:Context,org:string) {
     if(!uuid.test(org))
       throw new ApiError(404,'RESOURCE_NOT_FOUND');

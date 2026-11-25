@@ -563,6 +563,50 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert.equal(summary.balance_kopeks,'13000');
  });
 
+
+ await t.test('organization staff directory is scoped to authorized membership',async()=>{
+  const directory=(await auth.organizationStaff(customer.ctx,org)).body.items;
+
+  assert.equal(directory.length,2);
+
+  const customerRow=directory.find(
+   (row:{user_id:string})=>row.user_id===customer.id
+  );
+
+  const employeeRow=directory.find(
+   (row:{user_id:string})=>row.user_id===employee.id
+  );
+
+  assert.equal(customerRow.role,'owner');
+  assert.equal(employeeRow.role,'manager');
+  assert.equal(customerRow.email_verified,true);
+  assert.equal(customerRow.active,true);
+  assert(!('password_hash' in customerRow));
+
+  await assert.rejects(
+   auth.organizationStaff(employee.ctx,org),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.organizationStaff(customer.ctx,other),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.organizationStaff(manager.ctx,org),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  const endpoint='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org+'/staff';
+
+  const response=await fetch(endpoint,{headers});
+
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).items.length,2);
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);

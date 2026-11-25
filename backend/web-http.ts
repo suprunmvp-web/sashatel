@@ -9,7 +9,11 @@ export function webHandler(auth:WebAuth,origin:string) {
     const path=req.url?.split('?')[0]??'';
     const displayNameRoute=/^\/v1\/organizations\/([^/]+)\/display-name$/.exec(path);
     const clientBillingRoute=new RegExp('^/v1/organizations/([^/]+)/billing(?:/(invoices))?$').exec(path);
-    if(!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
+    const organizationStaffRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/staff$'
+    ).exec(path);
+
+    if(!organizationStaffRoute&&!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
     res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
@@ -39,7 +43,10 @@ export function webHandler(auth:WebAuth,origin:string) {
         send({status:200,body:{csrf_token:auth.csrf(browser)}});return true;
       }
       if(req.method==='GET') {
-        if(clientBillingRoute) {
+        if(organizationStaffRoute) {
+          send(await auth.organizationStaff(ctx,organizationStaffRoute[1]));
+        }
+        else if(clientBillingRoute) {
           const query=new URL(req.url??path,'http://localhost').searchParams;
           const allowed=clientBillingRoute[2]?['offset','limit']:[];
           if([...query.keys()].some(k=>!allowed.includes(k)||query.getAll(k).length!==1))
