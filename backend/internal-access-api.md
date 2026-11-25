@@ -39,3 +39,293 @@
 - `POST /v1/internal/client-context/close`, тело `{"context_id":"uuid"}`. Идемпотентно возвращает 204. UI возвращает сотрудника в админку после ответа.
 
 Контекст действует 15 минут, привязан к Web-сессии и конкретной организации, переоценивает доступ при чтении и закрывается при отзыве служебной роли. Открытие и явное закрытие записываются в аудит. Первый этап поддерживает только чтение карточки через служебный маршрут. Другие клиентские маршруты проверяют обычное членство. Записи о членстве при открытии служебного контекста не создаются.
+
+
+## Responsible manager
+
+GET /v1/internal/responsible-managers
+
+Owner/Admin only. Returns 200:
+{items:[{user_id,email,role}]}
+
+POST /v1/internal/organizations/responsible-manager
+
+Owner/Admin only. Origin, CSRF and JSON required.
+
+Request: {organization_id: UUID, user_id: UUID or null}
+
+Returns 204. Null removes the assignment.
+Repeated identical assignment does not duplicate audit events.
+
+Errors:
+- 403 INTERNAL_ACCESS_DENIED
+- 404 RESOURCE_NOT_FOUND
+- 422 INVALID_RESPONSIBLE_MANAGER
+
+GET /v1/internal/organizations supports manager=UUID
+or manager=unassigned. Filtering precedes pagination.
+
+New fields:
+- responsible_manager_id
+- responsible_manager_email
+- responsible_manager_active
+
+Disabled staff assignments remain visible for reassignment.
+Refresh the organizations list after a successful mutation.
+Capability: organizations:assign_manager.
+
+
+## Internal permissions update (migration 014)
+
+Owner, Admin and Manager can read the staff directory.
+Owner and Admin have staff:manage capability.
+Admin can change, deactivate and restore existing Admin/Manager staff.
+Admin cannot modify their own access or grant internal roles to customers
+through the existing staff access endpoint.
+Owner protection remains unchanged.
+Legacy reviewer remains limited to the existing review workflow.
+Manager can now perform organization reviews.
+
+New capability: staff:list.
+
+
+## Organization verification revocation
+
+POST /v1/internal/organizations/revoke-verification
+
+Capability: organizations:revoke_verification.
+Roles: Owner, Admin, Manager.
+
+Request:
+{organization_id: UUID, evidence_reference: string, explanation: string}
+
+Returns 200:
+{organization_id, verification_status: "unverified", review_id}
+
+Errors:
+- 403 INTERNAL_ACCESS_DENIED
+- 404 RESOURCE_NOT_FOUND
+- 409 REVOCATION_REQUIRES_VERIFIED
+- 422 INVALID_REVIEW
+
+Records both review history and application audit.
+New call admission requires verified organization status.
+Uncommitted reservations are revalidated before dispatch.
+Existing connected calls are not interrupted solely by verification revocation.
+
+
+## Internal billing API
+
+Roles: Owner and Admin.
+Capabilities: billing:read, billing:manage.
+
+GET /v1/internal/billing/summary?organization_id=UUID
+
+GET /v1/internal/billing/history?organization_id=UUID&offset=0&limit=50
+
+POST /v1/internal/billing/transactions
+
+Required Idempotency-Key: UUID.
+
+Body:
+- organization_id: UUID
+- kind: payment | debit
+- amount_kopeks: positive decimal integer string
+- reference: confirmed payment reference or adjustment reference
+- reason: explanation
+
+Returns 201 for new transaction and 200 for exact replay.
+
+POST /v1/internal/billing/due-date
+
+Body:
+- organization_id: UUID
+- invoice_id: UUID
+- due_at: UTC ISO timestamp
+- reason: explanation
+
+Payments settle existing outstanding invoices in due-date order.
+A debit is an account adjustment, not a reversal of a bank payment.
+Financial writes and application audit share one transaction.
+The old prepaid wallet remains unused.
+
+Future invoice allocation, billing periods, document issuance,
+bank reconciliation and historical balance reconciliation
+require separate implementation and acceptance tests.
+
+
+## Billing schedules and organization billing
+
+GET /v1/organizations/{organization_id}/billing
+GET /v1/organizations/{organization_id}/billing/invoices
+GET /v1/internal/billing/invoices?organization_id=UUID
+POST /v1/internal/billing/schedule
+
+Client billing requires active selected organization and
+Owner or Admin membership. Internal billing requires
+active internal Owner or Admin access.
+
+Schedule body:
+- organization_id: UUID
+- next_period_end: YYYY-MM-DD
+- reason: string
+
+The period end uses Europe/Moscow calendar dates.
+Changing the period end does not change invoice due dates,
+historical charges or payments. Repeated identical changes
+do not produce duplicate audit entries.
+
+Invoice records expose amounts, due dates and payment status.
+These are accounting records, not downloadable legal documents.
+
+Automatic period closure, allocation of remaining advances,
+document issuance and bank reconciliation remain separate
+implementation requirements.
+
+
+## Internal billing overview
+
+GET /v1/internal/billing/overview?from=YYYY-MM-DD&to=YYYY-MM-DD
+
+Roles: Owner, Admin, Manager.
+Capability: billing:overview.
+
+Inclusive calendar dates in Europe/Moscow.
+Maximum range: 366 days.
+
+Organization counts describe the current organization directory.
+Usage is grouped by settlement recorded_at.
+Payments are grouped by ledger recorded_at.
+Historical bank receipt dates are not inferred.
+
+New issued invoice records automatically allocate previously
+unallocated confirmed payments. Allocation is not a second
+payment and must not increase cash receipts.
+
+Voided invoice allocations require explicit reconciliation.
+This migration does not issue invoices automatically.
+
+
+## Organization staff directory
+
+GET /v1/organizations/{organization_id}/staff
+
+Requires an authenticated account with active Owner
+or Admin membership in the selected organization.
+
+Returns membership ID, user ID, first name, last name,
+email, phone, email verification, registration timestamp,
+role and active status.
+
+The existing employee role is exposed as manager.
+Historical registration timestamps remain null when unknown.
+No password hashes or authentication credentials are returned.
+
+
+## Organization staff access
+
+POST /v1/organizations/{organization_id}/staff/access
+
+Requires selected organization and active Owner or Admin membership.
+
+Body:
+- membership_id: UUID
+- role: admin | manager
+- active: boolean
+
+Owner membership is protected.
+Self-modification is denied.
+Role and access changes revoke legacy phone sessions and
+clear selected organization contexts for the affected user.
+
+Memberships and historical calls are retained.
+Account access to unrelated organizations is preserved.
+
+Repeated identical mutations do not duplicate audit entries.
+
+
+## Staff invitations
+
+POST /v1/internal/invitations
+POST /v1/organizations/{organization_id}/invitations
+
+Body: email, role (admin | manager).
+
+GET /v1/account/invitations
+
+POST /v1/account/invitations/accept
+
+POST /v1/internal/invitations/revoke
+POST /v1/organizations/{organization_id}/invitations/revoke
+
+Accept and revoke body: invitation_id.
+
+Invitations expire after seven days. Acceptance requires
+an active account with matching verified email.
+
+Existing memberships and internal staff records cannot
+be overwritten by accepting an invitation.
+
+Email delivery is implemented separately.
+
+
+## Invitation delivery
+
+GET /v1/internal/invitations
+GET /v1/organizations/{organization_id}/invitations
+
+POST /v1/internal/invitations/resend
+POST /v1/organizations/{organization_id}/invitations/resend
+
+Resend body: invitation_id.
+
+Invitations use the existing Resend provider and a durable
+outbox with lease-based claiming and bounded retry attempts.
+Resending does not extend the invitation expiry.
+Completed delivery attempts have a 60-second resend cooldown.
+
+Provider acceptance is not confirmation of inbox delivery.
+Cancelled, expired and unavailable invitations are checked
+before the worker sends a message.
+
+The email links to the platform, not to an authentication
+token. Acceptance remains bound to verified account email.
+
+
+## Initial organization owner invitation
+
+POST /v1/internal/organizations/owner-invitation
+
+Body: organization_id, email.
+
+POST /v1/internal/organizations/owner-invitation/revoke
+
+Body: organization_id, invitation_id.
+
+Requires internal Owner or Admin access.
+Only organizations without an existing owner are eligible.
+Only one pending owner invitation per organization is allowed.
+
+Acceptance uses the existing verified-email invitation API,
+creates the owner membership and assigns owner_membership_id.
+This mechanism does not transfer existing ownership.
+
+
+## Account profile
+
+GET /v1/account
+
+PATCH /v1/account
+
+Body: first_name, last_name, phone.
+
+Requires authenticated verified account, valid origin and CSRF.
+Updates only the authenticated user's profile.
+Names use registration validation rules.
+Phone is normalized to E.164 and remains unverified.
+
+Returns the updated account object.
+Identical updates do not create duplicate audit records.
+Audit contains changed field names, not contact values.
+
+Email changes require a separate verification flow.

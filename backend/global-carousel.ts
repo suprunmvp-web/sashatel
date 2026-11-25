@@ -25,6 +25,9 @@ export class GlobalCarousel {
     // The caller MUST already have verified membership, subscription,
     // concurrency, overdue policy and effective trunk in this transaction.
     await db.query('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[tenant]);
+    // Serialize physical quota mutations before reading load.
+    // Keep the organization -> carousel lock order.
+    await db.query('SELECT pg_advisory_xact_lock(1935766117,28)');
     await this.expireForTenant(db,tenant);
     const {rows:[old]}=await db.query(
       'SELECT * FROM carousel_dispatches WHERE organization_id=$1 AND membership_id=$2 AND request_key=$3',
@@ -65,6 +68,9 @@ export class GlobalCarousel {
    */
   async expireForTenant(db:PoolClient,organizationId:string,limit=100):Promise<number> {
     if(!Number.isInteger(limit)||limit<1||limit>500)throw Error('INVALID_EXPIRY_BATCH');
+    await db.query(
+      'SELECT id FROM organizations WHERE id=$1 FOR UPDATE',
+      [organizationId]);
     const {rows:[r]}=await db.query(
       'SELECT expire_physical_holds($1,$2) AS released',[organizationId,limit]);
     return r.released;
@@ -73,6 +79,9 @@ export class GlobalCarousel {
   async finalize(db:PoolClient,args:{
     organizationId:string;dispatchId:string;action:'commit'|'release';
   }):Promise<'committed'|'released'|'unknown'>{
+    await db.query(
+      'SELECT id FROM organizations WHERE id=$1 FOR UPDATE',
+      [args.organizationId]);
     const {rows:[r]}=await db.query(
       'SELECT finalize_physical_caller($1,$2,$3) AS state',
       [args.organizationId,args.dispatchId,args.action]);

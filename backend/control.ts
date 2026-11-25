@@ -83,7 +83,7 @@ export class ControlPlane {
   }
 
   async #organization(db: PoolClient, tenant: string) {
-    const result = await db.query('SELECT active, max_calls FROM organizations WHERE id=$1 FOR UPDATE', [tenant]);
+    const result = await db.query('SELECT active, max_calls, verification_status FROM organizations WHERE id=$1 FOR UPDATE', [tenant]);
     return result.rows[0];
   }
 
@@ -136,7 +136,8 @@ export class ControlPlane {
     if (!session) throw new ApiError(401, 'INVALID_SESSION');
     if (!session.user_active || !session.member_active) throw new ApiError(403, 'USER_REVOKED');
     if (!session.valid) throw new ApiError(401, 'INVALID_SESSION');
-    return { ...session, maxCalls: org.max_calls };
+    return { ...session, maxCalls: org.max_calls,
+      verificationStatus: org.verification_status };
   }
 
   async operatorTelephony(bearer: string) {
@@ -230,6 +231,8 @@ export class ControlPlane {
         if(old.destination!==destination)throw new ApiError(409,'IDEMPOTENCY_CONFLICT');
         return old;
       }
+      if(actor.verificationStatus!=='verified')
+        throw new ApiError(403,'ORGANIZATION_NOT_VERIFIED');
       if(!this.workerAvailable(tenant))throw new ApiError(503,'CALL_WORKER_UNAVAILABLE');
       const {rows:[sub]}=await db.query(
         'SELECT active,telephony FROM subscriptions WHERE organization_id=$1',[tenant]);
@@ -283,6 +286,8 @@ export class ControlPlane {
         if (existing.destination !== destination) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT');
         return existing;
       }
+      if(actor.verificationStatus!=='verified')
+        throw new ApiError(403,'ORGANIZATION_NOT_VERIFIED');
       if (!this.workerAvailable(tenant)) throw new ApiError(503, 'CALL_WORKER_UNAVAILABLE');
       const { rows: [subscription] } = await db.query('SELECT active,telephony FROM subscriptions WHERE organization_id=$1', [tenant]);
       if (!subscription?.active || !subscription.telephony) throw new ApiError(403, 'TELEPHONY_DISABLED');
@@ -472,7 +477,9 @@ export class ControlPlane {
             "SELECT EXISTS(SELECT 1 FROM billing_obligations "+
             "WHERE organization_id=$1 AND state='issued' AND due_at<clock_timestamp() "+
             "AND paid_kopeks<amount_kopeks) AS blocked",[tenant]);
-          valid=!!actor.can_call && !!route?.allowed && !arrears.blocked &&
+          valid=!!actor.can_call &&
+            actor.verificationStatus==='verified' &&
+            !!route?.allowed && !arrears.blocked &&
             new Date(held.expires_at).getTime()>Date.now();
         }catch(e){
           if(!(e instanceof ApiError))throw e;

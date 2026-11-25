@@ -1,14 +1,34 @@
+import type { TrunkService } from './trunks.ts';
 import type { IncomingMessage,ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from './control.ts';
 import { WebAuth, type WebResult } from './web-auth.ts';
 
-export function webHandler(auth:WebAuth,origin:string) {
+export function webHandler(auth:WebAuth,origin:string,trunks?:TrunkService) {
   if(new URL(origin).origin!==origin) throw new Error('Exact WEB_ORIGIN required');
   return async(req:IncomingMessage,res:ServerResponse) => {
     const path=req.url?.split('?')[0]??'';
+    const sipRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/trunks(?:/([^/]+)(?:/(recheck|active|delete))?)?$'
+    ).exec(path);
+
     const displayNameRoute=/^\/v1\/organizations\/([^/]+)\/display-name$/.exec(path);
-    if(!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
+    const reportingRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/(statistics|calls)$'
+    ).exec(path);
+    const clientBillingRoute=new RegExp('^/v1/organizations/([^/]+)/billing(?:/(invoices))?$').exec(path);
+    const organizationStaffRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/staff(?:/(access))?$'
+    ).exec(path);
+
+    const invitationRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/invitations(?:/(revoke|resend))?$'
+    ).exec(path);
+
+    if(!sipRoute&&!invitationRoute&&
+       path!=='/v1/account/invitations'&&
+       path!=='/v1/account/invitations/accept'&&
+       !reportingRoute&&!organizationStaffRoute&&!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
     res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
@@ -38,17 +58,135 @@ export function webHandler(auth:WebAuth,origin:string) {
         send({status:200,body:{csrf_token:auth.csrf(browser)}});return true;
       }
       if(req.method==='GET') {
-        if(path==='/v1/auth/bootstrap') send(await auth.bootstrap(ctx));
+        if(sipRoute){
+          if(!trunks)
+            throw new ApiError(503,'TRUNK_SERVICE_UNAVAILABLE');
+
+          if(sipRoute[3])
+            throw new ApiError(405,'METHOD_NOT_ALLOWED');
+
+          send({
+            status:200,
+            body:await trunks.read(
+              auth.trunkAccess(ctx,sipRoute[1]),
+              sipRoute[2]
+            )
+          });
+
+          return true;
+        }
+
+        if(reportingRoute) {
+          const query=new URL(
+            req.url??path,'http://localhost'
+          ).searchParams;
+
+          const history=reportingRoute[2]==='calls';
+          const allowed=history
+            ?['from','to','offset','limit']
+            :['from','to'];
+
+          if([...query.keys()].some(k=>
+            !allowed.includes(k)||query.getAll(k).length!==1
+          )) throw new ApiError(422,'INVALID_REPORTING_FILTER');
+
+          const number=(name:string,fallback:number)=>{
+            const value=query.get(name);
+            if(value===null)return fallback;
+            if(!/^[0-9]{1,6}$/.test(value))
+              throw new ApiError(422,'INVALID_PAGE');
+            return Number(value);
+          };
+
+          send(await auth.callReporting(
+            ctx,reportingRoute[1],
+            query.get('from')??'',query.get('to')??'',
+            history,number('offset',0),number('limit',50)
+          ));
+          return true;
+        }
+
+        if(path==='/v1/internal/invitations'||invitationRoute) {
+          if(invitationRoute?.[2])
+            throw new ApiError(405,'METHOD_NOT_ALLOWED');
+
+          send(await auth.outgoingStaffInvitations(
+            ctx,invitationRoute?invitationRoute[1]:null
+          ));
+          return true;
+        }
+        if(path==='/v1/account/invitations') {
+          send(await auth.pendingStaffInvitations(ctx));
+          return true;
+        }
+        if(organizationStaffRoute?.[2])
+          throw new ApiError(405,'METHOD_NOT_ALLOWED');
+        if(organizationStaffRoute) {
+          send(await auth.organizationStaff(ctx,organizationStaffRoute[1]));
+        }
+        else if(clientBillingRoute) {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+          const allowed=clientBillingRoute[2]?['offset','limit']:[];
+          if([...query.keys()].some(k=>!allowed.includes(k)||query.getAll(k).length!==1))
+            throw new ApiError(422,'INVALID_PAGE');
+          const number=(name:string,fallback:number)=>{
+            const value=query.get(name);
+            if(value===null)return fallback;
+            if(!/^[0-9]{1,6}$/.test(value))
+              throw new ApiError(422,'INVALID_PAGE');
+            return Number(value);
+          };
+          send(clientBillingRoute[2]
+            ?await auth.billingInvoices(ctx,clientBillingRoute[1],false,number('offset',0),number('limit',50))
+            :await auth.clientBilling(ctx,clientBillingRoute[1]));
+        }
+        else if(path==='/v1/auth/bootstrap') send(await auth.bootstrap(ctx));
         else if(path==='/v1/account') {
           const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx,true)).user)}}),true);
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
+        else if(path==='/v1/internal/billing/overview') {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+
+          if([...query.keys()].some(k=>
+            !['from','to'].includes(k)||query.getAll(k).length!==1
+          )) throw new ApiError(422,'INVALID_DATE_RANGE');
+
+          send(await auth.billingOverview(
+            ctx,query.get('from')??'',query.get('to')??''
+          ));
+        }
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
+        else if(path==='/v1/internal/responsible-managers')
+          send(await auth.responsibleManagerCandidates(ctx));
+        else if(path==='/v1/internal/billing/summary'||
+                path==='/v1/internal/billing/history'||
+                path==='/v1/internal/billing/invoices') {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+          const org=query.get('organization_id')??'';
+          const invoices=path.endsWith('/invoices');
+          const history=path.endsWith('/history');
+          const allowed=(history||invoices)?['organization_id','offset','limit']:['organization_id'];
+          if([...query.keys()].some(k=>!allowed.includes(k)||query.getAll(k).length!==1))
+            throw new ApiError(422,'INVALID_PAGE');
+          const number=(name:string,fallback:number)=>{
+            const value=query.get(name);
+            if(value===null)return fallback;
+            if(!/^[0-9]{1,6}$/.test(value))
+              throw new ApiError(422,'INVALID_PAGE');
+            return Number(value);
+          };
+          send(invoices
+            ?await auth.billingInvoices(ctx,org,true,number('offset',0),number('limit',50))
+            :history
+            ?await auth.billingHistory(ctx,org,number('offset',0),number('limit',50))
+            :await auth.billingSummary(ctx,org));
+        }
         else if(path==='/v1/internal/staff') send(await auth.internalStaff(ctx));
         else if(path==='/v1/internal/client-context') send(await auth.internalClientContext(ctx));
         else if(path==='/v1/internal/organizations') {
           const query=new URL(req.url??path,'http://localhost').searchParams;
-          if([...query.keys()].some(key=>!['offset','limit'].includes(key)) ||
+          if([...query.keys()].some(key=>!['offset','limit','manager'].includes(key)) ||
              [...query.keys()].some(key=>query.getAll(key).length!==1))
             throw new ApiError(422,'INVALID_PAGE');
           const value=(name:string)=>{
@@ -57,14 +195,14 @@ export function webHandler(auth:WebAuth,origin:string) {
             if(!/^(?:0|[1-9][0-9]{0,5})$/.test(input)) throw new ApiError(422,'INVALID_PAGE');
             return Number(input);
           };
-          send(await auth.internalOrganizations(ctx,{offset:value('offset'),limit:value('limit')}));
+          send(await auth.internalOrganizations(ctx,{offset:value('offset'),limit:value('limit'),manager:query.get('manager')??undefined}));
         }
         else if(path.startsWith('/v1/organizations/creation-status/')) send(await auth.creationStatus(ctx,path.split('/').at(-1)!));
         else if(path.startsWith('/v1/auth/email/challenges/')) send(await auth.tx(ctx,async db=>({status:200,body:await auth.challengeStatus(db,ctx,path.split('/').at(-1)!,true)})));
         else throw new ApiError(404,'RESOURCE_NOT_FOUND');
         return true;
       }
-      if(req.method!==(displayNameRoute?'PATCH':'POST')) throw new ApiError(405,'METHOD_NOT_ALLOWED');
+      if(req.method!==((displayNameRoute||path==='/v1/account')?'PATCH':'POST')) throw new ApiError(405,'METHOD_NOT_ALLOWED');
       if(!existing||auth.csrf(browser)!==req.headers['x-csrf-token']) throw new ApiError(403,'CSRF_INVALID');
       if(req.headers['content-type']?.split(';')[0]!=='application/json') throw new ApiError(415,'JSON_REQUIRED');
       let raw='',bytes=0;
@@ -85,9 +223,79 @@ export function webHandler(auth:WebAuth,origin:string) {
         await auth.tx(ctx,db=>auth.limit(db,'browser:'+path+':'+browser,20,3600));
       }
       const key=typeof req.headers['idempotency-key']==='string'?req.headers['idempotency-key']:'';
+      if(sipRoute){
+        if(!trunks)
+          throw new ApiError(503,'TRUNK_SERVICE_UNAVAILABLE');
+
+        const access=auth.trunkAccess(ctx,sipRoute[1]);
+        const id=sipRoute[2];
+        const action=sipRoute[3];
+
+        if(!id){
+          send({
+            status:202,
+            body:await trunks.create(access,key,body)
+          });
+        }else if(action==='active'){
+          if(Object.keys(body).length!==1||
+             typeof body.active!=='boolean')
+            throw new ApiError(400,'INVALID_REQUEST');
+
+          send({
+            status:200,
+            body:await trunks.setActive(access,id,body.active)
+          });
+        }else if(action==='recheck'||action==='delete'){
+          if(Object.keys(body).length)
+            throw new ApiError(400,'INVALID_REQUEST');
+
+          send({
+            status:202,
+            body:action==='recheck'
+              ?await trunks.recheck(access,id)
+              :await trunks.remove(access,id)
+          });
+        }else{
+          throw new ApiError(405,'METHOD_NOT_ALLOWED');
+        }
+
+        return true;
+      }
+
       let result:WebResult;
+      if(path==='/v1/account') {
+        send(await auth.updateAccount(ctx,body));
+        return true;
+      }
       if(displayNameRoute){send(await auth.renameOrganization(ctx,displayNameRoute[1],body));return true;}
+      if(organizationStaffRoute?.[2]) {
+        send(await auth.setOrganizationStaff(
+          ctx,organizationStaffRoute[1],body
+        ));
+        return true;
+      }
+      if(invitationRoute) {
+        send(invitationRoute[2]==='resend'
+          ?await auth.resendStaffInvitation(ctx,invitationRoute[1],body)
+          :invitationRoute[2]==='revoke'
+          ?await auth.revokeStaffInvitation(ctx,invitationRoute[1],body)
+          :await auth.createStaffInvitation(ctx,invitationRoute[1],body));
+        return true;
+      }
+
       switch(path) {
+        case '/v1/account/invitations/accept':
+          result=await auth.acceptStaffInvitation(ctx,body);break;
+        case '/v1/internal/organizations/owner-invitation':
+          result=await auth.createInitialOwnerInvitation(ctx,body);break;
+        case '/v1/internal/organizations/owner-invitation/revoke':
+          result=await auth.revokeInitialOwnerInvitation(ctx,body);break;
+        case '/v1/internal/invitations':
+          result=await auth.createStaffInvitation(ctx,null,body);break;
+        case '/v1/internal/invitations/resend':
+          result=await auth.resendStaffInvitation(ctx,null,body);break;
+        case '/v1/internal/invitations/revoke':
+          result=await auth.revokeStaffInvitation(ctx,null,body);break;
         case '/v1/auth/register':result=await auth.register(ctx,body,key);break;
         case '/v1/auth/email/verify':result=await auth.verify(ctx,body);break;
         case '/v1/auth/email/complete':result=await auth.complete(ctx);break;
@@ -95,6 +303,10 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/auth/password/reset/request':result=await auth.requestPasswordReset(ctx,body);break;
         case '/v1/auth/password/reset/verify':result=await auth.verifyPasswordReset(ctx,body);break;
         case '/v1/auth/password/reset/complete':result=await auth.completePasswordReset(ctx,body);break;
+        case '/v1/auth/email-change/request':
+          result=await auth.requestEmailChange(ctx,body);break;
+        case '/v1/auth/email-change/confirm':
+          result=await auth.confirmEmailChange(ctx,body);break;
         case '/v1/auth/login':result=await auth.login(ctx,body);break;
         case '/v1/auth/refresh':result=await auth.refresh(ctx);break;
         case '/v1/auth/logout':result=await auth.logout(ctx);break;
@@ -103,6 +315,14 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/organizations/suggest':result=await auth.suggestOrganizations(ctx,body);break;
         case '/v1/organizations':result=await auth.createOrganization(ctx,body,key);break;
         case '/v1/internal/organizations':result=await auth.createInternalOrganization(ctx,body,key);break;
+        case '/v1/internal/organizations/responsible-manager':
+          result=await auth.setResponsibleManager(ctx,body);break;
+        case '/v1/internal/billing/transactions':
+          result=await auth.recordBillingTransaction(ctx,body,key);break;
+        case '/v1/internal/billing/schedule':
+          result=await auth.setBillingSchedule(ctx,body);break;
+        case '/v1/internal/billing/due-date':
+          result=await auth.changeBillingDueDate(ctx,body);break;
         case '/v1/internal/staff/access':result=await auth.setInternalStaff(ctx,body);break;
         case '/v1/internal/client-context/open':result=await auth.openInternalClient(ctx,body);break;
         case '/v1/internal/client-context/close':result=await auth.closeInternalClient(ctx,body);break;
@@ -110,6 +330,12 @@ export function webHandler(auth:WebAuth,origin:string) {
           if(typeof body.organization_id!=='string') throw new ApiError(400,'INVALID_REQUEST');
           const {organization_id,...review}=body;
           result=await auth.reviewOrganization(ctx,organization_id,review);break;
+        }
+        case '/v1/internal/organizations/revoke-verification':{
+          if(typeof body.organization_id!=='string')
+            throw new ApiError(400,'INVALID_REQUEST');
+          const {organization_id,...review}=body;
+          result=await auth.revokeOrganizationVerification(ctx,organization_id,review);break;
         }
         case '/v1/internal/organizations/reopen':{
           if(typeof body.organization_id!=='string') throw new ApiError(400,'INVALID_REQUEST');

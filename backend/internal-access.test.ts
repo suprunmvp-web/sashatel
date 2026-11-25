@@ -1,3 +1,5 @@
+import { TrunkService } from './trunks.ts';
+import { ControlPlane } from './control.ts';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -11,7 +13,18 @@ import { webHandler } from './web-http.ts';
 assert(process.env.DATABASE_URL && process.env.TEST_ADMIN_URL);
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL});
 const admin=new pg.Pool({connectionString:process.env.TEST_ADMIN_URL});
-const auth=new WebAuth(pool,randomBytes(32),{async send(){throw Error('Unexpected email');}},{async lookup(){return null;}});
+const sentInvitations:Array<{
+ id:string;
+ email:string;
+ code:string|null;
+ purpose?:string;
+}>=[];
+const auth=new WebAuth(pool,randomBytes(32),{async send(message){
+  assert.equal(message.purpose,'invitation');
+  assert.equal(message.code,null);
+  assert(message.email.endsWith('@example.test'));
+  sentInvitations.push(message);
+ }},{async lookup(){return null;}});
 const error=(code:string)=>(e:unknown)=>e instanceof Error&&'code' in e&&e.code===code;
 const newSession=async(userId:string)=>{
  const ctx={browser:await auth.browser(),requestId:randomUUID(),access:undefined as string|undefined};
@@ -52,9 +65,11 @@ test('staff transition, company display name and temporary access stay tenant-sc
  assert((await auth.internalStaff(owner.ctx)).body.items.some(row=>row.user_id===reviewer.id&&row.role==='reviewer'));
  await auth.setInternalStaff(owner.ctx,{user_id:manager.id,role:'manager'});
  const decision={decision:'verified',evidence_reference:'evidence-123',explanation:'Проверены документы'};
- await assert.rejects(auth.reviewOrganization(manager.ctx,other,decision),error('INTERNAL_ACCESS_DENIED'));
+ assert((await auth.internalSession(manager.ctx)).body.capabilities.includes('organizations:review'));
+  assert((await auth.internalSession(manager.ctx)).body.capabilities.includes('staff:list'));
+  assert(!(await auth.internalSession(manager.ctx)).body.capabilities.includes('staff:manage'));
  await assert.rejects(auth.openInternalClient(reviewer.ctx,{organization_id:org}),error('INTERNAL_ACCESS_DENIED'));
- assert.equal((await auth.reviewOrganization(reviewer.ctx,other,decision)).body.verification_status,'verified');
+ assert.equal((await auth.reviewOrganization(manager.ctx,other,decision)).body.verification_status,'verified');
  const directory=(await auth.internalOrganizations(manager.ctx)).body.items.find(row=>row.id===org);
  assert.equal(directory.legal_address,null);
  assert.equal(directory.created_owner_email,null);
@@ -65,7 +80,12 @@ test('staff transition, company display name and temporary access stay tenant-sc
  await assert.rejects(auth.renameOrganization(customer.ctx,other,{display_name:'Запрещено'}),error('ORGANIZATION_ACCESS_DENIED'));
  await assert.rejects(auth.renameOrganization(customer.ctx,org,{display_name:'Имя',inn:'7707000002'}),error('INVALID_REQUEST'));
  const origin='https://platform.example.test';
- const handle=webHandler(auth,origin);
+ const sip=new TrunkService(
+  new ControlPlane(pool),
+  randomBytes(32),
+  new Set(['sip.example.test:5060'])
+ );
+ const handle=webHandler(auth,origin,sip);
  const server=createServer(async(req,res)=>{
   if(!await handle(req,res)){res.writeHead(404);res.end();}
  });
@@ -131,6 +151,1285 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert.deepEqual(state,{owner_membership_id:null,telephony:false,subscription_active:false,memberships:0,events:1});
   await auth.reviewOrganization(owner.ctx,newId,decision);
   await assert.rejects(auth.createInternalOrganization(owner.ctx,payload,randomUUID()),error('ORGANIZATION_ALREADY_EXISTS'));
+ });
+
+ await t.test('responsible manager assignment and audit',async()=>{
+  const candidates=(await auth.responsibleManagerCandidates(owner.ctx)).body.items;
+
+  assert(candidates.some(row=>row.user_id===manager.id));
+  assert(!candidates.some(row=>row.user_id===customer.id));
+
+  await assert.rejects(
+   auth.responsibleManagerCandidates(manager.ctx),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setResponsibleManager(manager.ctx,{
+    organization_id:org,user_id:manager.id
+   }),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setResponsibleManager(owner.ctx,{
+    organization_id:org,user_id:customer.id
+   }),
+   error('INVALID_RESPONSIBLE_MANAGER')
+  );
+
+  await auth.setResponsibleManager(owner.ctx,{
+   organization_id:org,user_id:manager.id
+  });
+
+  await auth.setResponsibleManager(owner.ctx,{
+   organization_id:org,user_id:manager.id
+  });
+
+  const fresh=await newSession(owner.id);
+
+  const assigned=(await auth.internalOrganizations(
+   fresh.ctx,{manager:manager.id}
+  )).body.items;
+
+  assert.deepEqual(assigned.map(row=>row.id),[org]);
+  assert.equal(assigned[0].responsible_manager_active,true);
+
+  await auth.setResponsibleManager(internalAdmin.ctx,{
+   organization_id:org,user_id:internalAdmin.id
+  });
+
+  await auth.setResponsibleManager(owner.ctx,{
+   organization_id:org,user_id:null
+  });
+
+  assert((await auth.internalOrganizations(
+   owner.ctx,{manager:'unassigned'}
+  )).body.items.some(row=>row.id===org));
+
+  const {rows:[events]}=await admin.query(
+   "SELECT count(*)::int AS count FROM web_auth.audit WHERE organization_id=$1 AND action='internal.responsible_manager_changed'",
+   [org]
+  );
+
+  assert.equal(events.count,3);
+ });
+
+ await t.test('internal staff permissions and access restoration',async()=>{
+  const admins=(await auth.internalStaff(internalAdmin.ctx)).body.items;
+  const managers=(await auth.internalStaff(manager.ctx)).body.items;
+
+  assert(admins.some(row=>row.user_id===manager.id));
+  assert(managers.some(row=>row.user_id===internalAdmin.id));
+
+  await assert.rejects(
+   auth.internalStaff(customer.ctx),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(manager.ctx,{user_id:manager.id,role:'admin'}),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(internalAdmin.ctx,{user_id:owner.id,role:'manager'}),
+   error('PROTECTED_OWNER')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(internalAdmin.ctx,{user_id:internalAdmin.id,role:null}),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(internalAdmin.ctx,{user_id:customer.id,role:'admin'}),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await auth.setInternalStaff(internalAdmin.ctx,{user_id:manager.id,role:null});
+
+  await assert.rejects(
+   auth.internalSession(manager.ctx),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.reviewOrganization(manager.ctx,org,decision),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await auth.setInternalStaff(internalAdmin.ctx,{user_id:manager.id,role:'admin'});
+  assert.equal((await auth.internalSession(manager.ctx)).body.role,'admin');
+
+  await auth.setInternalStaff(owner.ctx,{user_id:manager.id,role:'manager'});
+  assert.equal((await auth.internalSession(manager.ctx)).body.role,'manager');
+ });
+
+ await t.test('verification revocation is scoped and audited',async()=>{
+  const payload={
+   evidence_reference:'contract-revoked-123',
+   explanation:'Договор с организацией расторгнут'
+  };
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(customer.ctx,other,payload),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(reviewer.ctx,other,payload),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(manager.ctx,org,payload),
+   error('REVOCATION_REQUIRES_VERIFIED')
+  );
+
+  assert((await auth.internalSession(manager.ctx)).body.capabilities
+    .includes('organizations:revoke_verification'));
+
+  const result=await auth.revokeOrganizationVerification(manager.ctx,other,payload);
+  assert.equal(result.body.verification_status,'unverified');
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(manager.ctx,other,payload),
+   error('REVOCATION_REQUIRES_VERIFIED')
+  );
+
+  const {rows:[history]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.organization_reviews WHERE organization_id=$1 AND outcome='revoked'",
+   [other]
+  );
+
+  assert.equal(history.n,1);
+
+  const {rows:[event]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND actor_user_id=$2 AND action='internal.organization_verification_revoked'",
+   [other,manager.id]
+  );
+
+  assert.equal(event.n,1);
+
+  await auth.reviewOrganization(internalAdmin.ctx,other,decision);
+ });
+
+ await t.test('billing payments, debits and due dates are scoped and audited',async()=>{
+  const invoice=randomUUID();
+
+  await admin.query(
+   "INSERT INTO control.billing_obligations(organization_id,id,issued_at,due_at,amount_kopeks,state) VALUES($1,$2,clock_timestamp()-interval '10 days',clock_timestamp()-interval '1 day',10000,'issued')",
+   [org,invoice]
+  );
+
+  const payment={
+   organization_id:org,kind:'payment',amount_kopeks:'15000',
+   reference:'bank-'+randomUUID(),
+   reason:'Подтверждено поступление оплаты'
+  };
+
+  const key=randomUUID();
+
+  await assert.rejects(
+   auth.recordBillingTransaction(manager.ctx,payment,key),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.billingSummary(customer.ctx,org),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.billingHistory(manager.ctx,org),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  const created=await auth.recordBillingTransaction(owner.ctx,payment,key);
+  assert.equal(created.status,201);
+
+  const replay=await auth.recordBillingTransaction(owner.ctx,payment,key);
+  assert.equal(replay.status,200);
+  assert.equal(replay.body.transaction_id,created.body.transaction_id);
+
+  await assert.rejects(
+   auth.recordBillingTransaction(owner.ctx,{...payment,amount_kopeks:'16000'},key),
+   error('IDEMPOTENCY_CONFLICT')
+  );
+
+  await assert.rejects(
+   auth.recordBillingTransaction(owner.ctx,payment,randomUUID()),
+   error('PAYMENT_REFERENCE_EXISTS')
+  );
+
+  let summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+
+  assert.equal(summary.payments_kopeks,'15000');
+  assert.equal(summary.overdue_kopeks,'0');
+  assert.equal(summary.outstanding_invoices_kopeks,'0');
+  assert.equal(summary.balance_kopeks,'15000');
+
+  await auth.recordBillingTransaction(internalAdmin.ctx,{
+   ...payment,kind:'debit',amount_kopeks:'2000',
+   reference:'adjustment-'+randomUUID(),
+   reason:'Ручная финансовая корректировка'
+  },randomUUID());
+
+  summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+  assert.equal(summary.balance_kopeks,'13000');
+
+  const nextInvoice=randomUUID();
+  await admin.query(
+   "INSERT INTO control.billing_obligations(organization_id,id,issued_at,due_at,amount_kopeks,state) VALUES($1,$2,clock_timestamp()-interval '10 days',clock_timestamp()-interval '1 day',20000,'issued')",
+   [org,nextInvoice]
+  );
+
+  const date=new Date(Date.now()+86400000*7).toISOString();
+
+  const change={
+   organization_id:org,invoice_id:nextInvoice,
+   due_at:date,reason:'Согласована отсрочка платежа'
+  };
+
+  await assert.rejects(
+   auth.changeBillingDueDate(manager.ctx,change),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.changeBillingDueDate(owner.ctx,{...change,organization_id:other}),
+   error('RESOURCE_NOT_FOUND')
+  );
+
+  await auth.changeBillingDueDate(internalAdmin.ctx,change);
+
+  summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+  assert.equal(new Date(summary.next_payment_at).toISOString(),date);
+  assert.equal(summary.overdue_kopeks,'0');
+
+  const history=(await auth.billingHistory(owner.ctx,org)).body.items;
+  assert.equal(history.length,2);
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND action='internal.billing_transaction'",
+   [org]
+  );
+
+  assert.equal(audit.n,2);
+ });
+
+ await t.test('billing schedule and invoice reads preserve organization scope',async()=>{
+  const date=new Date(Date.now()+86400000*30)
+   .toISOString().slice(0,10);
+
+  const input={
+   organization_id:org,next_period_end:date,
+   reason:'Согласована дата расчётного периода'
+  };
+
+  await assert.rejects(
+   auth.setBillingSchedule(manager.ctx,input),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await auth.setBillingSchedule(owner.ctx,input);
+
+  await auth.setBillingSchedule(owner.ctx,input);
+
+  const summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+
+  assert.equal(summary.next_period_end,date);
+  assert.equal(summary.balance_kopeks,'13000');
+
+  const invoices=(await auth.billingInvoices(owner.ctx,org,true)).body.items;
+
+  assert.equal(invoices.length,2);
+  assert(invoices.some((item:{status:string})=>item.status==='paid'));
+  assert(invoices.some((item:{status:string})=>item.status==='partially_paid'));
+
+  const foreign=(await auth.billingInvoices(owner.ctx,other,true)).body.items;
+  assert.equal(foreign.length,0);
+
+  await assert.rejects(
+   auth.billingInvoices(manager.ctx,org,true),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.clientBilling(owner.ctx,org),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND action='internal.billing_schedule_changed'",
+   [org]
+  );
+
+  assert.equal(audit.n,1);
+ });
+
+
+ await t.test('billing HTTP routes enforce session and organization permissions',async()=>{
+  const base='http://127.0.0.1:'+address.port;
+
+  const get=(path:string,ctx:typeof owner.ctx)=>fetch(base+path,{
+   headers:{
+    cookie:'__Host-sashatel-browser='+ctx.browser+
+     '; __Host-sashatel-access='+ctx.access
+   }
+  });
+
+  const billing='/v1/organizations/'+org+'/billing';
+
+  const response=await get(billing,customer.ctx);
+  assert.equal(response.status,200);
+
+  const {summary}=await response.json();
+  assert.equal(summary.balance_kopeks,'13000');
+
+  assert.equal((await get(billing,employee.ctx)).status,403);
+  assert.equal((await get(billing,manager.ctx)).status,403);
+  assert.equal((await get(
+   '/v1/organizations/'+other+'/billing',customer.ctx
+  )).status,403);
+
+  const invoices=await get(billing+'/invoices',customer.ctx);
+  assert.equal(invoices.status,200);
+  assert.equal((await invoices.json()).items.length,2);
+
+  const internal='/v1/internal/billing/summary?organization_id='+org;
+  assert.equal((await get(internal,owner.ctx)).status,200);
+  assert.equal((await get(internal,internalAdmin.ctx)).status,200);
+  assert.equal((await get(internal,customer.ctx)).status,403);
+  assert.equal((await get(internal,manager.ctx)).status,403);
+
+  const history='/v1/internal/billing/history?organization_id='+org;
+  assert.equal((await get(history,owner.ctx)).status,200);
+
+  const post=await fetch(base+'/v1/internal/billing/transactions',{
+   method:'POST',
+   headers:{
+    ...headers,
+    'x-csrf-token':'invalid',
+    'idempotency-key':randomUUID()
+   },
+   body:JSON.stringify({})
+  });
+
+  assert.equal(post.status,403);
+ });
+
+
+ await t.test('advance allocation and internal overview use actual ledger data',async()=>{
+  const {rows:[settled]}=await admin.query(
+   "SELECT coalesce(sum(amount_kopeks),0)::text AS total FROM control.billing_payment_allocations WHERE organization_id=$1",
+   [org]
+  );
+
+  assert.equal(settled.total,'15000');
+
+  const {rows:[invoice]}=await admin.query(
+   "SELECT paid_kopeks::text FROM control.billing_obligations WHERE organization_id=$1 AND amount_kopeks=20000",
+   [org]
+  );
+
+  assert.equal(invoice.paid_kopeks,'5000');
+
+  const {rows:[date]}=await admin.query(
+   "SELECT (clock_timestamp() AT TIME ZONE 'Europe/Moscow')::date::text AS today"
+  );
+
+  const overview=(await auth.billingOverview(
+   owner.ctx,date.today,date.today
+  )).body.overview;
+
+  assert.equal(overview.payments_kopeks,'15000');
+  assert.equal(overview.debits_kopeks,'2000');
+  assert.equal(overview.daily.length,1);
+  assert.equal(overview.daily[0].payments_kopeks,'15000');
+  assert(overview.organizations_count>=2);
+
+  assert.equal((await auth.billingOverview(
+   manager.ctx,date.today,date.today
+  )).status,200);
+
+  await assert.rejects(
+   auth.billingOverview(customer.ctx,date.today,date.today),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.billingOverview(owner.ctx,'2026-02-30',date.today),
+   error('INVALID_DATE_RANGE')
+  );
+
+  const endpoint='http://127.0.0.1:'+address.port+
+   '/v1/internal/billing/overview?from='+date.today+'&to='+date.today;
+
+  const response=await fetch(endpoint,{
+   headers:{
+    cookie:'__Host-sashatel-browser='+owner.ctx.browser+
+     '; __Host-sashatel-access='+owner.ctx.access
+   }
+  });
+
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).overview.payments_kopeks,'15000');
+
+  const summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+  assert.equal(summary.balance_kopeks,'13000');
+ });
+
+
+
+ await t.test('call reporting HTTP and organization isolation',async()=>{
+  const from='2026-01-01';
+  const to='2026-01-03';
+
+  const report=(await auth.callReporting(
+   customer.ctx,org,from,to
+  )).body;
+
+  assert.equal(report.initiations,0);
+  assert.equal(report.answered,0);
+  assert.equal(report.billable_seconds,0);
+  assert.equal(report.answer_rate,null);
+  assert.equal(report.daily.length,3);
+
+  assert(report.daily.every(
+   (day:{initiations:number})=>day.initiations===0
+  ));
+
+  await assert.rejects(
+   auth.callReporting(employee.ctx,org,from,to),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.callReporting(customer.ctx,other,from,to),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.callReporting(customer.ctx,org,'2026-02-30',to),
+   error('INVALID_DATE_RANGE')
+  );
+
+  const base='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org;
+
+  const dates='?from='+from+'&to='+to;
+
+  const statistics=await fetch(
+   base+'/statistics'+dates,{headers}
+  );
+
+  assert.equal(statistics.status,200);
+  assert.equal((await statistics.json()).daily.length,3);
+
+  const history=await fetch(
+   base+'/calls'+dates+'&offset=0&limit=10',{headers}
+  );
+
+  assert.equal(history.status,200);
+
+  const page=await history.json();
+
+  assert.equal(page.total,0);
+  assert.equal(page.limit,10);
+  assert.deepEqual(page.items,[]);
+
+  assert.equal((await fetch(
+   base+'/calls'+dates+'&limit=101',{headers}
+  )).status,422);
+
+  assert.equal((await fetch(
+   base+'/statistics'+dates+'&from='+from,{headers}
+  )).status,422);
+
+  assert.equal((await fetch(
+   base+'/statistics'+dates
+  )).status,401);
+
+  assert.equal((await fetch(
+   base.replace(org,other)+'/calls'+dates,{headers}
+  )).status,403);
+ });
+
+
+ await t.test('Web SIP trunk management and access isolation',async sipTest=>{
+  const {rows:[original]}=await admin.query(
+   'SELECT verification_status FROM control.organizations WHERE id=$1',
+   [org]
+  );
+
+  sipTest.after(async()=>{
+   await admin.query(
+    'UPDATE control.organizations SET verification_status=$2 WHERE id=$1',
+    [org,original.verification_status]
+   );
+  });
+
+  const base='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org+'/trunks';
+
+  const input={
+   name:'Web SIP',
+   auth_mode:'registration_credentials',
+   registrar_host:'sip.example.test',
+   registrar_port:5060,
+   transport:'udp',
+   username:'private-user',
+   password:'private-password'
+  };
+
+  const post=(url:string,data:unknown,extra={})=>fetch(url,{
+   method:'POST',
+   headers:{
+    ...headers,
+    'idempotency-key':randomUUID(),
+    ...extra
+   },
+   body:JSON.stringify(data)
+  });
+
+  assert.equal((await post(base,input,{
+   'x-csrf-token':'invalid'
+  })).status,403);
+
+  const created=await post(base,input);
+  assert.equal(created.status,202);
+
+  const trunk=await created.json();
+
+  assert(trunk.id);
+  assert.equal(trunk.status,'configuring');
+  assert(!JSON.stringify(trunk).includes('private-'));
+
+  const detail=base+'/'+trunk.id;
+
+  assert.equal((await fetch(detail,{headers})).status,200);
+
+  const listing=await fetch(base,{headers});
+  assert.equal(listing.status,200);
+  assert.equal((await listing.json()).items.length,1);
+
+  assert.equal((await fetch(base)).status,401);
+
+  assert.equal((await fetch(base,{
+   headers:{
+    cookie:'__Host-sashatel-browser='+employee.ctx.browser+
+     '; __Host-sashatel-access='+employee.ctx.access
+   }
+  })).status,403);
+
+  assert.equal((await fetch(
+   base.replace(org,other),{headers}
+  )).status,403);
+
+  const adapter={
+   async upsert(){return 'registered' as const;},
+   async remove(){}
+  };
+
+  await sip.provisionNext(org,adapter);
+
+  const checked=await fetch(detail,{headers});
+  assert.equal((await checked.json()).diagnostic_code,
+   'CONNECTION_OK');
+
+  await admin.query(
+   "UPDATE control.organizations SET verification_status='verified' WHERE id=$1",
+   [org]
+  );
+
+  assert.equal((await post(
+   detail+'/active',{active:true}
+  )).status,200);
+
+  assert.equal((await post(
+   detail+'/active',{active:false}
+  )).status,200);
+
+  assert.equal((await post(
+   detail+'/recheck',{}
+  )).status,202);
+
+  await sip.provisionNext(org,adapter);
+
+  assert.equal((await post(
+   detail+'/delete',{}
+  )).status,202);
+
+  assert.equal((await fetch(detail,{headers})).status,404);
+
+  await sip.provisionNext(org,adapter);
+
+  assert.equal((await admin.query(
+   'SELECT 1 FROM control.trunk_secrets WHERE trunk_id=$1',
+   [trunk.id]
+  )).rowCount,0);
+ });
+
+ await t.test('organization staff directory is scoped to authorized membership',async()=>{
+  const directory=(await auth.organizationStaff(customer.ctx,org)).body.items;
+
+  assert.equal(directory.length,2);
+
+  const customerRow=directory.find(
+   (row:{user_id:string})=>row.user_id===customer.id
+  );
+
+  const employeeRow=directory.find(
+   (row:{user_id:string})=>row.user_id===employee.id
+  );
+
+  assert.equal(customerRow.role,'owner');
+  assert.equal(employeeRow.role,'manager');
+  assert.equal(customerRow.email_verified,true);
+  assert.equal(customerRow.active,true);
+  assert(!('password_hash' in customerRow));
+
+  await assert.rejects(
+   auth.organizationStaff(employee.ctx,org),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.organizationStaff(customer.ctx,other),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.organizationStaff(manager.ctx,org),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  const endpoint='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org+'/staff';
+
+  const response=await fetch(endpoint,{headers});
+
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).items.length,2);
+ });
+
+
+ await t.test('organization staff roles, revocation and restoration are audited',async()=>{
+  const directory=(await auth.organizationStaff(customer.ctx,org)).body.items;
+
+  const target=directory.find(
+   (row:{user_id:string})=>row.user_id===employee.id
+  );
+
+  const input={
+   membership_id:target.membership_id,
+   role:'manager',
+   active:false
+  };
+
+  await assert.rejects(
+   auth.setOrganizationStaff(employee.ctx,org,input),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setOrganizationStaff(customer.ctx,other,input),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setOrganizationStaff(customer.ctx,org,{
+    ...input,membership_id:membership
+   }),
+   error('PROTECTED_OWNER')
+  );
+
+  await auth.setOrganizationStaff(customer.ctx,org,input);
+
+  const {rows:[revoked]}=await admin.query(
+   'SELECT active FROM control.memberships WHERE organization_id=$1 AND id=$2',
+   [org,target.membership_id]
+  );
+
+  assert.equal(revoked.active,false);
+
+  const organizations=(await auth.organizations(employee.ctx)).body.items;
+  assert(!organizations.some(row=>row.id===org));
+
+  await auth.setOrganizationStaff(customer.ctx,org,{
+   ...input,role:'admin',active:true
+  });
+
+  const {rows:[restored]}=await admin.query(
+   'SELECT active,role_id FROM control.memberships WHERE organization_id=$1 AND id=$2',
+   [org,target.membership_id]
+  );
+
+  assert.equal(restored.active,true);
+  assert.equal(restored.role_id,'admin');
+
+  await auth.selectOrganization(employee.ctx,{
+   organization_id:org,expected_context_epoch:2
+  });
+
+  assert.equal(
+   (await auth.organizationStaff(employee.ctx,org)).status,
+   200
+  );
+
+  const endpoint='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org+'/staff/access';
+
+  const response=await fetch(endpoint,{
+   method:'POST',headers,
+   body:JSON.stringify({...input,active:true})
+  });
+
+  assert.equal(response.status,200);
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND action='organization.staff_access_changed'",
+   [org]
+  );
+
+  assert.equal(audit.n,3);
+ });
+
+
+ await t.test('staff invitations bind verified email and cannot elevate existing staff',async()=>{
+  const email=randomUUID()+'@example.test';
+  const invited=await newAccount(email);
+
+  const created=await auth.createStaffInvitation(
+   customer.ctx,org,{email,role:'manager'}
+  );
+
+  assert.equal(created.status,201);
+  const id=created.body.invitation.id;
+
+  const duplicate=await auth.createStaffInvitation(
+   customer.ctx,org,{email,role:'manager'}
+  );
+
+  assert.equal(duplicate.status,200);
+  assert.equal(duplicate.body.invitation.id,id);
+
+  await assert.rejects(
+   auth.createStaffInvitation(customer.ctx,org,{email,role:'admin'}),
+   error('INVITATION_CONFLICT')
+  );
+
+  await assert.rejects(
+   auth.acceptStaffInvitation(employee.ctx,{invitation_id:id}),
+   error('RESOURCE_NOT_FOUND')
+  );
+
+  const pending=(await auth.pendingStaffInvitations(invited.ctx)).body.items;
+  assert.equal(pending.length,1);
+  assert.equal(pending[0].id,id);
+
+  const accepted=await auth.acceptStaffInvitation(
+   invited.ctx,{invitation_id:id}
+  );
+
+  assert.equal(accepted.body.role,'manager');
+  assert.equal(accepted.body.organization_id,org);
+
+  const replay=await auth.acceptStaffInvitation(
+   invited.ctx,{invitation_id:id}
+  );
+
+  assert.equal(replay.body.replayed,true);
+
+  const {rows:[member]}=await admin.query(
+   'SELECT role_id FROM control.memberships WHERE organization_id=$1 AND user_id=$2',
+   [org,invited.id]
+  );
+
+  assert.equal(member.role_id,'employee');
+
+  const internalEmail=randomUUID()+'@example.test';
+  const internalUser=await newAccount(internalEmail);
+
+  await assert.rejects(
+   auth.createStaffInvitation(manager.ctx,null,{
+    email:internalEmail,role:'admin'
+   }),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const staffInvite=await auth.createStaffInvitation(
+   owner.ctx,null,{email:internalEmail,role:'manager'}
+  );
+
+  await auth.acceptStaffInvitation(internalUser.ctx,{
+   invitation_id:staffInvite.body.invitation.id
+  });
+
+  assert.equal(
+   (await auth.internalSession(internalUser.ctx)).body.role,
+   'manager'
+  );
+
+  const cancelledEmail=randomUUID()+'@example.test';
+  const cancelled=await newAccount(cancelledEmail);
+
+  const invitation=await auth.createStaffInvitation(
+   owner.ctx,null,{email:cancelledEmail,role:'manager'}
+  );
+
+  await auth.revokeStaffInvitation(owner.ctx,null,{
+   invitation_id:invitation.body.invitation.id
+  });
+
+  await assert.rejects(
+   auth.acceptStaffInvitation(cancelled.ctx,{
+    invitation_id:invitation.body.invitation.id
+   }),
+   error('INVITATION_UNAVAILABLE')
+  );
+
+  assert.equal(
+   (await auth.pendingStaffInvitations(cancelled.ctx)).body.items.length,
+   0
+  );
+ });
+
+
+ await t.test('invitation mail queue, resend and outgoing directory',async()=>{
+  const email=randomUUID()+'@example.test';
+
+  const created=await auth.createStaffInvitation(
+   owner.ctx,null,{email,role:'manager'}
+  );
+
+  const id=created.body.invitation.id;
+
+  const outgoing=(await auth.outgoingStaffInvitations(
+   owner.ctx,null
+  )).body.items;
+
+  const item=outgoing.find((row:{id:string})=>row.id===id);
+
+  assert.equal(item.email,email);
+  assert.equal(item.status,'pending');
+  assert.equal(item.delivery,'queued');
+
+  await assert.rejects(
+   auth.outgoingStaffInvitations(manager.ctx,null),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const duplicate=await auth.resendStaffInvitation(
+   owner.ctx,null,{invitation_id:id}
+  );
+
+  assert.equal(duplicate.body.queued,false);
+
+  const {rows:[job]}=await admin.query(
+   'SELECT id FROM web_auth.invitation_mail_jobs WHERE invitation_id=$1',
+   [id]
+  );
+
+  assert.equal(job.id,id);
+
+  await admin.query(
+   "UPDATE web_auth.invitation_mail_jobs SET completed_at=clock_timestamp()-interval '2 minutes',delivery='failed' WHERE invitation_id=$1",
+   [id]
+  );
+
+  const retry=await auth.resendStaffInvitation(
+   owner.ctx,null,{invitation_id:id}
+  );
+
+  assert.equal(retry.body.queued,true);
+
+  const {rows:[count]}=await admin.query(
+   'SELECT count(*)::int AS n FROM web_auth.invitation_mail_jobs WHERE invitation_id=$1',
+   [id]
+  );
+
+  assert.equal(count.n,2);
+
+  await auth.revokeStaffInvitation(owner.ctx,null,{
+   invitation_id:id
+  });
+
+  await assert.rejects(
+   auth.resendStaffInvitation(owner.ctx,null,{invitation_id:id}),
+   error('INVITATION_UNAVAILABLE')
+  );
+
+  for(let i=0;i<10;i++)await auth.deliverInvitationOne();
+
+  const {rows:[last]}=await admin.query(
+   'SELECT delivery FROM web_auth.invitation_mail_jobs WHERE invitation_id=$1 AND id<>$1',
+   [id]
+  );
+
+  assert.equal(last.delivery,'cancelled');
+
+  const active=await auth.createStaffInvitation(
+   owner.ctx,null,{email:randomUUID()+'@example.test',role:'manager'}
+  );
+
+  await auth.deliverInvitationOne();
+
+  const {rows:[sent]}=await admin.query(
+   'SELECT delivery FROM web_auth.invitation_mail_jobs WHERE id=$1',
+   [active.body.invitation.id]
+  );
+
+  assert.equal(sent.delivery,'accepted');
+  assert.equal(sentInvitations.length,1);
+  assert.equal(sentInvitations[0].id,active.body.invitation.id);
+  assert.equal(sentInvitations[0].purpose,'invitation');
+
+ });
+
+
+ await t.test('initial owner invitation cannot replace existing ownership',async()=>{
+  const emptyOrg=randomUUID();
+  const email=randomUUID()+'@example.test';
+  const invited=await newAccount(email);
+
+  await admin.query(
+   "INSERT INTO control.organizations(id,max_calls,legal_name) VALUES($1,1,'Новая организация')",
+   [emptyOrg]
+  );
+
+  const payload={organization_id:emptyOrg,email};
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(manager.ctx,payload),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(customer.ctx,payload),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(owner.ctx,{
+    ...payload,organization_id:org
+   }),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const created=await auth.createInitialOwnerInvitation(
+   owner.ctx,payload
+  );
+
+  assert.equal(created.status,201);
+
+  const id=created.body.invitation.id;
+
+  const replay=await auth.createInitialOwnerInvitation(
+   owner.ctx,payload
+  );
+
+  assert.equal(replay.status,200);
+  assert.equal(replay.body.invitation.id,id);
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(owner.ctx,{
+    ...payload,email:randomUUID()+'@example.test'
+   }),
+   error('INVITATION_CONFLICT')
+  );
+
+  const pending=(await auth.pendingStaffInvitations(
+   invited.ctx
+  )).body.items;
+
+  assert(pending.some((row:{id:string;role:string})=>
+   row.id===id&&row.role==='owner'
+  ));
+
+  await assert.rejects(
+   auth.acceptStaffInvitation(customer.ctx,{invitation_id:id}),
+   error('RESOURCE_NOT_FOUND')
+  );
+
+  await auth.deliverInvitationOne();
+
+  const {rows:[mail]}=await admin.query(
+   'SELECT delivery FROM web_auth.invitation_mail_jobs WHERE id=$1',
+   [id]
+  );
+
+  assert.equal(mail.delivery,'accepted');
+
+  const result=await auth.acceptStaffInvitation(
+   invited.ctx,{invitation_id:id}
+  );
+
+  assert.equal(result.body.role,'owner');
+
+  const {rows:[ownership]}=await admin.query(
+   `SELECT o.owner_membership_id,m.user_id,m.role_id
+    FROM control.organizations o
+    JOIN control.memberships m
+    ON m.organization_id=o.id AND m.id=o.owner_membership_id
+    WHERE o.id=$1`,
+   [emptyOrg]
+  );
+
+  assert.equal(ownership.user_id,invited.id);
+  assert.equal(ownership.role_id,'owner');
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(owner.ctx,payload),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const organizations=(await auth.organizations(
+   invited.ctx
+  )).body.items;
+
+  assert(organizations.some(row=>row.id===emptyOrg));
+ });
+
+
+ await t.test('account profile updates are validated, self-scoped and audited',async()=>{
+  const payload={
+   first_name:'  Иван ',
+   last_name:' Петров  ',
+   phone:'+7 (916) 123-45-67'
+  };
+
+  const endpoint='http://127.0.0.1:'+address.port+'/v1/account';
+
+  const response=await fetch(endpoint,{
+   method:'PATCH',
+   headers,
+   body:JSON.stringify(payload)
+  });
+
+  assert.equal(response.status,200);
+
+  const {account}=await response.json();
+
+  assert.equal(account.id,customer.id);
+  assert.equal(account.first_name,'Иван');
+  assert.equal(account.last_name,'Петров');
+  assert.equal(account.phone,'+79161234567');
+  assert.equal(account.phone_verified,false);
+  assert.equal(account.email_verified,true);
+  assert(!('password_hash' in account));
+
+  const current=await fetch(endpoint,{headers});
+  assert.equal(current.status,200);
+  assert.deepEqual((await current.json()).account,account);
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,phone:'12345'
+   }),
+   error('INVALID_PHONE')
+  );
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,first_name:'   '
+   }),
+   error('INVALID_PROFILE')
+  );
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,email:'other@example.test'
+   }),
+   error('INVALID_REQUEST')
+  );
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,user_id:employee.id
+   }),
+   error('INVALID_REQUEST')
+  );
+
+  const forbidden=await fetch(endpoint,{
+   method:'PATCH',
+   headers:{...headers,'x-csrf-token':'invalid'},
+   body:JSON.stringify(payload)
+  });
+
+  assert.equal(forbidden.status,403);
+
+  await auth.updateAccount(customer.ctx,payload);
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE actor_user_id=$1 AND action='account.profile_updated'",
+   [customer.id]
+  );
+
+  assert.equal(audit.n,1);
+
+  const {rows:[stored]}=await admin.query(
+   'SELECT first_name,last_name,phone FROM control.users WHERE id=$1',
+   [customer.id]
+  );
+
+  assert.deepEqual(stored,{
+   first_name:'Иван',
+   last_name:'Петров',
+   phone:'+79161234567'
+  });
+ });
+
+
+ await t.test('email change verification and session revocation',async()=>{
+  const oldEmail=randomUUID()+'@example.test';
+  const newEmail=randomUUID()+'@example.test';
+  const password='Isolated-test-password-123';
+
+  const browser=await auth.browser();
+  const ctx={
+   browser,
+   requestId:randomUUID(),
+   access:undefined as string|undefined
+  };
+
+  const registration=await auth.register(ctx,{
+   email:oldEmail,password,
+   first_name:'Иван',last_name:'Тест',
+   phone:'+79161234567'
+  },randomUUID());
+
+  const challenge=registration.body.challenge_id;
+
+  const {rows:[job]}=await admin.query(
+   'SELECT envelope FROM web_auth.mail_jobs WHERE challenge_id=$1',
+   [challenge]
+  );
+
+  await auth.verify(ctx,{
+   challenge_id:challenge,
+   code:auth.open(job.envelope).code
+  });
+
+  await admin.query(
+   `UPDATE web_auth.mail_jobs
+    SET completed_at=clock_timestamp(),
+        envelope=NULL,
+        lease_token=NULL,
+        lease_until=NULL
+    WHERE challenge_id=$1`,
+   [challenge]
+  );
+
+  const {rows:[user]}=await admin.query(
+   'SELECT id FROM control.users WHERE login=$1',
+   [oldEmail]
+  );
+
+  const session=await newSession(user.id);
+  const second=await newSession(user.id);
+
+  await assert.rejects(
+   auth.requestEmailChange(session.ctx,{
+    email:newEmail,password:'wrong-password'
+   }),error('INVALID_CREDENTIALS')
+  );
+
+  const requested=await auth.requestEmailChange(
+   session.ctx,{email:newEmail,password}
+  );
+
+  assert.equal(requested.status,202);
+
+  const id=requested.body.challenge_id;
+
+  const {rows:[queued]}=await admin.query(
+   'SELECT envelope FROM web_auth.email_change_mail_jobs WHERE reset_id=$1',
+   [id]
+  );
+
+
+  const {rows:[stored]}=await admin.query(
+   'SELECT code_hash FROM web_auth.email_changes WHERE id=$1',
+   [id]
+  );
+
+  await assert.rejects(
+   pool.query(
+    'SELECT web_auth.apply_email_change($1,$2,$3)',
+    [user.id,id,stored.code_hash]
+   ),
+   (err:unknown)=>(err as {code?:string}).code==='23514'
+  );
+
+  const {rows:[unchanged]}=await admin.query(
+   'SELECT login FROM control.users WHERE id=$1',
+   [user.id]
+  );
+
+  assert.equal(unchanged.login,oldEmail);
+
+  const message=auth.open(queued.envelope);
+
+  assert.equal(message.email,newEmail);
+
+  await assert.rejects(
+   auth.confirmEmailChange(second.ctx,{
+    challenge_id:id,code:message.code
+   }),error('EMAIL_CHANGE_UNAVAILABLE')
+  );
+
+  const wrong=message.code==='000000'?'111111':'000000';
+
+  await assert.rejects(
+   auth.confirmEmailChange(session.ctx,{
+    challenge_id:id,code:wrong
+   }),error('INVALID_CODE')
+  );
+
+  const result=await auth.confirmEmailChange(
+   session.ctx,{challenge_id:id,code:message.code}
+  );
+
+  assert.equal(result.body.email_changed,true);
+
+  await assert.rejects(
+   auth.organizations(session.ctx),
+   error('SESSION_REVOKED')
+  );
+
+  await assert.rejects(
+   auth.organizations(second.ctx),
+   error('SESSION_REVOKED')
+  );
+
+  const {rows:[updated]}=await admin.query(
+   'SELECT login,email_verified_at FROM control.users WHERE id=$1',
+   [user.id]
+  );
+
+  assert.equal(updated.login,newEmail);
+  assert(updated.email_verified_at);
+
+  await assert.rejects(
+   auth.login(ctx,{
+    email:oldEmail,password,device_id:randomUUID()
+   }),error('INVALID_CREDENTIALS')
+  );
+
+  const login=await auth.login(ctx,{
+   email:newEmail,password,device_id:randomUUID()
+  });
+
+  assert.equal(login.status,200);
+
+  await assert.rejects(
+   auth.requestEmailChange(owner.ctx,{
+    email:newEmail,password
+   }),error('PROTECTED_OWNER')
+  );
  });
 
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;

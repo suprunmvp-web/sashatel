@@ -18,7 +18,7 @@ const control = new ControlPlane(pool, undefined, () => true);
 
 async function fixture({ limit = 10, balance = 100, role = 'manager', number = '+74950001001' } = {}) {
   const [tenant, user, member, trunk, device] = Array.from({ length: 5 }, () => randomUUID());
-  await admin.query('INSERT INTO control.organizations VALUES ($1,true,$2)', [tenant,limit]);
+  await admin.query("INSERT INTO control.organizations(id,active,max_calls,verification_status) VALUES ($1,true,$2,'verified')", [tenant,limit]);
   await admin.query('INSERT INTO control.users (id,login,password_hash) VALUES ($1,$1::uuid::text,$2)',
     [user,await hashPassword('test-password')]);
   await admin.query('INSERT INTO control.memberships VALUES ($1,$2,$3,$4,true)', [tenant,member,user,role]);
@@ -96,6 +96,51 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const next = await control.login(b.tenant,a.user,'test-password',randomUUID());
     await admin.query('UPDATE control.organizations SET active=false WHERE id=$1',[b.tenant]);
     await assert.rejects(control.authorize(next.token,'suspended',destination),code('ORGANIZATION_SUSPENDED'));
+  });
+
+  await t.test('organization verification gates admission and dispatch',async()=>{
+    const a=await fixture({number:'+74950002987'});
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='unverified' WHERE id=$1",
+      [a.tenant]
+    );
+
+    await assert.rejects(
+      control.authorize(a.token,'unverified',destination),
+      code('ORGANIZATION_NOT_VERIFIED')
+    );
+
+    await assert.rejects(
+      control.prepareCommercialCall(a.token,'unverified-prepare',destination),
+      code('ORGANIZATION_NOT_VERIFIED')
+    );
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='verified' WHERE id=$1",
+      [a.tenant]
+    );
+
+    const call=await control.authorize(a.token,'verified',destination);
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='unverified' WHERE id=$1",
+      [a.tenant]
+    );
+
+    const gateway=new FakeAri();
+
+    await control.processOne(a.tenant,gateway);
+
+    assert.equal(gateway.attempts.size,0);
+    assert.equal((await control.calls(a.token,call.call_id)).state,'failed');
+
+    const {rows:[quota]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1',
+      [a.number]
+    );
+
+    assert.deepEqual(quota,{held:0,used:0});
   });
 
   await t.test('unavailable worker cannot reserve or enqueue', async () => {
@@ -364,6 +409,186 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.equal(dispatch.state,'released');
   });
 
+  await t.test('028: global LRU breaks equal-load ties across tenants',async()=>{
+    const first='+74950004801',second='+74950004802';
+    const a=await fixture({number:first});
+    const b=await fixture({number:first});
+
+    await admin.query(
+      'INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES($1,$2,$3,true)',
+      [b.tenant,second,b.trunk]);
+
+    for(const [f,n] of [[a,first],[b,first],[b,second]] as const){
+      await admin.query(
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+        [f.tenant,n,f.trunk]);
+    }
+
+    const car=new GlobalCarousel();
+
+    const reserve=(f:typeof a,key:string)=>control.transaction(
+      f.tenant,db=>car.reserve(db,{
+        organizationId:f.tenant,
+        membershipId:f.member,
+        effectiveTrunkId:f.trunk,
+        requestKey:key,destination
+      }));
+
+    const initial=await reserve(a,'lru-first');
+
+    await control.transaction(a.tenant,db=>car.finalize(db,{
+      organizationId:a.tenant,
+      dispatchId:initial.id,
+      action:'commit'
+    }));
+
+    const history=await admin.query(
+      'SELECT last_initiated_at FROM control.physical_caller_rotation WHERE e164=$1',
+      [first]);
+
+    assert.equal(history.rowCount,1);
+
+    const older=await reserve(b,'lru-second');
+    assert.equal(older.caller_id,second);
+
+    await control.transaction(b.tenant,db=>car.finalize(db,{
+      organizationId:b.tenant,
+      dispatchId:older.id,
+      action:'commit'
+    }));
+
+    // Both numbers now have equal load.
+    // Make the larger E.164 explicitly older.
+    await admin.query(
+      "UPDATE control.physical_caller_rotation SET last_initiated_at=clock_timestamp()-interval '1 day' WHERE e164=$1",
+      [second]);
+
+    const next=await reserve(b,'lru-equal-load');
+    assert.equal(next.caller_id,second);
+
+    // Lower load must take precedence over older history.
+    const lowerLoad=await reserve(b,'lru-load-priority');
+    assert.equal(lowerLoad.caller_id,first);
+  });
+
+  await t.test('028: rotation advances only on first successful commit',async()=>{
+    const number='+74950004803';
+    const f=await fixture({number});
+
+    await admin.query(
+      "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+      [f.tenant,number,f.trunk]);
+
+    const car=new GlobalCarousel();
+
+    const reserve=(key:string)=>control.transaction(
+      f.tenant,db=>car.reserve(db,{
+        organizationId:f.tenant,
+        membershipId:f.member,
+        effectiveTrunkId:f.trunk,
+        requestKey:key,destination
+      }));
+
+    const rotation=async()=>(
+      await admin.query(
+        'SELECT last_initiated_at::text AS ts FROM control.physical_caller_rotation WHERE e164=$1',
+        [number])
+    ).rows[0]?.ts;
+
+    const finalize=(id:string,action:'commit'|'release')=>
+      control.transaction(f.tenant,db=>car.finalize(db,{
+        organizationId:f.tenant,dispatchId:id,action
+      }));
+
+    const cancelled=await reserve('rotation-cancel');
+    assert.equal(await rotation(),undefined);
+    assert.equal(await finalize(cancelled.id,'release'),'released');
+    assert.equal(await rotation(),undefined);
+
+    const committed=await reserve('rotation-commit');
+    assert.equal(await finalize(committed.id,'commit'),'committed');
+
+    const original=await rotation();
+    assert.ok(original);
+
+    await new Promise(resolve=>setTimeout(resolve,20));
+
+    assert.equal(await finalize(committed.id,'commit'),'committed');
+    assert.equal(await finalize(committed.id,'release'),'committed');
+    assert.equal(await rotation(),original);
+
+    const another=await reserve('rotation-release');
+    assert.equal(await finalize(another.id,'release'),'released');
+    assert.equal(await rotation(),original);
+  });
+
+  await t.test('028: runtime cannot directly read or mutate global rotation',async()=>{
+    const f=await fixture({number:'+74950004804'});
+
+    for(const sql of [
+      'SELECT * FROM control.physical_caller_rotation',
+      'DELETE FROM control.physical_caller_rotation',
+      'UPDATE control.physical_caller_rotation SET last_initiated_at=clock_timestamp()'
+    ]){
+      await assert.rejects(
+        control.transaction(f.tenant,db=>db.query(sql)),
+        /permission denied/
+      );
+    }
+  });
+
+  await t.test('028: parallel tenants distribute shared physical load evenly',async()=>{
+    const numbers=[
+      '+74950004811',
+      '+74950004812',
+      '+74950004813'
+    ];
+
+    const tenants=await Promise.all(
+      Array.from({length:3},()=>fixture({number:numbers[0]}))
+    );
+
+    for(const f of tenants){
+      for(const n of numbers){
+        await admin.query(
+          "INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES($1,$2,$3,true) ON CONFLICT DO NOTHING",
+          [f.tenant,n,f.trunk]);
+        await admin.query(
+          "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+          [f.tenant,n,f.trunk]);
+      }
+    }
+
+    const car=new GlobalCarousel();
+
+    const reservations=await Promise.all(
+      Array.from({length:12},(_,i)=>{
+        const f=tenants[i%tenants.length];
+        return control.transaction(f.tenant,db=>car.reserve(db,{
+          organizationId:f.tenant,
+          membershipId:f.member,
+          effectiveTrunkId:f.trunk,
+          requestKey:'parallel-fair-'+i,
+          destination
+        }));
+      })
+    );
+
+    const counts=numbers.map(n=>
+      reservations.filter(r=>r.caller_id===n).length
+    );
+
+    assert.deepEqual(counts,[4,4,4]);
+
+    const {rows}=await admin.query(
+      "SELECT e164,held,used FROM control.physical_caller_day WHERE e164=ANY($1::text[]) ORDER BY e164",
+      [numbers]);
+
+    assert.equal(rows.length,3);
+    assert.deepEqual(rows.map(r=>r.held),[4,4,4]);
+    assert.deepEqual(rows.map(r=>r.used),[0,0,0]);
+  });
+
   await t.test('parallel requests enforce concurrency without wallet gate; duplicate returns same call', async () => {
     const limited=await fixture({limit:1,balance:0,number:'+74950001010'});
     const limitedOutcomes=await Promise.allSettled([
@@ -489,6 +714,242 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     }
   });
 
+
+  await t.test('universal SIP authentication and transport',async()=>{
+    const owner=await fixture({
+      role:'organization_admin',
+      number:'+74950004927'
+    });
+
+    const trunks=new TrunkService(
+      control,randomBytes(32),
+      new Set(['sip.example.test:5060','sip.example.test:5061'])
+    );
+
+    const base={
+      name:'Universal SIP',
+      registrar_host:'sip.example.test',
+      registrar_port:5060,
+      auth_mode:'ip_authentication'
+    };
+
+    const ip=await trunks.create(
+      owner.token,'ip-auth',{...base,transport:'udp'}
+    );
+
+    assert.equal(ip.auth_mode,'ip_authentication');
+    assert.equal(ip.transport,'udp');
+    assert.equal(ip.desired_active,false);
+
+    const tls=await trunks.create(
+      owner.token,'tls-auth',{
+        ...base,
+        auth_mode:'registration_credentials',
+        transport:'tls',
+        registrar_port:5061,
+        username:'private-user',
+        password:'private-secret'
+      }
+    );
+
+    assert.equal(tls.transport,'tls');
+    assert(!JSON.stringify(tls).includes('private-'));
+
+    const tcp=await trunks.create(
+      owner.token,'tcp-auth',{...base,transport:'tcp'}
+    );
+
+    assert.equal(tcp.transport,'tcp');
+
+    await assert.rejects(
+      trunks.create(owner.token,'bad-transport',{
+        ...base,transport:'http'
+      }),
+      code('INVALID_TRUNK')
+    );
+
+    await assert.rejects(
+      trunks.create(owner.token,'bad-ip-auth',{
+        ...base,password:'unexpected'
+      }),
+      code('INVALID_TRUNK')
+    );
+
+    await assert.rejects(
+      trunks.create(owner.token,'ip-auth',{
+        ...base,transport:'tcp'
+      }),
+      code('IDEMPOTENCY_CONFLICT')
+    );
+
+    const received=new Map<string,{
+      endpoint:unknown;credentials:unknown
+    }>();
+
+    const adapter={
+      supportsUniversalSip:true,
+      async upsert(
+        job:{trunkId:string},
+        endpoint:unknown,
+        credentials:unknown
+      ){
+        received.set(job.trunkId,{endpoint,credentials});
+        return 'registered' as const;
+      },
+      async remove(){}
+    };
+
+    for(let i=0;i<3;i++)
+      await trunks.provisionNext(owner.tenant,adapter);
+
+    assert.equal(received.size,3);
+
+    assert.deepEqual(received.get(ip.id),{
+      endpoint:{
+        host:'sip.example.test',port:5060,
+        authMode:'ip_authentication',transport:'udp'
+      },
+      credentials:{username:'',password:''}
+    });
+
+    assert.deepEqual(received.get(tls.id),{
+      endpoint:{
+        host:'sip.example.test',port:5061,
+        authMode:'registration_credentials',transport:'tls'
+      },
+      credentials:{
+        username:'private-user',password:'private-secret'
+      }
+    });
+
+    for(const trunk of [ip,tls,tcp]){
+      const result=await trunks.read(owner.token,trunk.id);
+      assert.equal(result.status,'registered');
+      assert(!JSON.stringify(result).includes('private-'));
+    }
+
+    const {rows:[active]}=await admin.query(
+      'SELECT count(*)::int AS n FROM control.trunks WHERE id=ANY($1::uuid[]) AND active',
+      [[ip.id,tls.id,tcp.id]]
+    );
+
+    assert.equal(active.n,0);
+  });
+
+
+  await t.test('SIP activation verification diagnostics and recheck',async()=>{
+    const owner=await fixture({
+      role:'organization_admin',
+      number:'+74950004928'
+    });
+
+    const foreign=await fixture({
+      role:'organization_admin'
+    });
+
+    const trunks=new TrunkService(
+      control,randomBytes(32),
+      new Set(['sip.example.test:5060'])
+    );
+
+    const trunk=await trunks.create(
+      owner.token,'lifecycle',{
+        name:'Lifecycle SIP',
+        auth_mode:'registration_credentials',
+        registrar_host:'sip.example.test',
+        registrar_port:5060,
+        username:'test-user',
+        password:'test-password'
+      }
+    );
+
+    const adapter={
+      async upsert(){return 'registered' as const;},
+      async remove(){}
+    };
+
+    const isActive=async()=>{
+      const {rows:[row]}=await admin.query(
+        'SELECT active FROM control.trunks WHERE id=$1',
+        [trunk.id]
+      );
+      return row.active;
+    };
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('TRUNK_NOT_READY')
+    );
+
+    await assert.rejects(
+      trunks.setActive(foreign.token,trunk.id,true),
+      code('TRUNK_NOT_FOUND')
+    );
+
+    await trunks.provisionNext(owner.tenant,adapter);
+
+    const checked=await trunks.read(owner.token,trunk.id);
+
+    assert.equal(checked.status,'registered');
+    assert.equal(checked.diagnostic_code,'CONNECTION_OK');
+    assert(checked.last_checked_at);
+    assert(checked.last_success_at);
+    assert.equal(await isActive(),false);
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='unverified' WHERE id=$1",
+      [owner.tenant]
+    );
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('ORGANIZATION_NOT_VERIFIED')
+    );
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='verified' WHERE id=$1",
+      [owner.tenant]
+    );
+
+    await trunks.setActive(owner.token,trunk.id,true);
+
+    assert.equal(await isActive(),true);
+
+    await trunks.setActive(owner.token,trunk.id,false);
+
+    assert.equal(await isActive(),false);
+
+    await trunks.setActive(owner.token,trunk.id,true);
+
+    await trunks.recheck(owner.token,trunk.id);
+
+    assert.equal(await isActive(),false);
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('TRUNK_NOT_READY')
+    );
+
+    await trunks.provisionNext(owner.tenant,adapter);
+
+    assert.equal(await isActive(),false);
+
+    await trunks.setActive(owner.token,trunk.id,true);
+
+    assert.equal(await isActive(),true);
+
+    await trunks.remove(owner.token,trunk.id);
+
+    assert.equal(await isActive(),false);
+
+    await trunks.provisionNext(owner.tenant,adapter);
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('TRUNK_NOT_FOUND')
+    );
+  });
+
   await t.test('deleting a UIS trunk fences a late provisioning result', async () => {
     const owner = await fixture({role:'organization_admin'});
     const trunks = new TrunkService(control,randomBytes(32),new Set(['sip.example.test:5060']));
@@ -537,6 +998,95 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
       'SELECT c.state,w.available FROM control.calls c JOIN control.wallets w USING(organization_id) WHERE c.id=$1',
       [call.call_id]);
     assert.deepEqual(stored,{state:'ended',available:'100'});
+  });
+
+
+  await t.test('call reporting counts actual dispatch and human usage',async()=>{
+    const a=await fixture({number:'+74950004926'});
+
+    const reader=randomUUID();
+
+    await admin.query(
+      "INSERT INTO control.users(id,login,password_hash,email_verified_at) VALUES($1,$2,'test',clock_timestamp())",
+      [reader,reader+'@example.test']
+    );
+
+    await admin.query(
+      "INSERT INTO control.memberships(id,organization_id,user_id,role_id) VALUES($1,$2,$3,'admin')",
+      [randomUUID(),a.tenant,reader]
+    );
+
+    const gateway=new FakeAri();
+
+    const outcomes=[
+      {outcome:'human' as const,billableSeconds:120,evidenceId:'reporting-test-evidence'},
+      {outcome:'machine' as const},
+      {outcome:'no_answer' as const},
+      {outcome:'rejected' as const},
+      {outcome:'error' as const},
+    ];
+
+    for(const [i,classification] of outcomes.entries()){
+      const call=await control.authorize(
+        a.token,'reporting-'+i,destination
+      );
+
+      await control.processOne(a.tenant,gateway);
+
+      await control.event(a.tenant,call.call_id,{
+        id:'reporting-terminal-'+i,
+        state:'ended',classification
+      });
+    }
+
+    const pending=await control.authorize(
+      a.token,'reporting-pending',destination
+    );
+
+    await control.processOne(a.tenant,gateway);
+
+    const held=await control.authorize(
+      a.token,'reporting-not-dispatched',destination
+    );
+
+    const {rows:[row]}=await pool.query(
+      "SELECT web_auth.organization_call_statistics($1,$2,'2026-01-01','2026-12-31') AS report",
+      [reader,a.tenant]
+    );
+
+    const r=row.report;
+
+    assert.equal(r.initiations,6);
+    assert.equal(r.completed_calls,5);
+    assert.equal(r.answered,1);
+    assert.equal(r.machine,1);
+    assert.equal(r.no_answer,1);
+    assert.equal(r.rejected,1);
+    assert.equal(r.error,1);
+    assert.equal(r.billable_seconds,120);
+    assert.equal(r.charges_kopeks,600);
+    assert.equal(r.answer_rate,20);
+
+    assert.equal(r.daily.reduce(
+      (n:number,d:{initiations:number})=>n+d.initiations,0
+    ),6);
+
+    const {rows:[history]}=await pool.query(
+      "SELECT web_auth.organization_call_history($1,$2,'2026-01-01','2026-12-31',0,100) AS page",
+      [reader,a.tenant]
+    );
+
+    assert.equal(history.page.total,7);
+
+    assert(history.page.items.some(
+      (c:{id:string;outcome:unknown})=>
+       c.id===pending.call_id&&c.outcome===null
+    ));
+
+    assert(history.page.items.some(
+      (c:{id:string;state:string})=>
+       c.id===held.call_id&&c.state==='authorized'
+    ));
   });
 
   await t.test('machine outcome cannot create human billable seconds',async()=>{
