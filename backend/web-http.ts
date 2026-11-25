@@ -8,7 +8,8 @@ export function webHandler(auth:WebAuth,origin:string) {
   return async(req:IncomingMessage,res:ServerResponse) => {
     const path=req.url?.split('?')[0]??'';
     const displayNameRoute=/^\/v1\/organizations\/([^/]+)\/display-name$/.exec(path);
-    if(!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
+    const clientBillingRoute=new RegExp('^/v1/organizations/([^/]+)/billing(?:/(invoices))?$').exec(path);
+    if(!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
     res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
@@ -38,20 +39,9 @@ export function webHandler(auth:WebAuth,origin:string) {
         send({status:200,body:{csrf_token:auth.csrf(browser)}});return true;
       }
       if(req.method==='GET') {
-        if(path==='/v1/auth/bootstrap') send(await auth.bootstrap(ctx));
-        else if(path==='/v1/account') {
-          const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx,true)).user)}}),true);
-          send(result);
-        } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
-        else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
-        else if(path==='/v1/internal/responsible-managers')
-          send(await auth.responsibleManagerCandidates(ctx));
-        else if(path==='/v1/internal/billing/summary'||
-                path==='/v1/internal/billing/history') {
+        if(clientBillingRoute) {
           const query=new URL(req.url??path,'http://localhost').searchParams;
-          const org=query.get('organization_id')??'';
-          const history=path.endsWith('/history');
-          const allowed=history?['organization_id','offset','limit']:['organization_id'];
+          const allowed=clientBillingRoute[2]?['offset','limit']:[];
           if([...query.keys()].some(k=>!allowed.includes(k)||query.getAll(k).length!==1))
             throw new ApiError(422,'INVALID_PAGE');
           const number=(name:string,fallback:number)=>{
@@ -61,7 +51,38 @@ export function webHandler(auth:WebAuth,origin:string) {
               throw new ApiError(422,'INVALID_PAGE');
             return Number(value);
           };
-          send(history
+          send(clientBillingRoute[2]
+            ?await auth.billingInvoices(ctx,clientBillingRoute[1],false,number('offset',0),number('limit',50))
+            :await auth.clientBilling(ctx,clientBillingRoute[1]));
+        }
+        else if(path==='/v1/auth/bootstrap') send(await auth.bootstrap(ctx));
+        else if(path==='/v1/account') {
+          const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx,true)).user)}}),true);
+          send(result);
+        } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
+        else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
+        else if(path==='/v1/internal/responsible-managers')
+          send(await auth.responsibleManagerCandidates(ctx));
+        else if(path==='/v1/internal/billing/summary'||
+                path==='/v1/internal/billing/history'||
+                path==='/v1/internal/billing/invoices') {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+          const org=query.get('organization_id')??'';
+          const invoices=path.endsWith('/invoices');
+          const history=path.endsWith('/history');
+          const allowed=(history||invoices)?['organization_id','offset','limit']:['organization_id'];
+          if([...query.keys()].some(k=>!allowed.includes(k)||query.getAll(k).length!==1))
+            throw new ApiError(422,'INVALID_PAGE');
+          const number=(name:string,fallback:number)=>{
+            const value=query.get(name);
+            if(value===null)return fallback;
+            if(!/^[0-9]{1,6}$/.test(value))
+              throw new ApiError(422,'INVALID_PAGE');
+            return Number(value);
+          };
+          send(invoices
+            ?await auth.billingInvoices(ctx,org,true,number('offset',0),number('limit',50))
+            :history
             ?await auth.billingHistory(ctx,org,number('offset',0),number('limit',50))
             :await auth.billingSummary(ctx,org));
         }
@@ -128,6 +149,8 @@ export function webHandler(auth:WebAuth,origin:string) {
           result=await auth.setResponsibleManager(ctx,body);break;
         case '/v1/internal/billing/transactions':
           result=await auth.recordBillingTransaction(ctx,body,key);break;
+        case '/v1/internal/billing/schedule':
+          result=await auth.setBillingSchedule(ctx,body);break;
         case '/v1/internal/billing/due-date':
           result=await auth.changeBillingDueDate(ctx,body);break;
         case '/v1/internal/staff/access':result=await auth.setInternalStaff(ctx,body);break;

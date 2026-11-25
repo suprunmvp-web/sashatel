@@ -401,6 +401,107 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert.equal(audit.n,2);
  });
 
+ await t.test('billing schedule and invoice reads preserve organization scope',async()=>{
+  const date=new Date(Date.now()+86400000*30)
+   .toISOString().slice(0,10);
+
+  const input={
+   organization_id:org,next_period_end:date,
+   reason:'Согласована дата расчётного периода'
+  };
+
+  await assert.rejects(
+   auth.setBillingSchedule(manager.ctx,input),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await auth.setBillingSchedule(owner.ctx,input);
+
+  await auth.setBillingSchedule(owner.ctx,input);
+
+  const summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+
+  assert.equal(summary.next_period_end,date);
+  assert.equal(summary.balance_kopeks,'13000');
+
+  const invoices=(await auth.billingInvoices(owner.ctx,org,true)).body.items;
+
+  assert.equal(invoices.length,2);
+  assert(invoices.some((item:{status:string})=>item.status==='paid'));
+  assert(invoices.some((item:{status:string})=>item.status==='unpaid'));
+
+  const foreign=(await auth.billingInvoices(owner.ctx,other,true)).body.items;
+  assert.equal(foreign.length,0);
+
+  await assert.rejects(
+   auth.billingInvoices(manager.ctx,org,true),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.clientBilling(owner.ctx,org),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND action='internal.billing_schedule_changed'",
+   [org]
+  );
+
+  assert.equal(audit.n,1);
+ });
+
+
+ await t.test('billing HTTP routes enforce session and organization permissions',async()=>{
+  const base='http://127.0.0.1:'+address.port;
+
+  const get=(path:string,ctx:typeof owner.ctx)=>fetch(base+path,{
+   headers:{
+    cookie:'__Host-sashatel-browser='+ctx.browser+
+     '; __Host-sashatel-access='+ctx.access
+   }
+  });
+
+  const billing='/v1/organizations/'+org+'/billing';
+
+  const response=await get(billing,customer.ctx);
+  assert.equal(response.status,200);
+
+  const {summary}=await response.json();
+  assert.equal(summary.balance_kopeks,'13000');
+
+  assert.equal((await get(billing,employee.ctx)).status,403);
+  assert.equal((await get(billing,manager.ctx)).status,403);
+  assert.equal((await get(
+   '/v1/organizations/'+other+'/billing',customer.ctx
+  )).status,403);
+
+  const invoices=await get(billing+'/invoices',customer.ctx);
+  assert.equal(invoices.status,200);
+  assert.equal((await invoices.json()).items.length,2);
+
+  const internal='/v1/internal/billing/summary?organization_id='+org;
+  assert.equal((await get(internal,owner.ctx)).status,200);
+  assert.equal((await get(internal,internalAdmin.ctx)).status,200);
+  assert.equal((await get(internal,customer.ctx)).status,403);
+  assert.equal((await get(internal,manager.ctx)).status,403);
+
+  const history='/v1/internal/billing/history?organization_id='+org;
+  assert.equal((await get(history,owner.ctx)).status,200);
+
+  const post=await fetch(base+'/v1/internal/billing/transactions',{
+   method:'POST',
+   headers:{
+    ...headers,
+    'x-csrf-token':'invalid',
+    'idempotency-key':randomUUID()
+   },
+   body:JSON.stringify({})
+  });
+
+  assert.equal(post.status,403);
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);

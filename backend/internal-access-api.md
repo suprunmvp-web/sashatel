@@ -152,3 +152,32 @@ The old prepaid wallet remains unused.
 Future invoice allocation, billing periods, document issuance,
 bank reconciliation and historical balance reconciliation
 require separate implementation and acceptance tests.
+
+
+## Billing schedules and organization billing
+
+GET /v1/organizations/{organization_id}/billing
+GET /v1/organizations/{organization_id}/billing/invoices
+GET /v1/internal/billing/invoices?organization_id=UUID
+POST /v1/internal/billing/schedule
+
+Client billing requires active selected organization and
+Owner or Admin membership. Internal billing requires
+active internal Owner or Admin access.
+
+Schedule body:
+- organization_id: UUID
+- next_period_end: YYYY-MM-DD
+- reason: string
+
+The period end uses Europe/Moscow calendar dates.
+Changing the period end does not change invoice due dates,
+historical charges or payments. Repeated identical changes
+do not produce duplicate audit entries.
+
+Invoice records expose amounts, due dates and payment status.
+These are accounting records, not downloadable legal documents.
+
+Automatic period closure, allocation of remaining advances,
+document issuance and bank reconciliation remain separate
+implementation requirements.

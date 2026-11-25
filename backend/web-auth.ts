@@ -646,6 +646,91 @@ export class WebAuth {
     return value;
   }
 
+  async clientBilling(ctx:Context,org:string) {
+    if(!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx,true);
+
+      if(family.organization_id!==org)
+        throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.organization_billing_details($1,$2,false) AS summary',
+          [user.id,org]
+        );
+        return {status:200,body:{summary:row.summary}};
+      } catch(error) {
+        if((error as {code?:string}).code==='42501')
+          throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+        this.billingError(error);
+      }
+    },true);
+  }
+
+  async billingInvoices(
+    ctx:Context,org:string,internal:boolean,
+    offset=0,limit=50
+  ) {
+    if(!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx,true);
+
+      if(!internal&&family.organization_id!==org)
+        throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.organization_invoices($1,$2,$3,$4,$5) AS items',
+          [user.id,org,internal,offset,limit]
+        );
+        return {status:200,body:{items:row.items}};
+      } catch(error) {
+        if(!internal&&(error as {code?:string}).code==='42501')
+          throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+        this.billingError(error);
+      }
+    },true);
+  }
+
+  async setBillingSchedule(ctx:Context,input:Record<string,unknown>) {
+    exact(input,['organization_id','next_period_end','reason']);
+
+    const org=this.billingField(input,'organization_id',36);
+    const date=this.billingField(input,'next_period_end',10);
+    const reason=this.billingField(input,'reason',2000).trim();
+
+    const parsed=new Date(date+'T00:00:00.000Z');
+
+    if(!uuid.test(org)||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)
+       ||!Number.isFinite(parsed.getTime())
+       ||parsed.toISOString().slice(0,10)!==date
+       ||reason.length<8)
+      throw new ApiError(422,'INVALID_BILLING_OPERATION');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.set_billing_schedule($1,$2,$3) AS changes',
+          [user.id,org,date]
+        );
+
+        if(row.changes)
+          await this.audit(
+            db,ctx,'internal.billing_schedule_changed',
+            user.id,org,org,{...row.changes,reason}
+          );
+
+        return {status:200,body:{next_period_end:date}};
+      } catch(error) {this.billingError(error);}
+    });
+  }
+
   async billingSummary(ctx:Context,org:string) {
     if(!uuid.test(org))
       throw new ApiError(404,'RESOURCE_NOT_FOUND');
