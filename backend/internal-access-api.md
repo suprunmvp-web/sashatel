@@ -242,3 +242,28 @@ Memberships and historical calls are retained.
 Account access to unrelated organizations is preserved.
 
 Repeated identical mutations do not duplicate audit entries.
+
+
+## Staff invitations
+
+POST /v1/internal/invitations
+POST /v1/organizations/{organization_id}/invitations
+
+Body: email, role (admin | manager).
+
+GET /v1/account/invitations
+
+POST /v1/account/invitations/accept
+
+POST /v1/internal/invitations/revoke
+POST /v1/organizations/{organization_id}/invitations/revoke
+
+Accept and revoke body: invitation_id.
+
+Invitations expire after seven days. Acceptance requires
+an active account with matching verified email.
+
+Existing memberships and internal staff records cannot
+be overwritten by accepting an invitation.
+
+Email delivery is implemented separately.

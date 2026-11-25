@@ -704,6 +704,133 @@ export class WebAuth {
     });
   }
 
+  private invitationError(error:unknown):never {
+    const e=error as {code?:string,message?:string};
+    if(e.code==='42501')
+      throw new ApiError(403,'INVITATION_ACCESS_DENIED');
+    if(e.code==='P0002')
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    if(e.code==='23514')
+      throw new ApiError(409,'INVITATION_UNAVAILABLE');
+    if(e.code==='23505')
+      throw new ApiError(409,'INVITATION_CONFLICT');
+    if(e.code==='22023')
+      throw new ApiError(422,'INVALID_INVITATION');
+    throw error;
+  }
+
+  async createStaffInvitation(
+    ctx:Context,org:string|null,input:Record<string,unknown>
+  ) {
+    exact(input,['email','role']);
+    const email=required(input,'email',254).trim().toLowerCase();
+    const role=required(input,'role',16);
+
+    if((org!==null&&!uuid.test(org))
+       ||!['admin','manager'].includes(role))
+      throw new ApiError(422,'INVALID_INVITATION');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+
+      if(org!==null&&family.organization_id!==org)
+        throw new ApiError(403,'INVITATION_ACCESS_DENIED');
+
+      await this.limit(db,'staff-invite:'+user.id,50,3600);
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.create_staff_invitation($1,$2,$3,$4,$5) AS result',
+          [user.id,org,randomUUID(),email,role]
+        );
+
+        if(!row.result.replayed)
+          await this.audit(
+            db,ctx,'staff.invitation_created',
+            user.id,org,row.result.id,{role}
+          );
+
+        return {
+          status:row.result.replayed?200:201,
+          body:{invitation:row.result},
+          replayed:row.result.replayed
+        };
+      } catch(error) {this.invitationError(error);}
+    });
+  }
+
+  async pendingStaffInvitations(ctx:Context) {
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      const {rows:[row]}=await db.query(
+        'SELECT web_auth.pending_staff_invitations($1) AS items',
+        [user.id]
+      );
+      return {status:200,body:{items:row.items}};
+    },true);
+  }
+
+  async acceptStaffInvitation(
+    ctx:Context,input:Record<string,unknown>
+  ) {
+    exact(input,['invitation_id']);
+    const id=required(input,'invitation_id',36);
+    if(!uuid.test(id))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.accept_staff_invitation($1,$2,$3) AS result',
+          [user.id,id,randomUUID()]
+        );
+
+        if(!row.result.replayed)
+          await this.audit(
+            db,ctx,'staff.invitation_accepted',
+            user.id,row.result.organization_id,id,
+            {role:row.result.role}
+          );
+
+        return {status:200,body:row.result};
+      } catch(error) {this.invitationError(error);}
+    });
+  }
+
+  async revokeStaffInvitation(
+    ctx:Context,org:string|null,input:Record<string,unknown>
+  ) {
+    exact(input,['invitation_id']);
+    const id=required(input,'invitation_id',36);
+
+    if(!uuid.test(id)||(org!==null&&!uuid.test(org)))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+
+      if(org!==null&&family.organization_id!==org)
+        throw new ApiError(403,'INVITATION_ACCESS_DENIED');
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.revoke_staff_invitation($1,$2,$3) AS changed',
+          [user.id,org,id]
+        );
+
+        if(row.changed)
+          await this.audit(
+            db,ctx,'staff.invitation_revoked',
+            user.id,org,id
+          );
+
+        return {status:204};
+      } catch(error) {this.invitationError(error);}
+    });
+  }
+
   async organizationStaff(ctx:Context,org:string) {
     if(!uuid.test(org))
       throw new ApiError(404,'RESOURCE_NOT_FOUND');

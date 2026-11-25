@@ -13,7 +13,14 @@ export function webHandler(auth:WebAuth,origin:string) {
       '^/v1/organizations/([^/]+)/staff(?:/(access))?$'
     ).exec(path);
 
-    if(!organizationStaffRoute&&!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
+    const invitationRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/invitations(?:/(revoke))?$'
+    ).exec(path);
+
+    if(!invitationRoute&&
+       path!=='/v1/account/invitations'&&
+       path!=='/v1/account/invitations/accept'&&
+       !organizationStaffRoute&&!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
     res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
@@ -43,6 +50,10 @@ export function webHandler(auth:WebAuth,origin:string) {
         send({status:200,body:{csrf_token:auth.csrf(browser)}});return true;
       }
       if(req.method==='GET') {
+        if(path==='/v1/account/invitations') {
+          send(await auth.pendingStaffInvitations(ctx));
+          return true;
+        }
         if(organizationStaffRoute?.[2])
           throw new ApiError(405,'METHOD_NOT_ALLOWED');
         if(organizationStaffRoute) {
@@ -155,7 +166,20 @@ export function webHandler(auth:WebAuth,origin:string) {
         ));
         return true;
       }
+      if(invitationRoute) {
+        send(invitationRoute[2]
+          ?await auth.revokeStaffInvitation(ctx,invitationRoute[1],body)
+          :await auth.createStaffInvitation(ctx,invitationRoute[1],body));
+        return true;
+      }
+
       switch(path) {
+        case '/v1/account/invitations/accept':
+          result=await auth.acceptStaffInvitation(ctx,body);break;
+        case '/v1/internal/invitations':
+          result=await auth.createStaffInvitation(ctx,null,body);break;
+        case '/v1/internal/invitations/revoke':
+          result=await auth.revokeStaffInvitation(ctx,null,body);break;
         case '/v1/auth/register':result=await auth.register(ctx,body,key);break;
         case '/v1/auth/email/verify':result=await auth.verify(ctx,body);break;
         case '/v1/auth/email/complete':result=await auth.complete(ctx);break;

@@ -689,6 +689,106 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert.equal(audit.n,3);
  });
 
+
+ await t.test('staff invitations bind verified email and cannot elevate existing staff',async()=>{
+  const email=randomUUID()+'@example.test';
+  const invited=await newAccount(email);
+
+  const created=await auth.createStaffInvitation(
+   customer.ctx,org,{email,role:'manager'}
+  );
+
+  assert.equal(created.status,201);
+  const id=created.body.invitation.id;
+
+  const duplicate=await auth.createStaffInvitation(
+   customer.ctx,org,{email,role:'manager'}
+  );
+
+  assert.equal(duplicate.status,200);
+  assert.equal(duplicate.body.invitation.id,id);
+
+  await assert.rejects(
+   auth.createStaffInvitation(customer.ctx,org,{email,role:'admin'}),
+   error('INVITATION_CONFLICT')
+  );
+
+  await assert.rejects(
+   auth.acceptStaffInvitation(employee.ctx,{invitation_id:id}),
+   error('RESOURCE_NOT_FOUND')
+  );
+
+  const pending=(await auth.pendingStaffInvitations(invited.ctx)).body.items;
+  assert.equal(pending.length,1);
+  assert.equal(pending[0].id,id);
+
+  const accepted=await auth.acceptStaffInvitation(
+   invited.ctx,{invitation_id:id}
+  );
+
+  assert.equal(accepted.body.role,'manager');
+  assert.equal(accepted.body.organization_id,org);
+
+  const replay=await auth.acceptStaffInvitation(
+   invited.ctx,{invitation_id:id}
+  );
+
+  assert.equal(replay.body.replayed,true);
+
+  const {rows:[member]}=await admin.query(
+   'SELECT role_id FROM control.memberships WHERE organization_id=$1 AND user_id=$2',
+   [org,invited.id]
+  );
+
+  assert.equal(member.role_id,'employee');
+
+  const internalEmail=randomUUID()+'@example.test';
+  const internalUser=await newAccount(internalEmail);
+
+  await assert.rejects(
+   auth.createStaffInvitation(manager.ctx,null,{
+    email:internalEmail,role:'admin'
+   }),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const staffInvite=await auth.createStaffInvitation(
+   owner.ctx,null,{email:internalEmail,role:'manager'}
+  );
+
+  await auth.acceptStaffInvitation(internalUser.ctx,{
+   invitation_id:staffInvite.body.invitation.id
+  });
+
+  assert.equal(
+   (await auth.internalSession(internalUser.ctx)).body.role,
+   'manager'
+  );
+
+  const cancelledEmail=randomUUID()+'@example.test';
+  const cancelled=await newAccount(cancelledEmail);
+
+  const invitation=await auth.createStaffInvitation(
+   owner.ctx,null,{email:cancelledEmail,role:'manager'}
+  );
+
+  await auth.revokeStaffInvitation(owner.ctx,null,{
+   invitation_id:invitation.body.invitation.id
+  });
+
+  await assert.rejects(
+   auth.acceptStaffInvitation(cancelled.ctx,{
+    invitation_id:invitation.body.invitation.id
+   }),
+   error('INVITATION_UNAVAILABLE')
+  );
+
+  assert.equal(
+   (await auth.pendingStaffInvitations(cancelled.ctx)).body.items.length,
+   0
+  );
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);
