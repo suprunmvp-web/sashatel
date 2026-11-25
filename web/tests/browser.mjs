@@ -190,6 +190,25 @@ try {
   assert.equal(await page.locator('.cabinet-notice').count(),0,'verified org remains marked unverified');
   results.push('Internal admin 403 for customer, DBA-gated reviewer role, verified organization persisted, customer sees updated status');
 
+  const staleContext=await browser.newContext();
+  try {
+    await staleContext.addCookies([
+      {name:'__Host-sashatel-browser',value:'b'.repeat(64),url:'https://localhost:4174',httpOnly:true},
+      {name:'__Host-sashatel-access',value:'d'.repeat(64),url:'https://localhost:4174',httpOnly:true},
+    ]);
+    const stale=await staleContext.newPage();
+    await stale.goto(base+'/');
+    await stale.waitForURL(base+'/login/');
+    await heading(stale,'Добро пожаловать.');
+    await stale.locator('[name=email]').fill(email);
+    await stale.locator('[name=password]').fill('integration-password-123');
+    await stale.getByRole('button',{name:'Войти',exact:true}).click();
+    await heading(stale,'Статистика');
+    results.push('Stale browser credentials route the root page to sign-in and a fresh login succeeds');
+  } finally {
+    await staleContext.close();
+  }
+
   const recoveryContext=await browser.newContext({viewport:{width:1440,height:900}});
   const recovery=await recoveryContext.newPage();
   recovery.on('pageerror',error=>failures.push(error.message));

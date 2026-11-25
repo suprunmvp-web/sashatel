@@ -711,6 +711,12 @@ async function start(){
   // Multiple organizations need an explicit choice; zero organizations go to onboarding.
   await import('./auth.js');
  }catch(error){
+  const lostSession=error?.status===401&&['ACCESS_EXPIRED','SESSION_REVOKED','REFRESH_EXPIRED','REFRESH_REUSED'].includes(error.code);
+  if(!isPreview&&lostSession){
+   if(location.pathname!=='/login/')history.replaceState(null,'','/login/');
+   await import('./auth.js');
+   return;
+  }
   renderPlatformError(error);
  }
 }
