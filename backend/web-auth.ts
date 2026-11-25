@@ -1,3 +1,4 @@
+import type { TrunkAccess } from './trunks.ts';
 import { createHash, createHmac, createCipheriv, createDecipheriv, randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import type { ScryptOptions } from 'node:crypto';
@@ -1218,6 +1219,53 @@ export class WebAuth {
         return {status:204};
       } catch(error) {this.invitationError(error);}
     });
+  }
+
+  trunkAccess(ctx:Context,org:string):TrunkAccess {
+    return {
+      run:async operation=>{
+        if(!uuid.test(org))
+          throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+        return this.tx(ctx,async db=>{
+          const {family,user}=await this.identity(db,ctx);
+
+          if(family.organization_id!==org)
+            throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+          await db.query(
+            "SELECT set_config('control.tenant',$1,true)",
+            [org]
+          );
+
+          await db.query(
+            "SET LOCAL search_path=control,pg_catalog"
+          );
+
+          const {rows:[organization]}=await db.query(
+            'SELECT id,active FROM control.organizations WHERE id=$1 FOR UPDATE',
+            [org]
+          );
+
+          if(!organization?.active)
+            throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+          const {rows:[member]}=await db.query(
+            "SELECT id FROM control.memberships WHERE organization_id=$1 AND user_id=$2 AND active AND role_id IN ('owner','admin') FOR UPDATE",
+            [org,user.id]
+          );
+
+          if(!member)
+            throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+          return operation(db,{
+            tenant:org,
+            membershipId:member.id,
+            userId:user.id
+          });
+        });
+      }
+    };
   }
 
   async organizationStaff(ctx:Context,org:string) {

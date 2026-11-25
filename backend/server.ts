@@ -1,3 +1,4 @@
+import { TrunkService } from './trunks.ts';
 import { readFile } from 'node:fs/promises';
 import { ControlPlane } from './control.ts';
 import { createApi } from './http.ts';
@@ -10,6 +11,8 @@ const {
   DATABASE_URL_FILE,
   DATABASE_CA_FILE,
   AUTH_KEY_FILE,
+  SIP_VAULT_KEY_FILE,
+  SIP_ALLOWED_REGISTRARS,
   WEB_ORIGIN,
   DADATA_API_KEY_FILE,
   RESEND_API_KEY_FILE,
@@ -48,7 +51,39 @@ const ready=async()=>{
     has_table_privilege(current_user,'web_auth.audit','UPDATE,DELETE') AS mutate`);
   if(!grants.append||grants.mutate) throw new Error('Append-only audit grants required');
 };
-const api=createApi(control,ready,undefined,{auth,origin:WEB_ORIGIN});
+let trunks:TrunkService|undefined;
+
+if(SIP_VAULT_KEY_FILE||SIP_ALLOWED_REGISTRARS){
+  if(!SIP_VAULT_KEY_FILE||!SIP_ALLOWED_REGISTRARS)
+    throw new Error('Incomplete SIP configuration');
+
+  const sipKey=(await readFile(
+    SIP_VAULT_KEY_FILE,'utf8'
+  )).trim();
+
+  if(!/^[0-9a-fA-F]{64}$/.test(sipKey))
+    throw new Error('Invalid SIP vault key');
+
+  if(sipKey.toLowerCase()===key.toLowerCase())
+    throw new Error('SIP vault key must be independent');
+
+  const registrars=new Set(
+    SIP_ALLOWED_REGISTRARS.split(',')
+      .map(value=>value.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  if(!registrars.size)
+    throw new Error('Empty SIP registrar allowlist');
+
+  trunks=new TrunkService(
+    control,Buffer.from(sipKey,'hex'),registrars
+  );
+}
+
+const api=createApi(control,ready,trunks,{
+  auth,origin:WEB_ORIGIN
+});
 let running=false;
 const timer=setInterval(async()=>{
   if(running) return;

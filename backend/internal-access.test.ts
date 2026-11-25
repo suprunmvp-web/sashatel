@@ -1,3 +1,5 @@
+import { TrunkService } from './trunks.ts';
+import { ControlPlane } from './control.ts';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -78,7 +80,12 @@ test('staff transition, company display name and temporary access stay tenant-sc
  await assert.rejects(auth.renameOrganization(customer.ctx,other,{display_name:'Запрещено'}),error('ORGANIZATION_ACCESS_DENIED'));
  await assert.rejects(auth.renameOrganization(customer.ctx,org,{display_name:'Имя',inn:'7707000002'}),error('INVALID_REQUEST'));
  const origin='https://platform.example.test';
- const handle=webHandler(auth,origin);
+ const sip=new TrunkService(
+  new ControlPlane(pool),
+  randomBytes(32),
+  new Set(['sip.example.test:5060'])
+ );
+ const handle=webHandler(auth,origin,sip);
  const server=createServer(async(req,res)=>{
   if(!await handle(req,res)){res.writeHead(404);res.end();}
  });
@@ -648,6 +655,121 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert.equal((await fetch(
    base.replace(org,other)+'/calls'+dates,{headers}
   )).status,403);
+ });
+
+
+ await t.test('Web SIP trunk management and access isolation',async sipTest=>{
+  const {rows:[original]}=await admin.query(
+   'SELECT verification_status FROM control.organizations WHERE id=$1',
+   [org]
+  );
+
+  sipTest.after(async()=>{
+   await admin.query(
+    'UPDATE control.organizations SET verification_status=$2 WHERE id=$1',
+    [org,original.verification_status]
+   );
+  });
+
+  const base='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org+'/trunks';
+
+  const input={
+   name:'Web SIP',
+   auth_mode:'registration_credentials',
+   registrar_host:'sip.example.test',
+   registrar_port:5060,
+   transport:'udp',
+   username:'private-user',
+   password:'private-password'
+  };
+
+  const post=(url:string,data:unknown,extra={})=>fetch(url,{
+   method:'POST',
+   headers:{
+    ...headers,
+    'idempotency-key':randomUUID(),
+    ...extra
+   },
+   body:JSON.stringify(data)
+  });
+
+  assert.equal((await post(base,input,{
+   'x-csrf-token':'invalid'
+  })).status,403);
+
+  const created=await post(base,input);
+  assert.equal(created.status,202);
+
+  const trunk=await created.json();
+
+  assert(trunk.id);
+  assert.equal(trunk.status,'configuring');
+  assert(!JSON.stringify(trunk).includes('private-'));
+
+  const detail=base+'/'+trunk.id;
+
+  assert.equal((await fetch(detail,{headers})).status,200);
+
+  const listing=await fetch(base,{headers});
+  assert.equal(listing.status,200);
+  assert.equal((await listing.json()).items.length,1);
+
+  assert.equal((await fetch(base)).status,401);
+
+  assert.equal((await fetch(base,{
+   headers:{
+    cookie:'__Host-sashatel-browser='+employee.ctx.browser+
+     '; __Host-sashatel-access='+employee.ctx.access
+   }
+  })).status,403);
+
+  assert.equal((await fetch(
+   base.replace(org,other),{headers}
+  )).status,403);
+
+  const adapter={
+   async upsert(){return 'registered' as const;},
+   async remove(){}
+  };
+
+  await sip.provisionNext(org,adapter);
+
+  const checked=await fetch(detail,{headers});
+  assert.equal((await checked.json()).diagnostic_code,
+   'CONNECTION_OK');
+
+  await admin.query(
+   "UPDATE control.organizations SET verification_status='verified' WHERE id=$1",
+   [org]
+  );
+
+  assert.equal((await post(
+   detail+'/active',{active:true}
+  )).status,200);
+
+  assert.equal((await post(
+   detail+'/active',{active:false}
+  )).status,200);
+
+  assert.equal((await post(
+   detail+'/recheck',{}
+  )).status,202);
+
+  await sip.provisionNext(org,adapter);
+
+  assert.equal((await post(
+   detail+'/delete',{}
+  )).status,202);
+
+  assert.equal((await fetch(detail,{headers})).status,404);
+
+  await sip.provisionNext(org,adapter);
+
+  assert.equal((await admin.query(
+   'SELECT 1 FROM control.trunk_secrets WHERE trunk_id=$1',
+   [trunk.id]
+  )).rowCount,0);
  });
 
  await t.test('organization staff directory is scoped to authorized membership',async()=>{

@@ -32,7 +32,7 @@ function field(value: unknown, limit: number) {
 }
 
 export function createApi(control: ControlPlane, ready: () => Promise<unknown>, trunks?: TrunkService, web?: {auth:WebAuth;origin:string}) {
-  const handleWeb=web?webHandler(web.auth,web.origin):null;
+  const handleWeb=web?webHandler(web.auth,web.origin,trunks):null;
   const requests = new Map<string, number>();
   let window = 0;
   return createServer(async (req, res) => {

@@ -534,6 +534,242 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     }
   });
 
+
+  await t.test('universal SIP authentication and transport',async()=>{
+    const owner=await fixture({
+      role:'organization_admin',
+      number:'+74950004927'
+    });
+
+    const trunks=new TrunkService(
+      control,randomBytes(32),
+      new Set(['sip.example.test:5060','sip.example.test:5061'])
+    );
+
+    const base={
+      name:'Universal SIP',
+      registrar_host:'sip.example.test',
+      registrar_port:5060,
+      auth_mode:'ip_authentication'
+    };
+
+    const ip=await trunks.create(
+      owner.token,'ip-auth',{...base,transport:'udp'}
+    );
+
+    assert.equal(ip.auth_mode,'ip_authentication');
+    assert.equal(ip.transport,'udp');
+    assert.equal(ip.desired_active,false);
+
+    const tls=await trunks.create(
+      owner.token,'tls-auth',{
+        ...base,
+        auth_mode:'registration_credentials',
+        transport:'tls',
+        registrar_port:5061,
+        username:'private-user',
+        password:'private-secret'
+      }
+    );
+
+    assert.equal(tls.transport,'tls');
+    assert(!JSON.stringify(tls).includes('private-'));
+
+    const tcp=await trunks.create(
+      owner.token,'tcp-auth',{...base,transport:'tcp'}
+    );
+
+    assert.equal(tcp.transport,'tcp');
+
+    await assert.rejects(
+      trunks.create(owner.token,'bad-transport',{
+        ...base,transport:'http'
+      }),
+      code('INVALID_TRUNK')
+    );
+
+    await assert.rejects(
+      trunks.create(owner.token,'bad-ip-auth',{
+        ...base,password:'unexpected'
+      }),
+      code('INVALID_TRUNK')
+    );
+
+    await assert.rejects(
+      trunks.create(owner.token,'ip-auth',{
+        ...base,transport:'tcp'
+      }),
+      code('IDEMPOTENCY_CONFLICT')
+    );
+
+    const received=new Map<string,{
+      endpoint:unknown;credentials:unknown
+    }>();
+
+    const adapter={
+      supportsUniversalSip:true,
+      async upsert(
+        job:{trunkId:string},
+        endpoint:unknown,
+        credentials:unknown
+      ){
+        received.set(job.trunkId,{endpoint,credentials});
+        return 'registered' as const;
+      },
+      async remove(){}
+    };
+
+    for(let i=0;i<3;i++)
+      await trunks.provisionNext(owner.tenant,adapter);
+
+    assert.equal(received.size,3);
+
+    assert.deepEqual(received.get(ip.id),{
+      endpoint:{
+        host:'sip.example.test',port:5060,
+        authMode:'ip_authentication',transport:'udp'
+      },
+      credentials:{username:'',password:''}
+    });
+
+    assert.deepEqual(received.get(tls.id),{
+      endpoint:{
+        host:'sip.example.test',port:5061,
+        authMode:'registration_credentials',transport:'tls'
+      },
+      credentials:{
+        username:'private-user',password:'private-secret'
+      }
+    });
+
+    for(const trunk of [ip,tls,tcp]){
+      const result=await trunks.read(owner.token,trunk.id);
+      assert.equal(result.status,'registered');
+      assert(!JSON.stringify(result).includes('private-'));
+    }
+
+    const {rows:[active]}=await admin.query(
+      'SELECT count(*)::int AS n FROM control.trunks WHERE id=ANY($1::uuid[]) AND active',
+      [[ip.id,tls.id,tcp.id]]
+    );
+
+    assert.equal(active.n,0);
+  });
+
+
+  await t.test('SIP activation verification diagnostics and recheck',async()=>{
+    const owner=await fixture({
+      role:'organization_admin',
+      number:'+74950004928'
+    });
+
+    const foreign=await fixture({
+      role:'organization_admin'
+    });
+
+    const trunks=new TrunkService(
+      control,randomBytes(32),
+      new Set(['sip.example.test:5060'])
+    );
+
+    const trunk=await trunks.create(
+      owner.token,'lifecycle',{
+        name:'Lifecycle SIP',
+        auth_mode:'registration_credentials',
+        registrar_host:'sip.example.test',
+        registrar_port:5060,
+        username:'test-user',
+        password:'test-password'
+      }
+    );
+
+    const adapter={
+      async upsert(){return 'registered' as const;},
+      async remove(){}
+    };
+
+    const isActive=async()=>{
+      const {rows:[row]}=await admin.query(
+        'SELECT active FROM control.trunks WHERE id=$1',
+        [trunk.id]
+      );
+      return row.active;
+    };
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('TRUNK_NOT_READY')
+    );
+
+    await assert.rejects(
+      trunks.setActive(foreign.token,trunk.id,true),
+      code('TRUNK_NOT_FOUND')
+    );
+
+    await trunks.provisionNext(owner.tenant,adapter);
+
+    const checked=await trunks.read(owner.token,trunk.id);
+
+    assert.equal(checked.status,'registered');
+    assert.equal(checked.diagnostic_code,'CONNECTION_OK');
+    assert(checked.last_checked_at);
+    assert(checked.last_success_at);
+    assert.equal(await isActive(),false);
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='unverified' WHERE id=$1",
+      [owner.tenant]
+    );
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('ORGANIZATION_NOT_VERIFIED')
+    );
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='verified' WHERE id=$1",
+      [owner.tenant]
+    );
+
+    await trunks.setActive(owner.token,trunk.id,true);
+
+    assert.equal(await isActive(),true);
+
+    await trunks.setActive(owner.token,trunk.id,false);
+
+    assert.equal(await isActive(),false);
+
+    await trunks.setActive(owner.token,trunk.id,true);
+
+    await trunks.recheck(owner.token,trunk.id);
+
+    assert.equal(await isActive(),false);
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('TRUNK_NOT_READY')
+    );
+
+    await trunks.provisionNext(owner.tenant,adapter);
+
+    assert.equal(await isActive(),false);
+
+    await trunks.setActive(owner.token,trunk.id,true);
+
+    assert.equal(await isActive(),true);
+
+    await trunks.remove(owner.token,trunk.id);
+
+    assert.equal(await isActive(),false);
+
+    await trunks.provisionNext(owner.tenant,adapter);
+
+    await assert.rejects(
+      trunks.setActive(owner.token,trunk.id,true),
+      code('TRUNK_NOT_FOUND')
+    );
+  });
+
   await t.test('deleting a UIS trunk fences a late provisioning result', async () => {
     const owner = await fixture({role:'organization_admin'});
     const trunks = new TrunkService(control,randomBytes(32),new Set(['sip.example.test:5060']));

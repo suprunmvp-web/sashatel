@@ -1,12 +1,17 @@
+import type { TrunkService } from './trunks.ts';
 import type { IncomingMessage,ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from './control.ts';
 import { WebAuth, type WebResult } from './web-auth.ts';
 
-export function webHandler(auth:WebAuth,origin:string) {
+export function webHandler(auth:WebAuth,origin:string,trunks?:TrunkService) {
   if(new URL(origin).origin!==origin) throw new Error('Exact WEB_ORIGIN required');
   return async(req:IncomingMessage,res:ServerResponse) => {
     const path=req.url?.split('?')[0]??'';
+    const sipRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/trunks(?:/([^/]+)(?:/(recheck|active|delete))?)?$'
+    ).exec(path);
+
     const displayNameRoute=/^\/v1\/organizations\/([^/]+)\/display-name$/.exec(path);
     const reportingRoute=new RegExp(
       '^/v1/organizations/([^/]+)/(statistics|calls)$'
@@ -20,7 +25,7 @@ export function webHandler(auth:WebAuth,origin:string) {
       '^/v1/organizations/([^/]+)/invitations(?:/(revoke|resend))?$'
     ).exec(path);
 
-    if(!invitationRoute&&
+    if(!sipRoute&&!invitationRoute&&
        path!=='/v1/account/invitations'&&
        path!=='/v1/account/invitations/accept'&&
        !reportingRoute&&!organizationStaffRoute&&!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
@@ -53,6 +58,24 @@ export function webHandler(auth:WebAuth,origin:string) {
         send({status:200,body:{csrf_token:auth.csrf(browser)}});return true;
       }
       if(req.method==='GET') {
+        if(sipRoute){
+          if(!trunks)
+            throw new ApiError(503,'TRUNK_SERVICE_UNAVAILABLE');
+
+          if(sipRoute[3])
+            throw new ApiError(405,'METHOD_NOT_ALLOWED');
+
+          send({
+            status:200,
+            body:await trunks.read(
+              auth.trunkAccess(ctx,sipRoute[1]),
+              sipRoute[2]
+            )
+          });
+
+          return true;
+        }
+
         if(reportingRoute) {
           const query=new URL(
             req.url??path,'http://localhost'
@@ -200,6 +223,45 @@ export function webHandler(auth:WebAuth,origin:string) {
         await auth.tx(ctx,db=>auth.limit(db,'browser:'+path+':'+browser,20,3600));
       }
       const key=typeof req.headers['idempotency-key']==='string'?req.headers['idempotency-key']:'';
+      if(sipRoute){
+        if(!trunks)
+          throw new ApiError(503,'TRUNK_SERVICE_UNAVAILABLE');
+
+        const access=auth.trunkAccess(ctx,sipRoute[1]);
+        const id=sipRoute[2];
+        const action=sipRoute[3];
+
+        if(!id){
+          send({
+            status:202,
+            body:await trunks.create(access,key,body)
+          });
+        }else if(action==='active'){
+          if(Object.keys(body).length!==1||
+             typeof body.active!=='boolean')
+            throw new ApiError(400,'INVALID_REQUEST');
+
+          send({
+            status:200,
+            body:await trunks.setActive(access,id,body.active)
+          });
+        }else if(action==='recheck'||action==='delete'){
+          if(Object.keys(body).length)
+            throw new ApiError(400,'INVALID_REQUEST');
+
+          send({
+            status:202,
+            body:action==='recheck'
+              ?await trunks.recheck(access,id)
+              :await trunks.remove(access,id)
+          });
+        }else{
+          throw new ApiError(405,'METHOD_NOT_ALLOWED');
+        }
+
+        return true;
+      }
+
       let result:WebResult;
       if(path==='/v1/account') {
         send(await auth.updateAccount(ctx,body));
