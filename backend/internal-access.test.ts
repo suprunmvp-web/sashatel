@@ -892,6 +892,110 @@ test('staff transition, company display name and temporary access stay tenant-sc
 
  });
 
+
+ await t.test('initial owner invitation cannot replace existing ownership',async()=>{
+  const emptyOrg=randomUUID();
+  const email=randomUUID()+'@example.test';
+  const invited=await newAccount(email);
+
+  await admin.query(
+   "INSERT INTO control.organizations(id,max_calls,legal_name) VALUES($1,1,'Новая организация')",
+   [emptyOrg]
+  );
+
+  const payload={organization_id:emptyOrg,email};
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(manager.ctx,payload),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(customer.ctx,payload),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(owner.ctx,{
+    ...payload,organization_id:org
+   }),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const created=await auth.createInitialOwnerInvitation(
+   owner.ctx,payload
+  );
+
+  assert.equal(created.status,201);
+
+  const id=created.body.invitation.id;
+
+  const replay=await auth.createInitialOwnerInvitation(
+   owner.ctx,payload
+  );
+
+  assert.equal(replay.status,200);
+  assert.equal(replay.body.invitation.id,id);
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(owner.ctx,{
+    ...payload,email:randomUUID()+'@example.test'
+   }),
+   error('INVITATION_CONFLICT')
+  );
+
+  const pending=(await auth.pendingStaffInvitations(
+   invited.ctx
+  )).body.items;
+
+  assert(pending.some((row:{id:string;role:string})=>
+   row.id===id&&row.role==='owner'
+  ));
+
+  await assert.rejects(
+   auth.acceptStaffInvitation(customer.ctx,{invitation_id:id}),
+   error('RESOURCE_NOT_FOUND')
+  );
+
+  await auth.deliverInvitationOne();
+
+  const {rows:[mail]}=await admin.query(
+   'SELECT delivery FROM web_auth.invitation_mail_jobs WHERE id=$1',
+   [id]
+  );
+
+  assert.equal(mail.delivery,'accepted');
+
+  const result=await auth.acceptStaffInvitation(
+   invited.ctx,{invitation_id:id}
+  );
+
+  assert.equal(result.body.role,'owner');
+
+  const {rows:[ownership]}=await admin.query(
+   `SELECT o.owner_membership_id,m.user_id,m.role_id
+    FROM control.organizations o
+    JOIN control.memberships m
+    ON m.organization_id=o.id AND m.id=o.owner_membership_id
+    WHERE o.id=$1`,
+   [emptyOrg]
+  );
+
+  assert.equal(ownership.user_id,invited.id);
+  assert.equal(ownership.role_id,'owner');
+
+  await assert.rejects(
+   auth.createInitialOwnerInvitation(owner.ctx,payload),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const organizations=(await auth.organizations(
+   invited.ctx
+  )).body.items;
+
+  assert(organizations.some(row=>row.id===emptyOrg));
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);

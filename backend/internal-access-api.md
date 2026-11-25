@@ -290,3 +290,22 @@ before the worker sends a message.
 
 The email links to the platform, not to an authentication
 token. Acceptance remains bound to verified account email.
+
+
+## Initial organization owner invitation
+
+POST /v1/internal/organizations/owner-invitation
+
+Body: organization_id, email.
+
+POST /v1/internal/organizations/owner-invitation/revoke
+
+Body: organization_id, invitation_id.
+
+Requires internal Owner or Admin access.
+Only organizations without an existing owner are eligible.
+Only one pending owner invitation per organization is allowed.
+
+Acceptance uses the existing verified-email invitation API,
+creates the owner membership and assigns owner_membership_id.
+This mechanism does not transfer existing ownership.

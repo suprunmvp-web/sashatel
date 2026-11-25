@@ -719,6 +719,72 @@ export class WebAuth {
     throw error;
   }
 
+  async createInitialOwnerInvitation(
+    ctx:Context,input:Record<string,unknown>
+  ) {
+    exact(input,['organization_id','email']);
+    const org=required(input,'organization_id',36);
+    const email=required(input,'email',254).trim().toLowerCase();
+
+    if(!uuid.test(org))
+      throw new ApiError(422,'INVALID_INVITATION');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+
+      await this.limit(db,'initial-owner-invite:'+user.id,30,3600);
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.create_initial_owner_invitation($1,$2,$3,$4) AS result',
+          [user.id,org,randomUUID(),email]
+        );
+
+        if(!row.result.replayed)
+          await this.audit(
+            db,ctx,'organization.owner_invited',
+            user.id,org,row.result.id
+          );
+
+        return {
+          status:row.result.replayed?200:201,
+          body:{invitation:row.result},
+          replayed:row.result.replayed
+        };
+      } catch(error) {this.invitationError(error);}
+    });
+  }
+
+  async revokeInitialOwnerInvitation(
+    ctx:Context,input:Record<string,unknown>
+  ) {
+    exact(input,['organization_id','invitation_id']);
+
+    const org=required(input,'organization_id',36);
+    const id=required(input,'invitation_id',36);
+
+    if(!uuid.test(org)||!uuid.test(id))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.revoke_initial_owner_invitation($1,$2,$3) AS changed',
+          [user.id,org,id]
+        );
+
+        if(row.changed)
+          await this.audit(
+            db,ctx,'organization.owner_invitation_revoked',
+            user.id,org,id
+          );
+
+        return {status:204};
+      } catch(error) {this.invitationError(error);}
+    });
+  }
+
   async createStaffInvitation(
     ctx:Context,org:string|null,input:Record<string,unknown>
   ) {

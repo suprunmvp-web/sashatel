@@ -187,6 +187,10 @@ export function webHandler(auth:WebAuth,origin:string) {
       switch(path) {
         case '/v1/account/invitations/accept':
           result=await auth.acceptStaffInvitation(ctx,body);break;
+        case '/v1/internal/organizations/owner-invitation':
+          result=await auth.createInitialOwnerInvitation(ctx,body);break;
+        case '/v1/internal/organizations/owner-invitation/revoke':
+          result=await auth.revokeInitialOwnerInvitation(ctx,body);break;
         case '/v1/internal/invitations':
           result=await auth.createStaffInvitation(ctx,null,body);break;
         case '/v1/internal/invitations/resend':

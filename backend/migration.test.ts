@@ -42,7 +42,7 @@ test('004 preserves legacy identity, call and ledger IDs and uses NULL contact f
       });
       await migrate();
       await migrate();
-      assert.equal((await db.query('SELECT count(*)::int AS count FROM public.sashatel_migrations')).rows[0].count,23);
+      assert.equal((await db.query('SELECT count(*)::int AS count FROM public.sashatel_migrations')).rows[0].count,24);
     } finally {await rm(directory,{recursive:true,force:true});}
     const {rows:[legacy]}=await db.query('SELECT id,first_name,last_name,phone,phone_epoch FROM control.users WHERE id=$1',[user]);
     assert.deepEqual(legacy,{id:user,first_name:null,last_name:null,phone:null,phone_epoch:'42'});
