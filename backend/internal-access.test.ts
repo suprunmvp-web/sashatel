@@ -996,6 +996,95 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert(organizations.some(row=>row.id===emptyOrg));
  });
 
+
+ await t.test('account profile updates are validated, self-scoped and audited',async()=>{
+  const payload={
+   first_name:'  Иван ',
+   last_name:' Петров  ',
+   phone:'+7 (916) 123-45-67'
+  };
+
+  const endpoint='http://127.0.0.1:'+address.port+'/v1/account';
+
+  const response=await fetch(endpoint,{
+   method:'PATCH',
+   headers,
+   body:JSON.stringify(payload)
+  });
+
+  assert.equal(response.status,200);
+
+  const {account}=await response.json();
+
+  assert.equal(account.id,customer.id);
+  assert.equal(account.first_name,'Иван');
+  assert.equal(account.last_name,'Петров');
+  assert.equal(account.phone,'+79161234567');
+  assert.equal(account.phone_verified,false);
+  assert.equal(account.email_verified,true);
+  assert(!('password_hash' in account));
+
+  const current=await fetch(endpoint,{headers});
+  assert.equal(current.status,200);
+  assert.deepEqual((await current.json()).account,account);
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,phone:'12345'
+   }),
+   error('INVALID_PHONE')
+  );
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,first_name:'   '
+   }),
+   error('INVALID_PROFILE')
+  );
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,email:'other@example.test'
+   }),
+   error('INVALID_REQUEST')
+  );
+
+  await assert.rejects(
+   auth.updateAccount(customer.ctx,{
+    ...payload,user_id:employee.id
+   }),
+   error('INVALID_REQUEST')
+  );
+
+  const forbidden=await fetch(endpoint,{
+   method:'PATCH',
+   headers:{...headers,'x-csrf-token':'invalid'},
+   body:JSON.stringify(payload)
+  });
+
+  assert.equal(forbidden.status,403);
+
+  await auth.updateAccount(customer.ctx,payload);
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE actor_user_id=$1 AND action='account.profile_updated'",
+   [customer.id]
+  );
+
+  assert.equal(audit.n,1);
+
+  const {rows:[stored]}=await admin.query(
+   'SELECT first_name,last_name,phone FROM control.users WHERE id=$1',
+   [customer.id]
+  );
+
+  assert.deepEqual(stored,{
+   first_name:'Иван',
+   last_name:'Петров',
+   phone:'+79161234567'
+  });
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);

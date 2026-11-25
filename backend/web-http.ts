@@ -146,7 +146,7 @@ export function webHandler(auth:WebAuth,origin:string) {
         else throw new ApiError(404,'RESOURCE_NOT_FOUND');
         return true;
       }
-      if(req.method!==(displayNameRoute?'PATCH':'POST')) throw new ApiError(405,'METHOD_NOT_ALLOWED');
+      if(req.method!==((displayNameRoute||path==='/v1/account')?'PATCH':'POST')) throw new ApiError(405,'METHOD_NOT_ALLOWED');
       if(!existing||auth.csrf(browser)!==req.headers['x-csrf-token']) throw new ApiError(403,'CSRF_INVALID');
       if(req.headers['content-type']?.split(';')[0]!=='application/json') throw new ApiError(415,'JSON_REQUIRED');
       let raw='',bytes=0;
@@ -168,6 +168,10 @@ export function webHandler(auth:WebAuth,origin:string) {
       }
       const key=typeof req.headers['idempotency-key']==='string'?req.headers['idempotency-key']:'';
       let result:WebResult;
+      if(path==='/v1/account') {
+        send(await auth.updateAccount(ctx,body));
+        return true;
+      }
       if(displayNameRoute){send(await auth.renameOrganization(ctx,displayNameRoute[1],body));return true;}
       if(organizationStaffRoute?.[2]) {
         send(await auth.setOrganizationStaff(

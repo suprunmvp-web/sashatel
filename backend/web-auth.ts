@@ -160,6 +160,69 @@ export class WebAuth {
       first_name:user.first_name,last_name:user.last_name,phone:user.phone,phone_verified:false,
       display_name:user.first_name??null};
   }
+  async updateAccount(
+    ctx:Context,input:Record<string,unknown>
+  ) {
+    exact(input,['first_name','last_name','phone']);
+
+    const name=(value:unknown)=>{
+      if(typeof value!=='string')
+        throw new ApiError(422,'INVALID_PROFILE');
+
+      const result=value.trim();
+
+      if(!result||[...result].length>80||
+         /[\p{Cc}\p{Cf}]/u.test(result))
+        throw new ApiError(422,'INVALID_PROFILE');
+
+      return result;
+    };
+
+    const firstName=name(input.first_name);
+    const lastName=name(input.last_name);
+
+    if(typeof input.phone!=='string'||
+       !/^\+[0-9 ()-]+$/.test(input.phone)||
+       input.phone.length>40)
+      throw new ApiError(422,'INVALID_PHONE');
+
+    const phone=parsePhoneNumberFromString(
+      input.phone.replace(/[ ()-]/g,'')
+    );
+
+    if(!phone?.isValid())
+      throw new ApiError(422,'INVALID_PHONE');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+
+      const changed:string[]=[];
+
+      if(user.first_name!==firstName)changed.push('first_name');
+      if(user.last_name!==lastName)changed.push('last_name');
+      if(user.phone!==phone.number)changed.push('phone');
+
+      if(!changed.length)
+        return {status:200,body:{account:this.account(user)}};
+
+      await this.limit(db,'account-profile:'+user.id,30,3600);
+
+      const {rows:[updated]}=await db.query(`
+        UPDATE control.users
+        SET first_name=$2,last_name=$3,phone=$4
+        WHERE id=$1
+        RETURNING *
+      `,[user.id,firstName,lastName,phone.number]);
+
+      await this.audit(
+        db,ctx,'account.profile_updated',
+        user.id,null,user.id,{fields:changed}
+      );
+
+      return {status:200,body:{account:this.account(updated)}};
+    });
+  }
+
   async closeCompletion(db:PoolClient,ctx:Context) {
     await db.query('UPDATE web_auth.browsers SET completion=NULL,completion_family=NULL,completion_expires=NULL WHERE hash=$1',[hash(ctx.browser)]);
   }

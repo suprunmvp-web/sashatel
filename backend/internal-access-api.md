@@ -309,3 +309,23 @@ Only one pending owner invitation per organization is allowed.
 Acceptance uses the existing verified-email invitation API,
 creates the owner membership and assigns owner_membership_id.
 This mechanism does not transfer existing ownership.
+
+
+## Account profile
+
+GET /v1/account
+
+PATCH /v1/account
+
+Body: first_name, last_name, phone.
+
+Requires authenticated verified account, valid origin and CSRF.
+Updates only the authenticated user's profile.
+Names use registration validation rules.
+Phone is normalized to E.164 and remains unverified.
+
+Returns the updated account object.
+Identical updates do not create duplicate audit records.
+Audit contains changed field names, not contact values.
+
+Email changes require a separate verification flow.
