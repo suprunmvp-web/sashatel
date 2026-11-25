@@ -575,6 +575,81 @@ test('staff transition, company display name and temporary access stay tenant-sc
  });
 
 
+
+ await t.test('call reporting HTTP and organization isolation',async()=>{
+  const from='2026-01-01';
+  const to='2026-01-03';
+
+  const report=(await auth.callReporting(
+   customer.ctx,org,from,to
+  )).body;
+
+  assert.equal(report.initiations,0);
+  assert.equal(report.answered,0);
+  assert.equal(report.billable_seconds,0);
+  assert.equal(report.answer_rate,null);
+  assert.equal(report.daily.length,3);
+
+  assert(report.daily.every(
+   (day:{initiations:number})=>day.initiations===0
+  ));
+
+  await assert.rejects(
+   auth.callReporting(employee.ctx,org,from,to),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.callReporting(customer.ctx,other,from,to),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.callReporting(customer.ctx,org,'2026-02-30',to),
+   error('INVALID_DATE_RANGE')
+  );
+
+  const base='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org;
+
+  const dates='?from='+from+'&to='+to;
+
+  const statistics=await fetch(
+   base+'/statistics'+dates,{headers}
+  );
+
+  assert.equal(statistics.status,200);
+  assert.equal((await statistics.json()).daily.length,3);
+
+  const history=await fetch(
+   base+'/calls'+dates+'&offset=0&limit=10',{headers}
+  );
+
+  assert.equal(history.status,200);
+
+  const page=await history.json();
+
+  assert.equal(page.total,0);
+  assert.equal(page.limit,10);
+  assert.deepEqual(page.items,[]);
+
+  assert.equal((await fetch(
+   base+'/calls'+dates+'&limit=101',{headers}
+  )).status,422);
+
+  assert.equal((await fetch(
+   base+'/statistics'+dates+'&from='+from,{headers}
+  )).status,422);
+
+  assert.equal((await fetch(
+   base+'/statistics'+dates
+  )).status,401);
+
+  assert.equal((await fetch(
+   base.replace(org,other)+'/calls'+dates,{headers}
+  )).status,403);
+ });
+
  await t.test('organization staff directory is scoped to authorized membership',async()=>{
   const directory=(await auth.organizationStaff(customer.ctx,org)).body.items;
 

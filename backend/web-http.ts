@@ -8,6 +8,9 @@ export function webHandler(auth:WebAuth,origin:string) {
   return async(req:IncomingMessage,res:ServerResponse) => {
     const path=req.url?.split('?')[0]??'';
     const displayNameRoute=/^\/v1\/organizations\/([^/]+)\/display-name$/.exec(path);
+    const reportingRoute=new RegExp(
+      '^/v1/organizations/([^/]+)/(statistics|calls)$'
+    ).exec(path);
     const clientBillingRoute=new RegExp('^/v1/organizations/([^/]+)/billing(?:/(invoices))?$').exec(path);
     const organizationStaffRoute=new RegExp(
       '^/v1/organizations/([^/]+)/staff(?:/(access))?$'
@@ -20,7 +23,7 @@ export function webHandler(auth:WebAuth,origin:string) {
     if(!invitationRoute&&
        path!=='/v1/account/invitations'&&
        path!=='/v1/account/invitations/accept'&&
-       !organizationStaffRoute&&!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
+       !reportingRoute&&!organizationStaffRoute&&!clientBillingRoute&&!displayNameRoute&&!path.startsWith('/v1/auth/')&&!['/v1/account','/v1/organizations','/v1/organizations/lookup','/v1/organizations/suggest','/v1/session/organization'].includes(path)&&!path.startsWith('/v1/organizations/creation-status/')&&!path.startsWith('/v1/internal/')) return false;
     const requestId=randomUUID();
     res.setHeader('x-request-id',requestId);
     res.setHeader('content-type','application/json');
@@ -50,6 +53,36 @@ export function webHandler(auth:WebAuth,origin:string) {
         send({status:200,body:{csrf_token:auth.csrf(browser)}});return true;
       }
       if(req.method==='GET') {
+        if(reportingRoute) {
+          const query=new URL(
+            req.url??path,'http://localhost'
+          ).searchParams;
+
+          const history=reportingRoute[2]==='calls';
+          const allowed=history
+            ?['from','to','offset','limit']
+            :['from','to'];
+
+          if([...query.keys()].some(k=>
+            !allowed.includes(k)||query.getAll(k).length!==1
+          )) throw new ApiError(422,'INVALID_REPORTING_FILTER');
+
+          const number=(name:string,fallback:number)=>{
+            const value=query.get(name);
+            if(value===null)return fallback;
+            if(!/^[0-9]{1,6}$/.test(value))
+              throw new ApiError(422,'INVALID_PAGE');
+            return Number(value);
+          };
+
+          send(await auth.callReporting(
+            ctx,reportingRoute[1],
+            query.get('from')??'',query.get('to')??'',
+            history,number('offset',0),number('limit',50)
+          ));
+          return true;
+        }
+
         if(path==='/v1/internal/invitations'||invitationRoute) {
           if(invitationRoute?.[2])
             throw new ApiError(405,'METHOD_NOT_ALLOWED');

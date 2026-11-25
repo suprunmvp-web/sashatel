@@ -584,6 +584,95 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.deepEqual(stored,{state:'ended',available:'100'});
   });
 
+
+  await t.test('call reporting counts actual dispatch and human usage',async()=>{
+    const a=await fixture({number:'+74950004926'});
+
+    const reader=randomUUID();
+
+    await admin.query(
+      "INSERT INTO control.users(id,login,password_hash,email_verified_at) VALUES($1,$2,'test',clock_timestamp())",
+      [reader,reader+'@example.test']
+    );
+
+    await admin.query(
+      "INSERT INTO control.memberships(id,organization_id,user_id,role_id) VALUES($1,$2,$3,'admin')",
+      [randomUUID(),a.tenant,reader]
+    );
+
+    const gateway=new FakeAri();
+
+    const outcomes=[
+      {outcome:'human' as const,billableSeconds:120,evidenceId:'reporting-test-evidence'},
+      {outcome:'machine' as const},
+      {outcome:'no_answer' as const},
+      {outcome:'rejected' as const},
+      {outcome:'error' as const},
+    ];
+
+    for(const [i,classification] of outcomes.entries()){
+      const call=await control.authorize(
+        a.token,'reporting-'+i,destination
+      );
+
+      await control.processOne(a.tenant,gateway);
+
+      await control.event(a.tenant,call.call_id,{
+        id:'reporting-terminal-'+i,
+        state:'ended',classification
+      });
+    }
+
+    const pending=await control.authorize(
+      a.token,'reporting-pending',destination
+    );
+
+    await control.processOne(a.tenant,gateway);
+
+    const held=await control.authorize(
+      a.token,'reporting-not-dispatched',destination
+    );
+
+    const {rows:[row]}=await pool.query(
+      "SELECT web_auth.organization_call_statistics($1,$2,'2026-01-01','2026-12-31') AS report",
+      [reader,a.tenant]
+    );
+
+    const r=row.report;
+
+    assert.equal(r.initiations,6);
+    assert.equal(r.completed_calls,5);
+    assert.equal(r.answered,1);
+    assert.equal(r.machine,1);
+    assert.equal(r.no_answer,1);
+    assert.equal(r.rejected,1);
+    assert.equal(r.error,1);
+    assert.equal(r.billable_seconds,120);
+    assert.equal(r.charges_kopeks,600);
+    assert.equal(r.answer_rate,20);
+
+    assert.equal(r.daily.reduce(
+      (n:number,d:{initiations:number})=>n+d.initiations,0
+    ),6);
+
+    const {rows:[history]}=await pool.query(
+      "SELECT web_auth.organization_call_history($1,$2,'2026-01-01','2026-12-31',0,100) AS page",
+      [reader,a.tenant]
+    );
+
+    assert.equal(history.page.total,7);
+
+    assert(history.page.items.some(
+      (c:{id:string;outcome:unknown})=>
+       c.id===pending.call_id&&c.outcome===null
+    ));
+
+    assert(history.page.items.some(
+      (c:{id:string;state:string})=>
+       c.id===held.call_id&&c.state==='authorized'
+    ));
+  });
+
   await t.test('machine outcome cannot create human billable seconds',async()=>{
     const a=await fixture({balance:0,number:'+74950004101'});
     const call=await control.authorize(a.token,'machine',destination);

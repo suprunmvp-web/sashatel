@@ -1330,6 +1330,57 @@ export class WebAuth {
     });
   }
 
+  async callReporting(
+    ctx:Context,org:string,from:string,to:string,
+    history=false,offset=0,limit=50
+  ) {
+    if(!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    const valid=(value:string)=>{
+      if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value))
+        return false;
+      const date=new Date(value+'T00:00:00.000Z');
+      return Number.isFinite(date.getTime())&&
+        date.toISOString().slice(0,10)===value;
+    };
+
+    if(!valid(from)||!valid(to))
+      throw new ApiError(422,'INVALID_DATE_RANGE');
+
+    if(!Number.isInteger(offset)||offset<0||
+       !Number.isInteger(limit)||limit<1||limit>100)
+      throw new ApiError(422,'INVALID_PAGE');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx,true);
+
+      if(family.organization_id!==org)
+        throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+      try {
+        const {rows:[row]}=history
+          ?await db.query(
+            'SELECT web_auth.organization_call_history($1,$2,$3,$4,$5,$6) AS result',
+            [user.id,org,from,to,offset,limit]
+          )
+          :await db.query(
+            'SELECT web_auth.organization_call_statistics($1,$2,$3,$4) AS result',
+            [user.id,org,from,to]
+          );
+
+        return {status:200,body:row.result};
+      } catch(error) {
+        const pg=error as {code?:string};
+        if(pg.code==='42501')
+          throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+        if(pg.code==='22023')
+          throw new ApiError(422,'INVALID_REPORTING_FILTER');
+        throw error;
+      }
+    },true);
+  }
+
   async billingOverview(ctx:Context,from:string,to:string) {
     const valid=(value:string)=>{
       if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value))
