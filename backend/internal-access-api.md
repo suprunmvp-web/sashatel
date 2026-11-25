@@ -73,3 +73,17 @@ New fields:
 Disabled staff assignments remain visible for reassignment.
 Refresh the organizations list after a successful mutation.
 Capability: organizations:assign_manager.
+
+
+## Internal permissions update (migration 014)
+
+Owner, Admin and Manager can read the staff directory.
+Owner and Admin have staff:manage capability.
+Admin can change, deactivate and restore existing Admin/Manager staff.
+Admin cannot modify their own access or grant internal roles to customers
+through the existing staff access endpoint.
+Owner protection remains unchanged.
+Legacy reviewer remains limited to the existing review workflow.
+Manager can now perform organization reviews.
+
+New capability: staff:list.

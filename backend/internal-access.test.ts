@@ -52,9 +52,11 @@ test('staff transition, company display name and temporary access stay tenant-sc
  assert((await auth.internalStaff(owner.ctx)).body.items.some(row=>row.user_id===reviewer.id&&row.role==='reviewer'));
  await auth.setInternalStaff(owner.ctx,{user_id:manager.id,role:'manager'});
  const decision={decision:'verified',evidence_reference:'evidence-123',explanation:'Проверены документы'};
- await assert.rejects(auth.reviewOrganization(manager.ctx,other,decision),error('INTERNAL_ACCESS_DENIED'));
+ assert((await auth.internalSession(manager.ctx)).body.capabilities.includes('organizations:review'));
+  assert((await auth.internalSession(manager.ctx)).body.capabilities.includes('staff:list'));
+  assert(!(await auth.internalSession(manager.ctx)).body.capabilities.includes('staff:manage'));
  await assert.rejects(auth.openInternalClient(reviewer.ctx,{organization_id:org}),error('INTERNAL_ACCESS_DENIED'));
- assert.equal((await auth.reviewOrganization(reviewer.ctx,other,decision)).body.verification_status,'verified');
+ assert.equal((await auth.reviewOrganization(manager.ctx,other,decision)).body.verification_status,'verified');
  const directory=(await auth.internalOrganizations(manager.ctx)).body.items.find(row=>row.id===org);
  assert.equal(directory.legal_address,null);
  assert.equal(directory.created_owner_email,null);
@@ -193,6 +195,57 @@ test('staff transition, company display name and temporary access stay tenant-sc
   );
 
   assert.equal(events.count,3);
+ });
+
+ await t.test('internal staff permissions and access restoration',async()=>{
+  const admins=(await auth.internalStaff(internalAdmin.ctx)).body.items;
+  const managers=(await auth.internalStaff(manager.ctx)).body.items;
+
+  assert(admins.some(row=>row.user_id===manager.id));
+  assert(managers.some(row=>row.user_id===internalAdmin.id));
+
+  await assert.rejects(
+   auth.internalStaff(customer.ctx),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(manager.ctx,{user_id:manager.id,role:'admin'}),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(internalAdmin.ctx,{user_id:owner.id,role:'manager'}),
+   error('PROTECTED_OWNER')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(internalAdmin.ctx,{user_id:internalAdmin.id,role:null}),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setInternalStaff(internalAdmin.ctx,{user_id:customer.id,role:'admin'}),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await auth.setInternalStaff(internalAdmin.ctx,{user_id:manager.id,role:null});
+
+  await assert.rejects(
+   auth.internalSession(manager.ctx),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.reviewOrganization(manager.ctx,org,decision),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await auth.setInternalStaff(internalAdmin.ctx,{user_id:manager.id,role:'admin'});
+  assert.equal((await auth.internalSession(manager.ctx)).body.role,'admin');
+
+  await auth.setInternalStaff(owner.ctx,{user_id:manager.id,role:'manager'});
+  assert.equal((await auth.internalSession(manager.ctx)).body.role,'manager');
  });
 
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;

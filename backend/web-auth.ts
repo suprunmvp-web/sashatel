@@ -609,10 +609,13 @@ export class WebAuth {
       const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       const capabilities=['organizations:list'];
-      if(['owner','admin','reviewer'].includes(role.role)) capabilities.push('organizations:review');
+      if(['owner','admin','manager','reviewer'].includes(role.role)) capabilities.push('organizations:review');
       if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen','organizations:create','organizations:assign_manager');
       if(['owner','admin','manager'].includes(role.role)) capabilities.push('client_context:read');
-      if(role.role==='owner') capabilities.push('staff:manage');
+      if(['owner','admin','manager'].includes(role.role))
+        capabilities.push('staff:list');
+      if(['owner','admin'].includes(role.role))
+        capabilities.push('staff:manage');
       return {status:200,body:{role:role.role,capabilities}};
     },true);
   }
