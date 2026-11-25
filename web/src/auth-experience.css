@@ -176,7 +176,6 @@ body:not(.platform) #country-search:focus,
 body:not(.platform) #country-search:focus-visible {
   outline: none;
   border-color: #80808a;
-  box-shadow: 0 0 0 1px #80808a;
 }
 
 /* Shared notice language: consistent permanent banners and transient toasts. */
@@ -792,14 +791,6 @@ body.auth-lookup:not(.platform) main:not(.workspace){width:min(calc(100% - 32px)
 .recovery-resend-line .verify-link{display:inline;background:transparent;border:0;color:#f5f5f7;padding:0;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .recovery-resend-line .verify-link:disabled{color:#72727c;text-decoration:none;cursor:default}
 .recovery-emblem svg{width:25px;height:25px}
-.platform-error-page{min-height:calc(100svh - 200px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:13px;padding:35px 20px}
-.platform-error-code{color:#e8c547;font:italic 400 clamp(110px,20vw,240px)/1 Georgia,serif;letter-spacing:-.08em}
-.platform-error-page h1{font-size:clamp(24px,4vw,39px);font-weight:600;letter-spacing:-.04em;margin:0}
-.platform-error-page p{font-size:14px;color:#aaaab3;max-width:480px;margin:0}
-.platform-error-actions{display:flex;align-items:center;gap:24px;margin-top:18px}
-.platform-error-actions .button{min-width:145px}
-@media(max-width:560px){.platform-error-actions{flex-direction:column;gap:8px}}
-
 /* Design Playground v5 — consistent onboarding and precise empty/error states */
 /* Authentication UI: identical sizing and spacing for both OTP flows. */
 body:not(.platform):has(.recovery-otp-form) .topbar{visibility:hidden;height:28px}
@@ -826,20 +817,68 @@ body:not(.platform) .company-form-fields textarea:disabled{
 }
 body:not(.platform) .company-form-fields input:disabled::placeholder,
 body:not(.platform) .company-form-fields textarea:disabled::placeholder{color:#62626a!important;-webkit-text-fill-color:#62626a!important}
-/* Error pages: text left, oversized italic yellow status right. No retry/login controls. */
-.platform-error-page{
-  box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.95fr);
-  align-items:center;justify-items:stretch;text-align:left;
-  gap:clamp(30px,5vw,90px);max-width:1120px;width:100%;margin:0 auto;
-  min-height:calc(100svh - 150px);padding:clamp(32px,5vw,80px) 24px;
+body:not(.platform) main:has(> .platform-error-page) {
+  width:min(calc(100% - 48px), 58rem);
+  max-width:none;
+  flex:1 0 auto;
+  min-height:0;
+  display:grid;
+  align-items:center;
+  margin:0 auto;
+  padding-block:clamp(32px, 8vh, 96px);
 }
-.platform-error-copy{min-width:0}
-.platform-error-kicker{color:#a2a2ac!important;letter-spacing:.02em;font-size:14px!important;margin-bottom:22px!important}
-.platform-error-page h1{font:600 clamp(28px,3.3vw,46px)/1.13 var(--font);letter-spacing:-.045em;margin:0 0 18px;text-align:left}
-.platform-error-page .platform-error-copy>p:last-child{color:#aaaab3;font:400 15px/1.65 var(--font);max-width:450px;margin:0;text-align:left}
-.platform-error-code{font:italic 400 clamp(140px,23vw,300px)/.95 Georgia,serif;letter-spacing:-.085em;color:#e8c547;text-align:right;white-space:nowrap}
-.platform-error-actions{display:none!important}
-@media(max-width:700px){.platform-error-page{grid-template-columns:1fr;gap:25px;min-height:calc(100svh - 150px)}.platform-error-code{grid-row:1;text-align:left;font-size:clamp(110px,30vw,200px)}.platform-error-copy{grid-row:2}}
+.platform-error-page {
+  display:grid;
+  gap:24px;
+  align-items:center;
+  text-align:start;
+  font-family:Geist, system-ui, sans-serif;
+}
+.platform-error-page:has(.platform-error-code) {
+  grid-template-columns:minmax(0, 1fr) max-content;
+  column-gap:clamp(32px, 6vw, 88px);
+}
+.platform-error-copy {
+  min-width:0;
+  max-width:34rem;
+}
+.platform-error-copy h1 {
+  margin:0;
+  font-size:clamp(28px, 4vw, 46px);
+  font-weight:600;
+  line-height:1.14;
+  letter-spacing:-.035em;
+  text-wrap:balance;
+}
+.platform-error-copy p {
+  margin:12px 0 0;
+  max-width:36ch;
+  color:var(--sub);
+  font-size:16px;
+  line-height:1.55;
+}
+.platform-error-code {
+  color:#735a00;
+  font:italic 400 clamp(88px, 13vw, 176px)/1.05 Georgia, serif;
+  letter-spacing:-.085em;
+  white-space:nowrap;
+}
+:root[data-theme="dark"] .platform-error-code {
+  color:#e8c547;
+}
+@media (max-width:760px) {
+  body:not(.platform) main:has(> .platform-error-page) {
+    width:calc(100% - 40px);
+  }
+  .platform-error-page:has(.platform-error-code) {
+    grid-template-columns:minmax(0, 1fr);
+  }
+  .platform-error-code {
+    grid-row:1;
+    justify-self:start;
+    font-size:clamp(64px, 18vw, 112px);
+  }
+}
 
 /* Design Playground v6: consistent locked organization fields */
 body:not(.platform) .company-form-fields label {position:relative}
@@ -952,3 +991,7 @@ body.auth-recovery .recovery-screen .error{display:none!important}
 @media(max-width:480px){
   body.auth-recovery-code .recovery-otp-form .otp-field{width:min(100%,268px)}
 }
+
+
+.recovery-password-field { display: grid; gap: 8px; }
+.recovery-password-field .password-row .icon-button { top: 50%; translate: 0 -50%; }

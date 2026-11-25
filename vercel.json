@@ -27,5 +27,13 @@
         }
       ]
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "review/cabinet-parity-pr51": false,
+      "review/internal-client-creation-web": false,
+      "review/admin-organization-directory": false,
+      "review/stale-session-login": false
+    }
+  }
 }
