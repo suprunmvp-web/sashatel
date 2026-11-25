@@ -220,3 +220,25 @@ role and active status.
 The existing employee role is exposed as manager.
 Historical registration timestamps remain null when unknown.
 No password hashes or authentication credentials are returned.
+
+
+## Organization staff access
+
+POST /v1/organizations/{organization_id}/staff/access
+
+Requires selected organization and active Owner or Admin membership.
+
+Body:
+- membership_id: UUID
+- role: admin | manager
+- active: boolean
+
+Owner membership is protected.
+Self-modification is denied.
+Role and access changes revoke legacy phone sessions and
+clear selected organization contexts for the affected user.
+
+Memberships and historical calls are retained.
+Account access to unrelated organizations is preserved.
+
+Repeated identical mutations do not duplicate audit entries.

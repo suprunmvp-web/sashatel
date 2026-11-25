@@ -648,6 +648,62 @@ export class WebAuth {
     return value;
   }
 
+  async setOrganizationStaff(
+    ctx:Context,org:string,input:Record<string,unknown>
+  ) {
+    exact(input,['membership_id','role','active']);
+
+    const member=required(input,'membership_id',36);
+    const role=required(input,'role',16);
+
+    if(!uuid.test(org)||!uuid.test(member)
+       ||!['admin','manager'].includes(role)
+       ||typeof input.active!=='boolean')
+      throw new ApiError(422,'INVALID_STAFF_ACCESS');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+
+      if(family.organization_id!==org)
+        throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.set_organization_staff($1,$2,$3,$4,$5) AS changes',
+          [user.id,org,member,role,input.active]
+        );
+
+        if(row.changes)
+          await this.audit(
+            db,ctx,'organization.staff_access_changed',
+            user.id,org,member,row.changes
+          );
+
+        return {
+          status:200,
+          body:{
+            membership_id:member,
+            role,
+            active:input.active
+          }
+        };
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+
+        if(code==='42501')
+          throw new ApiError(403,'ORGANIZATION_ACCESS_DENIED');
+        if(code==='P0002')
+          throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514')
+          throw new ApiError(403,'PROTECTED_OWNER');
+        if(code==='22023')
+          throw new ApiError(422,'INVALID_STAFF_ACCESS');
+
+        throw error;
+      }
+    });
+  }
+
   async organizationStaff(ctx:Context,org:string) {
     if(!uuid.test(org))
       throw new ApiError(404,'RESOURCE_NOT_FOUND');

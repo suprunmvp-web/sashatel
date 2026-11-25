@@ -607,6 +607,88 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert.equal((await response.json()).items.length,2);
  });
 
+
+ await t.test('organization staff roles, revocation and restoration are audited',async()=>{
+  const directory=(await auth.organizationStaff(customer.ctx,org)).body.items;
+
+  const target=directory.find(
+   (row:{user_id:string})=>row.user_id===employee.id
+  );
+
+  const input={
+   membership_id:target.membership_id,
+   role:'manager',
+   active:false
+  };
+
+  await assert.rejects(
+   auth.setOrganizationStaff(employee.ctx,org,input),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setOrganizationStaff(customer.ctx,other,input),
+   error('ORGANIZATION_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.setOrganizationStaff(customer.ctx,org,{
+    ...input,membership_id:membership
+   }),
+   error('PROTECTED_OWNER')
+  );
+
+  await auth.setOrganizationStaff(customer.ctx,org,input);
+
+  const {rows:[revoked]}=await admin.query(
+   'SELECT active FROM control.memberships WHERE organization_id=$1 AND id=$2',
+   [org,target.membership_id]
+  );
+
+  assert.equal(revoked.active,false);
+
+  const organizations=(await auth.organizations(employee.ctx)).body.items;
+  assert(!organizations.some(row=>row.id===org));
+
+  await auth.setOrganizationStaff(customer.ctx,org,{
+   ...input,role:'admin',active:true
+  });
+
+  const {rows:[restored]}=await admin.query(
+   'SELECT active,role_id FROM control.memberships WHERE organization_id=$1 AND id=$2',
+   [org,target.membership_id]
+  );
+
+  assert.equal(restored.active,true);
+  assert.equal(restored.role_id,'admin');
+
+  await auth.selectOrganization(employee.ctx,{
+   organization_id:org,expected_context_epoch:2
+  });
+
+  assert.equal(
+   (await auth.organizationStaff(employee.ctx,org)).status,
+   200
+  );
+
+  const endpoint='http://127.0.0.1:'+address.port+
+   '/v1/organizations/'+org+'/staff/access';
+
+  const response=await fetch(endpoint,{
+   method:'POST',headers,
+   body:JSON.stringify({...input,active:true})
+  });
+
+  assert.equal(response.status,200);
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND action='organization.staff_access_changed'",
+   [org]
+  );
+
+  assert.equal(audit.n,3);
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);
