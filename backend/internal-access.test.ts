@@ -297,6 +297,110 @@ test('staff transition, company display name and temporary access stay tenant-sc
   await auth.reviewOrganization(internalAdmin.ctx,other,decision);
  });
 
+ await t.test('billing payments, debits and due dates are scoped and audited',async()=>{
+  const invoice=randomUUID();
+
+  await admin.query(
+   "INSERT INTO control.billing_obligations(organization_id,id,issued_at,due_at,amount_kopeks,state) VALUES($1,$2,clock_timestamp()-interval '10 days',clock_timestamp()-interval '1 day',10000,'issued')",
+   [org,invoice]
+  );
+
+  const payment={
+   organization_id:org,kind:'payment',amount_kopeks:'15000',
+   reference:'bank-'+randomUUID(),
+   reason:'Подтверждено поступление оплаты'
+  };
+
+  const key=randomUUID();
+
+  await assert.rejects(
+   auth.recordBillingTransaction(manager.ctx,payment,key),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.billingSummary(customer.ctx,org),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.billingHistory(manager.ctx,org),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  const created=await auth.recordBillingTransaction(owner.ctx,payment,key);
+  assert.equal(created.status,201);
+
+  const replay=await auth.recordBillingTransaction(owner.ctx,payment,key);
+  assert.equal(replay.status,200);
+  assert.equal(replay.body.transaction_id,created.body.transaction_id);
+
+  await assert.rejects(
+   auth.recordBillingTransaction(owner.ctx,{...payment,amount_kopeks:'16000'},key),
+   error('IDEMPOTENCY_CONFLICT')
+  );
+
+  await assert.rejects(
+   auth.recordBillingTransaction(owner.ctx,payment,randomUUID()),
+   error('PAYMENT_REFERENCE_EXISTS')
+  );
+
+  let summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+
+  assert.equal(summary.payments_kopeks,'15000');
+  assert.equal(summary.overdue_kopeks,'0');
+  assert.equal(summary.outstanding_invoices_kopeks,'0');
+  assert.equal(summary.balance_kopeks,'15000');
+
+  await auth.recordBillingTransaction(internalAdmin.ctx,{
+   ...payment,kind:'debit',amount_kopeks:'2000',
+   reference:'adjustment-'+randomUUID(),
+   reason:'Ручная финансовая корректировка'
+  },randomUUID());
+
+  summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+  assert.equal(summary.balance_kopeks,'13000');
+
+  const nextInvoice=randomUUID();
+  await admin.query(
+   "INSERT INTO control.billing_obligations(organization_id,id,issued_at,due_at,amount_kopeks,state) VALUES($1,$2,clock_timestamp()-interval '10 days',clock_timestamp()-interval '1 day',20000,'issued')",
+   [org,nextInvoice]
+  );
+
+  const date=new Date(Date.now()+86400000*7).toISOString();
+
+  const change={
+   organization_id:org,invoice_id:nextInvoice,
+   due_at:date,reason:'Согласована отсрочка платежа'
+  };
+
+  await assert.rejects(
+   auth.changeBillingDueDate(manager.ctx,change),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.changeBillingDueDate(owner.ctx,{...change,organization_id:other}),
+   error('RESOURCE_NOT_FOUND')
+  );
+
+  await auth.changeBillingDueDate(internalAdmin.ctx,change);
+
+  summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+  assert.equal(new Date(summary.next_payment_at).toISOString(),date);
+  assert.equal(summary.overdue_kopeks,'0');
+
+  const history=(await auth.billingHistory(owner.ctx,org)).body.items;
+  assert.equal(history.length,2);
+
+  const {rows:[audit]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND action='internal.billing_transaction'",
+   [org]
+  );
+
+  assert.equal(audit.n,2);
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);

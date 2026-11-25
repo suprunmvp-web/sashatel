@@ -46,6 +46,25 @@ export function webHandler(auth:WebAuth,origin:string) {
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
         else if(path==='/v1/internal/responsible-managers')
           send(await auth.responsibleManagerCandidates(ctx));
+        else if(path==='/v1/internal/billing/summary'||
+                path==='/v1/internal/billing/history') {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+          const org=query.get('organization_id')??'';
+          const history=path.endsWith('/history');
+          const allowed=history?['organization_id','offset','limit']:['organization_id'];
+          if([...query.keys()].some(k=>!allowed.includes(k)||query.getAll(k).length!==1))
+            throw new ApiError(422,'INVALID_PAGE');
+          const number=(name:string,fallback:number)=>{
+            const value=query.get(name);
+            if(value===null)return fallback;
+            if(!/^[0-9]{1,6}$/.test(value))
+              throw new ApiError(422,'INVALID_PAGE');
+            return Number(value);
+          };
+          send(history
+            ?await auth.billingHistory(ctx,org,number('offset',0),number('limit',50))
+            :await auth.billingSummary(ctx,org));
+        }
         else if(path==='/v1/internal/staff') send(await auth.internalStaff(ctx));
         else if(path==='/v1/internal/client-context') send(await auth.internalClientContext(ctx));
         else if(path==='/v1/internal/organizations') {
@@ -107,6 +126,10 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/internal/organizations':result=await auth.createInternalOrganization(ctx,body,key);break;
         case '/v1/internal/organizations/responsible-manager':
           result=await auth.setResponsibleManager(ctx,body);break;
+        case '/v1/internal/billing/transactions':
+          result=await auth.recordBillingTransaction(ctx,body,key);break;
+        case '/v1/internal/billing/due-date':
+          result=await auth.changeBillingDueDate(ctx,body);break;
         case '/v1/internal/staff/access':result=await auth.setInternalStaff(ctx,body);break;
         case '/v1/internal/client-context/open':result=await auth.openInternalClient(ctx,body);break;
         case '/v1/internal/client-context/close':result=await auth.closeInternalClient(ctx,body);break;

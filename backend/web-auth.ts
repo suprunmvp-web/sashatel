@@ -609,6 +609,8 @@ export class WebAuth {
       const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       const capabilities=['organizations:list'];
+      if(['owner','admin'].includes(role.role))
+        capabilities.push('billing:read','billing:manage');
       if(['owner','admin','manager'].includes(role.role))
         capabilities.push('organizations:revoke_verification');
       if(['owner','admin','manager','reviewer'].includes(role.role)) capabilities.push('organizations:review');
@@ -621,6 +623,141 @@ export class WebAuth {
       return {status:200,body:{role:role.role,capabilities}};
     },true);
   }
+  private billingError(error:unknown):never {
+    const failure=error as {code?:string,message?:string};
+    if(failure.code==='42501')
+      throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+    if(failure.code==='P0002')
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    if(failure.code==='23505')
+      throw new ApiError(409,failure.message==='IDEMPOTENCY_CONFLICT'
+        ?'IDEMPOTENCY_CONFLICT':'PAYMENT_REFERENCE_EXISTS');
+    if(failure.code==='22023')
+      throw new ApiError(422,'INVALID_BILLING_OPERATION');
+    throw error;
+  }
+
+  private billingField(
+    input:Record<string,unknown>,name:string,max:number
+  ):string {
+    const value=input[name];
+    if(typeof value!=='string'||value.length===0||value.length>max)
+      throw new ApiError(422,'INVALID_BILLING_OPERATION');
+    return value;
+  }
+
+  async billingSummary(ctx:Context,org:string) {
+    if(!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.billing_summary($1,$2) AS summary',
+          [user.id,org]
+        );
+        return {status:200,body:{summary:row.summary}};
+      } catch(error) {this.billingError(error);}
+    },true);
+  }
+
+  async billingHistory(ctx:Context,org:string,offset=0,limit=50) {
+    if(!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.billing_history($1,$2,$3,$4) AS items',
+          [user.id,org,offset,limit]
+        );
+        return {status:200,body:{items:row.items}};
+      } catch(error) {this.billingError(error);}
+    },true);
+  }
+
+  async recordBillingTransaction(
+    ctx:Context,input:Record<string,unknown>,key:string
+  ) {
+    const fields=[
+      'organization_id','kind','amount_kopeks','reference','reason'
+    ];
+
+    if(Object.keys(input).length!==fields.length||
+       Object.keys(input).some(field=>!fields.includes(field)))
+      throw new ApiError(422,'INVALID_BILLING_OPERATION');
+
+    const org=this.billingField(input,'organization_id',36);
+    const kind=this.billingField(input,'kind',16);
+    const amount=this.billingField(input,'amount_kopeks',18);
+    const reference=this.billingField(input,'reference',500).trim();
+    const reason=this.billingField(input,'reason',2000).trim();
+
+    if(!uuid.test(org)||!uuid.test(key)
+       ||!['payment','debit'].includes(kind)
+       ||!/^[1-9][0-9]{0,17}$/.test(amount)
+       ||reference.length<5||reason.length<8)
+      throw new ApiError(422,'INVALID_BILLING_OPERATION');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.record_billing_transaction($1,$2,$3,$4,$5,$6,$7,$8) AS result',
+          [user.id,org,randomUUID(),key,kind,amount,reference,reason]
+        );
+
+        if(!row.result.replayed)
+          await this.audit(
+            db,ctx,'internal.billing_transaction',
+            user.id,org,row.result.transaction_id,
+            {kind,amount_kopeks:amount,reference,reason}
+          );
+
+        return {
+          status:row.result.replayed?200:201,
+          body:{transaction_id:row.result.transaction_id},
+          replayed:row.result.replayed
+        };
+      } catch(error) {this.billingError(error);}
+    });
+  }
+
+  async changeBillingDueDate(ctx:Context,input:Record<string,unknown>) {
+    const fields=['organization_id','invoice_id','due_at','reason'];
+
+    if(Object.keys(input).length!==fields.length||
+       Object.keys(input).some(field=>!fields.includes(field)))
+      throw new ApiError(422,'INVALID_BILLING_OPERATION');
+
+    const org=this.billingField(input,'organization_id',36);
+    const invoice=this.billingField(input,'invoice_id',36);
+    const due=this.billingField(input,'due_at',32);
+    const reason=this.billingField(input,'reason',2000).trim();
+
+    if(!uuid.test(org)||!uuid.test(invoice)
+       ||!Number.isFinite(Date.parse(due))
+       ||!due.endsWith('Z')||reason.length<8)
+      throw new ApiError(422,'INVALID_BILLING_OPERATION');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx);
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.change_billing_due_date($1,$2,$3,$4) AS changes',
+          [user.id,org,invoice,due]
+        );
+
+        await this.audit(
+          db,ctx,'internal.billing_due_date_changed',
+          user.id,org,invoice,{...row.changes,reason}
+        );
+
+        return {status:200,body:row.changes};
+      } catch(error) {this.billingError(error);}
+    });
+  }
+
   async internalStaff(ctx:Context) {
     return this.tx(ctx,async db=>{
       const {user}=await this.identity(db,ctx,true);

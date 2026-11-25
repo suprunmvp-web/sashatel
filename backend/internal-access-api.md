@@ -112,3 +112,43 @@ Records both review history and application audit.
 New call admission requires verified organization status.
 Uncommitted reservations are revalidated before dispatch.
 Existing connected calls are not interrupted solely by verification revocation.
+
+
+## Internal billing API
+
+Roles: Owner and Admin.
+Capabilities: billing:read, billing:manage.
+
+GET /v1/internal/billing/summary?organization_id=UUID
+
+GET /v1/internal/billing/history?organization_id=UUID&offset=0&limit=50
+
+POST /v1/internal/billing/transactions
+
+Required Idempotency-Key: UUID.
+
+Body:
+- organization_id: UUID
+- kind: payment | debit
+- amount_kopeks: positive decimal integer string
+- reference: confirmed payment reference or adjustment reference
+- reason: explanation
+
+Returns 201 for new transaction and 200 for exact replay.
+
+POST /v1/internal/billing/due-date
+
+Body:
+- organization_id: UUID
+- invoice_id: UUID
+- due_at: UTC ISO timestamp
+- reason: explanation
+
+Payments settle existing outstanding invoices in due-date order.
+A debit is an account adjustment, not a reversal of a bank payment.
+Financial writes and application audit share one transaction.
+The old prepaid wallet remains unused.
+
+Future invoice allocation, billing periods, document issuance,
+bank reconciliation and historical balance reconciliation
+require separate implementation and acceptance tests.
