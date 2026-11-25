@@ -1,14 +1,14 @@
 import {esc, icon, link} from './components.js';
 
 export function cabinetWorkspace({admin,org,organizations}) {
-  const name = admin ? 'SashaTel' : org.legal_name;
+  const name = admin ? 'SashaTel' : (org.display_name || org.legal_name);
   const displayName=name.replace(/^Индивидуальный предприниматель\s+/iu,'ИП ');
   const contents = '<span class="workspace-symbol"><img src="/assets/sashatel-symbol-transparent.svg" width="23" height="23" alt=""></span>'+
     '<span class="workspace-text"><strong>'+esc(displayName)+'</strong><small>'+
     (admin ? 'Внутренняя платформа' : 'Организация')+'</small></span>';
   const rows = organizations.map(item => {
     const active = item.id === org?.id;
-    const label = item.legal_name.replace(/^Индивидуальный предприниматель\s+/iu, 'ИП ');
+    const label = (item.display_name || item.legal_name).replace(/^Индивидуальный предприниматель\s+/iu, 'ИП ');
     return `<button type="button" class="workspace-option" data-select-org="${esc(item.id)}" data-inn="${esc(item.inn)}"${active ? ' aria-current="true"' : ''}>
       <span class="workspace-option-symbol" aria-hidden="true">${icon('building-2')}</span>
       <span class="workspace-option-label"><strong>${esc(label)}</strong><small>ИНН ${esc(item.inn)}</small></span>
@@ -107,7 +107,7 @@ export function showCabinetWelcome({account, org, organizationUrl, openTrunk}) {
     <div class="welcome-pattern" aria-hidden="true"><span>👋　✦　💬　♡　☎️</span><span>🎧</span><span>💬</span><span>✧　☎️　♡　🎧　👋</span></div>
     <h2 id="cabinet-welcome-title" tabindex="-1" autofocus><span>Добро пожаловать${name ? ',' : '!'}</span>${name ? ' <em>'+esc(name)+'!</em>' : ''}</h2>
     <p id="cabinet-welcome-copy">Рады вас видеть в платформе SashaTel. Мы ценим, что вы доверили нам увеличение ваших конверсий, обещаем сделать все возможное, чтобы это стало <span class="welcome-signoff">реальностью<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.1-4.4-9.2-8.9C.9 8.2 3.3 4.4 7 4.4c2 0 3.8 1.1 5 2.8 1.2-1.7 3-2.8 5-2.8 3.7 0 6.1 3.8 4.2 7.7C19.1 16.6 12 21 12 21Z"/></svg></span></p>
-    ${verified ? '<button class="button welcome-action" type="button">Подключить транк</button>' : '<a class="button welcome-action" href="'+esc(organizationUrl)+'">К верификации</a>'}`;
+    ${verified ? (openTrunk ? '<button class="button welcome-action" type="button">Подключить транк</button>' : '') : '<a class="button welcome-action" href="'+esc(organizationUrl)+'">К верификации</a>'}`;
   const heading = dialog.querySelector('h2');
   const title = heading.textContent;
   heading.setAttribute('aria-label', title);
@@ -127,7 +127,7 @@ export function showCabinetWelcome({account, org, organizationUrl, openTrunk}) {
     }
   }
   dialog.addEventListener('close', () => dialog.remove(), {once: true});
-  dialog.querySelector('.welcome-action').addEventListener('click', () => {
+  dialog.querySelector('.welcome-action')?.addEventListener('click', () => {
     dialog.close();
     if (verified) openTrunk();
   });

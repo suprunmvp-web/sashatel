@@ -1,3 +1,4 @@
+import {isSessionLoss} from './api.js';
 import {renderAccountPage, wireProfileEditor} from './cabinet-account.js';
 import {wireStatisticsChart} from './cabinet-statistics-chart.js';
 import {wireRecordingPlayer} from './cabinet-recording.js';
@@ -16,9 +17,10 @@ let account=null,org=null,organizations=[],internalOrganizations=[],internalRole
 if(!Object.hasOwn(internalRoleLabels,internalRole))internalRole=null;
 let canCreateInternalOrganization=false;
 let internalCapabilities=[], internalManagers=[], internalContext=null, internalContextConflict=null;
+let staff=null, staffLoading=null, staffError=null;
 const internalOrganizationPath='/admin/organizations/';
 const isInternalOrganizationPath=pathname=>pathname.startsWith(internalOrganizationPath);
-const canOpenInternalOrganization=()=>['owner','admin'].includes(internalRole)&&internalCapabilities.includes('client_context:read');
+const canOpenInternalOrganization=()=>internalCapabilities.includes('client_context:read');
 let page=admin?(parts[1]||'overview'):(parts[1]||'statistics'),service=isPreview&&query.get('service')==='1';
 const nav=admin?[['overview','layout-dashboard','Обзор'],['employees','users','Сотрудники']]:[['statistics','chart-no-axes-column','Статистика'],['trunks','list-trunks','Транки'],['history','history','История звонков'],['integrations','plug','Интеграции'],['billing','credit-card','Биллинг'],['organization','settings','Настройки'],['support','message-circle','Поддержка'],['documentation','book-open','Документация']];
 let collapsed=false, stopRecording;
@@ -28,12 +30,14 @@ const url=section=>base()+(section==='overview'||section==='statistics'?'':secti
 const currentNav=()=>!admin&&page==='employees'?'organization':page;
 const title=()=>admin&&page==='organizations'?'Организация':nav.find(n=>n[0]===currentNav())?.[2]||({profile:'Мой профиль',security:'Безопасность',organization:'Организация'}[page]||'Страница не найдена');
 function clientPage(){
- if(page==='statistics')return renderStatistics();
+ if(page==='statistics')return isPreview?renderStatistics():empty('Статистика пока недоступна','Веб-кабинет пока не получает данные по звонкам.');
  if(page==='history'){
+  if(!isPreview)return empty('История пока недоступна','Веб-кабинет пока не получает записи звонков.');
   if(parts[2])return renderCallDetails(url('history'),esc(base()+'history/'+encodeURIComponent(parts[2])+'/'),parts[3]);
   return renderCallFilters(base()+'history/',[],previewSuffix);
  }
  if(page==='trunks'){
+  if(!isPreview)return empty('Управление транками пока недоступно','Для подключения SIP обратитесь к вашему менеджеру.');
   if(!parts[2])return trunkLandingMarkup;
   if(!uuid.test(parts[2]))return empty('Транк не найден','Проверьте адрес страницы.');
   const tab=['management','information','numbers'].includes(parts[3])?parts[3]:'management';
@@ -42,14 +46,16 @@ function clientPage(){
   if(tab==='information')return header+renderTrunkInformation(parts[2]);
   return header+trunkManagementMarkup+'<div class="actions">'+button('Переименовать транк','trunk-rename',false,true)+button('Удалить транк','delete',true,true)+'</div>';
  }
- if(page==='employees')return renderSettingsTabs(true)+settingsUsersMarkup;
+ if(page==='employees')return renderSettingsTabs(true)+(isPreview?settingsUsersMarkup:
+  '<section id="settingsUsers" class="settings-panel" role="tabpanel" aria-labelledby="settingsUsersTab">'+empty('Пользователи организации','Список и приглашения пока недоступны в веб-кабинете.')+'</section>');
  if(page==='integrations')return '<section class="integration-unavailable">'+'<span class="integration-lock" aria-hidden="true"><img src="/assets/lock.svg" width="34" height="34" alt=""></span>'+'<p>Данный раздел находится в разработке. Мы вам сообщим, когда он появится. Благодарим за ожидание!</p></section>';
- if(page==='billing')return billingMarkup;
+ if(page==='billing')return isPreview?billingMarkup:empty('Биллинг пока недоступен','За счётом или документами обратитесь к вашему менеджеру.');
  if(page==='support')return '<section class="ws-help-body"><h2>Поддержка SashaTel</h2><p>Для вопросов по верификации организации и SIP-подключению обратитесь к вашему менеджеру.</p></section>';
- if(page==='documentation')return '<section class="ws-help-body"><h2>Подключение телефонии</h2><p>Создайте транк, введите данные SIP-оператора и проверьте состояние подключения во вкладке «Информация». Для звонков нужны разрешённые исходящие номера.</p>'+link(url('trunks'),'Перейти к транкам')+'</section>';
- if(page==='profile'||page==='security')return renderAccountPage(page,account,url);
+ if(page==='documentation')return '<section class="ws-help-body"><h2>Подключение телефонии</h2><p>Для подключения SIP обратитесь к вашему менеджеру. Для звонков нужны разрешённые исходящие номера.</p>'+link(url('trunks'),'Перейти к транкам')+'</section>';
+ if(page==='profile'||page==='security')return renderAccountPage(page,account,url,isPreview);
  if(page==='organization')return renderSettingsTabs(false)+'<section id="settingsGeneral" class="requisites-panel settings-panel" role="tabpanel" aria-labelledby="settingsGeneralTab"><h2>Настройки организации</h2>'+
-  '<form id="wsOrgForm" class="ws-form"><label>Название организации<input type="text" id="wsOrgName" name="legal_name" maxlength="180" required value="'+esc(org.legal_name)+'"></label>'+
+  '<form id="wsOrgForm" class="ws-form"><label>Название в кабинете<input type="text" id="wsOrgName" name="display_name" maxlength="180" required value="'+esc(org.display_name||org.legal_name)+'"'+(isPreview?' readonly':'')+'></label>'+
+  '<label>Юридическое наименование<input type="text" readonly value="'+esc(org.legal_name)+'"></label>'+
   '<label>ИНН<input id="wsOrgInn" type="text" inputmode="numeric" readonly value="'+esc(org.inn)+'"></label>'+
   '<div class="ws-form-actions"><button id="wsOrgSave" type="submit" class="button" disabled>Сохранить настройки</button><button id="wsOrgCancel" type="button" class="button secondary" hidden>Отмена</button><span id="wsOrgFeedback" role="status"></span></div></form></section>';
  return empty('Страница не найдена','Выберите раздел в меню.');
@@ -113,39 +119,81 @@ function internalOrganizationPage(){
    '<div><dt>Верификация</dt><dd>'+esc(status[item.verification_status]||'—')+'</dd></div></dl></section>';
 }
 
-const internalRoles=[
- ['reviewer','Проверяющий','Проверка организаций, фиксация решения и основания'],
- ['admin','Администратор','Внутренний администратор SashaTel']
-];
-function internalRoleChoices(name,selected){
- return '<fieldset class="ux-role-choices"><legend>Внутренняя роль</legend>'+
-  internalRoles.map(([value,label,hint])=>'<label class="ux-role-choice"><input type="radio" name="'+name+
-   '" value="'+value+'"'+(selected===value?' checked':'')+'><span class="ux-role-radio" aria-hidden="true"></span>'+
-   '<span class="ux-role-copy"><strong>'+label+'</strong><small>'+hint+'</small></span></label>').join('')+'</fieldset>';
+const canManageStaff=()=>!isPreview&&internalCapabilities.includes('staff:manage');
+function staffPage(){
+ if(!canManageStaff())return empty('Управление сотрудниками','Список и управление доступом доступны владельцу SashaTel.');
+ if(staffError)return '<section class="admin-staff"><p role="alert">'+esc(staffError)+'</p>'+button('Повторить','staff-retry')+'</section>';
+ if(!staff)return '<p role="status">Загружаем сотрудников…</p>';
+ const rows=staff.map(item=>[
+  '<strong>'+esc(item.email)+'</strong>',esc(internalRoleLabels[item.role]||'—'),
+  item.active?'Активен':'Доступ отозван',
+  item.role==='owner'||item.user_id===account.id?'':
+   '<button class="button secondary" type="button" data-staff-edit="'+esc(item.user_id)+'" aria-label="Изменить доступ '+esc(item.email)+'">Изменить доступ</button>'
+ ]);
+ return '<section class="admin-staff"><div class="section-heading ux-staff-header"><span id="adminStaffCount" role="status">'+rows.length+' из '+rows.length+'</span>'+
+  '<label class="workspace-search">'+icon('search')+'<input id="adminStaffSearch" type="search" placeholder="Поиск сотрудника" aria-label="Поиск сотрудников"></label></div>'+
+  table(['Email','Роль','Статус','Действия'],rows,'Сотрудников нет')+'</section>';
 }
-function staffActions(){
- return '<button type="button" popovertarget="adminStaffMenu" class="icon-button admin-org-action-trigger" aria-label="Действия сотрудника">'+icon('ellipsis')+'</button>'+
-  '<div popover id="adminStaffMenu" class="admin-org-action-menu" aria-label="Действия сотрудника">'+
-  '<button type="button" data-staff-action="internal-role">'+adminMenuIcon('<path d="M12 20h9M16 3l5 5L9 20H4v-5L16 3Z"/>')+'Изменить роль</button>'+
-  '<button type="button" data-staff-action="internal-contacts">'+adminMenuIcon('<circle cx="12" cy="8" r="3"/><path d="M5 20v-1a7 7 0 0 1 14 0v1"/>')+'Контакты и Telegram</button>'+
-  '<button type="button" disabled>'+adminMenuIcon('<path d="M4 7h16M10 4h4m-8 3 1 13h10l1-13"/>')+'Отозвать доступ</button></div>';
+async function loadStaff(){
+ if(staffLoading)return staffLoading;
+ staffError=null;
+ staffLoading=api.internalStaff().then(items=>{
+  staff=items;
+  internalManagers=items.filter(item=>item.active&&item.role==='manager').map(item=>item.email);
+ }).catch(error=>{staffError=error.message;}).finally(()=>{staffLoading=null;});
+ return staffLoading;
+}
+async function refreshStaffPage(){
+ await loadStaff();
+ if(page==='employees')render({focus:false});
+}
+function editStaffAccess(item,trigger){
+ if(!canManageStaff()||item?.role==='owner'||item?.user_id===account.id)return;
+ const dialog=document.querySelector('#operation-dialog');
+ const roles=['admin','manager'];
+ dialog.innerHTML='<form method="dialog"><header><h2 id="dialog-title">'+(item?'Изменить доступ':'Назначить служебный доступ')+'</h2>'+
+  '<button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
+  (item?'<p class="cabinet-muted">'+esc(item.email)+'</p>':'')+'<div class="dialog-fields">'+
+  (item?'':'<label>ID аккаунта<input name="user_id" required autocomplete="off" maxlength="36" pattern="'+uuid.source+'"></label><p class="cabinet-muted">Укажите UUID аккаунта с подтверждённой почтой. Если у аккаунта уже есть роль, она обновится.</p>')+
+  '<label>Служебный доступ<select name="role" required>'+
+  '<option value="" disabled selected>Выберите действие</option>'+
+  roles.filter(role=>!item?.active||role!==item.role).map(role=>'<option value="'+role+'">'+esc(internalRoleLabels[role])+'</option>').join('')+
+  (item?.active?'<option value="revoke">Отозвать доступ</option>':'')+'</select></label><p class="error" role="alert" hidden></p></div>'+
+  '<footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" value="save">Сохранить</button></footer></form>';
+ const form=dialog.querySelector('form');
+ const errorNode=form.querySelector('[role=alert]');
+ let saving=false;
+ dialog.oncancel=event=>{if(saving)event.preventDefault();};
+ dialog.onclose=()=>{dialog.oncancel=null;dialog.replaceChildren();trigger.focus({preventScroll:true});};
+ form.onsubmit=async event=>{
+  if(event.submitter?.value!=='save')return;
+  event.preventDefault();
+  if(saving)return;
+  const role=form.elements.role.value;
+  const userId=item?.user_id??form.elements.user_id.value;
+  saving=true;
+  errorNode.hidden=true;
+  for(const control of form.elements)control.disabled=true;
+  try{await api.setStaffAccess(userId,role==='revoke'?null:role);}
+  catch(error){
+   errorNode.textContent=error.message;
+   errorNode.hidden=false;
+   for(const control of form.elements)control.disabled=false;
+   saving=false;
+   return;
+  }
+  await loadStaff();
+  dialog.close();
+  if(page==='employees')render({focus:false});
+  notify('Доступ сотрудника обновлён.','success');
+ };
+ hydrate(dialog);dialog.showModal();
 }
 function adminPage(){
  if(!Object.hasOwn(internalRoleLabels,internalRole))return empty('Служебный доступ запрещён','Доступ к организациям есть только у сотрудников SashaTel с подтверждёнными сервером полномочиями.',true);
  if(page==='organizations')return internalOrganizationPage();
- if(page==='profile'||page==='security')return renderAccountPage(page,account,url);
- if(page==='employees'){
-  const fullName=[account.last_name,account.first_name].filter(Boolean).join(' ')||'—';
-  const emailStatus=account.email_verified===true
-   ? '<span class="admin-verification" data-verified="true">'+icon('circle-check')+'Да</span>'
-   : account.email_verified===false?'<span class="admin-verification">'+adminMinus+'Нет</span>':'—';
-  const roleName=internalRoleLabels[internalRole];
-  const role=internalRole==='admin'?'<button class="admin-staff-role" type="button" data-action="internal-role">'+roleName+icon('chevron-down')+'</button>':roleName;
-  const row=['<strong>'+esc(fullName)+'</strong>',esc(account.email||'—'),role,esc(account.phone||'—'),emailStatus,'—',internalRole==='admin'?staffActions():''];
-  return '<section class="admin-staff"><div class="section-heading ux-staff-header"><span id="adminStaffCount" role="status">1 из 1</span>'+
-   '<label class="workspace-search">'+icon('search')+'<input id="adminStaffSearch" type="search" placeholder="Поиск сотрудника" aria-label="Поиск сотрудников"></label></div>'+
-   table(['Фамилия Имя','Email','Роль','Телефон','Email подтверждён','Дата регистрации',''],[row])+'</section>';
- }
+ if(page==='profile'||page==='security')return renderAccountPage(page,account,url,isPreview);
+ if(page==='employees')return staffPage();
  if(page!=='overview')return empty('Страница не найдена','Выберите раздел в меню.');
  const filter='<label class="workspace-search admin-org-search">'+icon('search')+'<input type="search" id="organization-filter" aria-label="Поиск организации" placeholder="Название или ИНН"></label>';
  const labels={unverified:'Нет',verified:'Да',rejected:'Отклонена'};
@@ -183,14 +231,10 @@ function adminPage(){
    '<nav class="admin-org-pager" aria-label="Страницы организаций"><span role="status"></span><button type="button" class="button secondary" data-step="-1">Назад</button><button type="button" class="button secondary" data-step="1">Вперёд</button></nav></section>';
 }
 function pageAction(){
- if(admin){
-  if(internalRole!=='admin')return '';
-  if(page==='employees')return button(icon('plus')+' Добавить сотрудника','internal-invite');
-  return '';
- }
+ if(admin)return page==='employees'&&canManageStaff()&&staff&&!staffError?button('Назначить доступ','staff-add'):'';
  if(org.role==='employee'||parts[2])return '';
- if(page==='statistics')return renderPeriod();
- if(page==='billing')return button(invoiceIcon+' Пополнение по счёту','invoice');
+ if(page==='statistics'&&isPreview)return renderPeriod();
+ if(page==='billing'&&isPreview)return button(invoiceIcon+' Пополнение по счёту','invoice');
  return '';
 }
 function render({focus=true}={}){
@@ -212,7 +256,7 @@ function render({focus=true}={}){
   '<button type="button" class="icon-button" data-action="theme" aria-label="Переключить тему">'+icon(savedTheme()==='dark'?'sun':'moon')+'</button></div></header>'+
   (service?'<div class="service-banner">Служебный доступ · '+esc(account.first_name+' '+account.last_name)+' · '+link('/admin/?preview=1','Вернуться в обзор')+'</div>':'')+
   '<main id="content" tabindex="-1">'+(!admin?verificationNotice(org.verification_status):'')+
-  ((!admin&&page==='trunks'&&(!parts[2]||uuid.test(parts[2]))&&org.role!=='employee')?'':'<div class="page-heading"><h1 tabindex="-1">'+heading+'</h1>'+pageAction()+'</div>')+'<div id="page-content">'+content+'</div>'+
+  ((isPreview&&!admin&&page==='trunks'&&(!parts[2]||uuid.test(parts[2]))&&org.role!=='employee')?'':'<div class="page-heading"><h1 tabindex="-1">'+heading+'</h1>'+pageAction()+'</div>')+'<div id="page-content">'+content+'</div>'+
   '<p id="platform-error" class="error" role="alert" tabindex="-1" hidden></p></main></div><dialog aria-labelledby="dialog-title" id="operation-dialog"></dialog>';
  hydrate();wire();
  if(focus)document.querySelector('h1')?.focus({preventScroll:true});
@@ -244,6 +288,7 @@ function navigate(pathname){
  page=admin?(parts[1]||'overview'):(parts[1]||'statistics');
  document.title=title()+' — SashaTel';
  render();
+ if(admin&&page==='employees'&&canManageStaff())void refreshStaffPage();
 }
 document.addEventListener('click',event=>{
  if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||!account)return;
@@ -266,34 +311,19 @@ function savedTheme(){try{return localStorage.getItem('sashatel.web.theme')==='l
 function operation(action,organization){
  const dialog=document.querySelector('#operation-dialog');
  const trunkKind={trunk:'create','trunk-sip':'sip','trunk-rename':'rename'}[action];
- if(trunkKind){
+ if(trunkKind&&isPreview){
   showTrunkDialog(dialog,trunkKind,()=>showError('Не удалось выполнить действие. Попробуйте ещё раз.'));
   return;
  }
  let name='',fields='',submit='Подтвердить';
  let description=organization?.legal_name||'';
- if(action==='internal-invite'){
-  name='Добавить сотрудника';submit='Добавить';
-  fields=`<div class="admin-dialog-form"><label>Фамилия Имя<input id="uxStaffName" type="text" required placeholder="Имя и фамилия"/></label><label>Email<input id="uxStaffEmail" type="email" required placeholder="name@sashatel.example"/></label><label>Телефон<input id="uxStaffPhone" type="tel" placeholder="+7 ..."/></label><label>Имя пользователя в Telegram<input id="uxStaffTelegram" maxlength="33" placeholder="@username"/></label></div>`+
-   internalRoleChoices('uxStaffRole','reviewer');
- }
- const staffDialog=action==='internal-role'||action==='internal-contacts';
- if(staffDialog){
-  if(internalRole!=='admin')return;
-  description=[[account.first_name,account.last_name].filter(Boolean).join(' '),account.email].filter(Boolean).join(' · ');
-  name=action==='internal-role'?'Изменить роль':'Контакты сотрудника';
-  submit='Сохранить';
-  fields=action==='internal-role'?internalRoleChoices('uxRole',internalRole):
-   '<div class="admin-dialog-form"><label>Телефон<input id="staffContactPhone" type="tel" placeholder="+7 900 123 45 67" value="'+esc(account.phone||'')+'"></label>'+
-   '<label>Имя пользователя в Telegram<input id="staffContactTelegram" type="text" autocomplete="off" maxlength="33" placeholder="@username"></label></div>';
- }
- if(action==='invite'){
+ if(action==='invite'&&isPreview){
   name='Пригласить сотрудника';
   submit='Добавить пользователя';
   fields=clientInviteFields;
  }
- if(action==='integration'){name='Создать интеграцию';fields='<label>Тип<select><option>amoCRM</option><option>Битрикс24</option><option>Webhook/API</option></select></label>';}
- if(action==='invoice'){name='Пополнение по счёту';submit='Сформировать счёт';fields=invoiceFields;}
+ if(action==='integration'&&isPreview){name='Создать интеграцию';fields='<label>Тип<select><option>amoCRM</option><option>Битрикс24</option><option>Webhook/API</option></select></label>';}
+ if(action==='invoice'&&isPreview){name='Пополнение по счёту';submit='Сформировать счёт';fields=invoiceFields;}
  if(action==='client'){
   if(!admin||!canCreateInternalOrganization)return;
   name='Создать клиента';submit='Создать клиента';
@@ -306,10 +336,9 @@ function operation(action,organization){
  const trigger=document.activeElement;
  const context=description?'<p class="cabinet-muted">'+esc(description)+'</p>':'';
  const heading='<h2 id="dialog-title">'+esc(name)+'</h2>';
- dialog.innerHTML='<form method="dialog"'+(staffDialog?' class="staff-edit-form"':'')+'><header>'+
-  (staffDialog?'<div class="staff-dialog-heading">'+heading+context+'</div>':heading)+
+ dialog.innerHTML='<form method="dialog"><header>'+heading+
   '<button class="icon-button" formnovalidate value="cancel" aria-label="Закрыть">'+icon('x')+'</button></header>'+
-  (staffDialog?'':context)+'<div class="dialog-fields">'+fields+'</div>'+
+  context+'<div class="dialog-fields">'+fields+'</div>'+
   (action==='invoice'?invoiceMethod:'')+'<footer class="dialog-actions"><button class="button secondary" formnovalidate value="cancel">Отмена</button><button class="button" value="submit">'+esc(submit)+'</button></footer></form>';
  const form=dialog.querySelector('form');
  const validInvoice=action==='invoice'?wireInvoiceForm(form,org?.inn):null;
@@ -458,13 +487,14 @@ function wire(){
  wireProfileEditor(document);
  const orgForm=document.querySelector('#wsOrgForm');
  if(orgForm){
-  const name=orgForm.elements.legal_name;
+  const name=orgForm.elements.display_name;
   const submit=orgForm.querySelector('#wsOrgSave');
   const feedback=orgForm.querySelector('#wsOrgFeedback');
   const cancel=orgForm.querySelector('#wsOrgCancel');
+  let saving=false;
   orgForm.oninput=()=>{
    cancel.hidden=name.value===name.defaultValue;
-   submit.disabled=!name.value.trim()||name.value.trim()===org.legal_name;
+   submit.disabled=isPreview||saving||!name.value.trim()||name.value.trim()===name.defaultValue;
    feedback.textContent='';
   };
   cancel.onclick=()=>{
@@ -472,10 +502,26 @@ function wire(){
    orgForm.oninput();
    name.focus();
   };
-  orgForm.onsubmit=event=>{
+  orgForm.onsubmit=async event=>{
    event.preventDefault();
-   if(submit.disabled)return;
-   feedback.textContent='Не удалось сохранить название.';
+   if(submit.disabled||saving)return;
+   const id=org.id;
+   const editedName=name.value.trim();
+   saving=true;
+   name.readOnly=submit.disabled=cancel.disabled=true;
+   try{
+    const saved=await api.renameOrganization(id,editedName);
+    if(org.id!==id)return;
+    org={...org,...saved};
+    organizations=organizations.map(item=>item.id===id?{...item,...saved}:item);
+    if(page==='organization'&&orgForm.isConnected)render({focus:false});
+    notify('Название сохранено.','success');
+   }catch(error){feedback.textContent=error.message;}
+   finally{
+    saving=false;
+    name.readOnly=cancel.disabled=false;
+    submit.disabled=!name.value.trim()||name.value.trim()===name.defaultValue;
+   }
   };
  }
  wireWorkspacePicker();
@@ -497,6 +543,7 @@ function wire(){
  if(action==='sidebar'&&matchMedia('(max-width:768px)').matches){setDrawer(true);return;}
  if(action==='sidebar'){collapsed=!collapsed;try{localStorage.setItem('sashatel.web.sidebar',collapsed?'collapsed':'expanded');}catch{}document.body.classList.toggle('sidebar-collapsed',collapsed);el.setAttribute('aria-expanded',String(!collapsed));return;}
  if(action==='theme'){const value=savedTheme()==='dark'?'light':'dark';try{localStorage.setItem('sashatel.web.theme',value);}catch{}document.documentElement.dataset.theme=value;el.innerHTML=icon(value==='dark'?'sun':'moon');hydrate(el);return;}
+ if(action==='staff-add'){editStaffAccess(null,el);return;}
  if(action==='logout'){el.disabled=true;try{await api.logout();location.assign('/login/');}catch(e){el.disabled=false;showError(e.message);}return;}
  operation(action);
  });
@@ -507,10 +554,14 @@ function wire(){
   trigger.focus({preventScroll:true});
   return trigger;
  };
- document.querySelectorAll('[data-staff-action]').forEach(el=>el.onclick=()=>{
-  closeOrganizationMenu(el);
-  operation(el.dataset.staffAction);
+ document.querySelectorAll('[data-staff-edit]').forEach(el=>el.onclick=()=>{
+  editStaffAccess(staff.find(item=>item.user_id===el.dataset.staffEdit),el);
  });
+ const staffRetry=document.querySelector('[data-action=staff-retry]');
+ if(staffRetry)staffRetry.onclick=()=>{
+  staffRetry.disabled=true;
+  void refreshStaffPage();
+ };
  document.querySelectorAll('[data-review-org]').forEach(el=>el.onclick=()=>{
   reviewOrganizationDialog(el.dataset.reviewOrg,el.dataset.reviewAction,closeOrganizationMenu(el));
  });
@@ -546,9 +597,10 @@ function wire(){
  wireAdminOrganizationList();
  const staffSearch=document.querySelector('#adminStaffSearch');
  if(staffSearch)staffSearch.oninput=()=>{
-  const row=document.querySelector('.admin-staff tbody tr');
-  row.hidden=!row.textContent.toLocaleLowerCase('ru').includes(staffSearch.value.trim().toLocaleLowerCase('ru'));
-  document.querySelector('#adminStaffCount').textContent=(row.hidden?'0':'1')+' из 1';
+  const rows=[...document.querySelectorAll('.admin-staff tbody tr')].filter(row=>!row.querySelector('.table-empty'));
+  const query=staffSearch.value.trim().toLocaleLowerCase('ru');
+  rows.forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase('ru').includes(query);});
+  document.querySelector('#adminStaffCount').textContent=rows.filter(row=>!row.hidden).length+' из '+rows.length;
  };
 }
 function wireAdminOrganizationList(){
@@ -680,10 +732,7 @@ async function start(){
        document.title='Организация — SashaTel';
       }else{
        internalOrganizations=await api.internalOrganizations();
-       if(page==='overview'&&internalCapabilities.includes('staff:manage')){
-        try{internalManagers=(await api.internalStaff()).filter(item=>item.active&&item.role==='manager').map(item=>item.email);}
-        catch{internalManagers=[];}
-       }
+       if(['overview','employees'].includes(page)&&canManageStaff())await loadStaff();
       }
     }
     render();return;
@@ -692,11 +741,11 @@ async function start(){
     org=session.organization?.id===parts[0]?session.organization:(await api.openOrganization(parts[0])).organization;
     render();
     if (page === 'statistics' && ['owner', 'admin'].includes(org.role)) {
-      showCabinetWelcome({account, org, organizationUrl: url('organization'), openTrunk: () => {
+      showCabinetWelcome({account, org, organizationUrl: url('organization'), openTrunk: isPreview?() => {
         history.pushState(null, '', url('trunks'));
         navigate(location.pathname);
         operation('trunk');
-      }});
+      }:null});
     }
     return;
   }
@@ -711,24 +760,41 @@ async function start(){
   // Multiple organizations need an explicit choice; zero organizations go to onboarding.
   await import('./auth.js');
  }catch(error){
+  if(!isPreview&&isSessionLoss(error)){
+   if(location.pathname!=='/login/')history.replaceState(null,'','/login/');
+   await import('./auth.js');
+   return;
+  }
   renderPlatformError(error);
  }
 }
 addEventListener('pageshow',e=>{if(e.persisted&&!isPreview)location.reload();});
+function returnToLogin(){
+ if(account&&document.body.classList.contains('platform')){
+  account=null;
+  location.replace('/login/');
+ }
+}
+addEventListener('sashatel:session-lost',returnToLogin);
+let checkingSession=false;
 addEventListener('visibilitychange',async()=>{
- if(document.hidden||isPreview||!account)return;
+ if(document.hidden||isPreview||!account||checkingSession)return;
+ checkingSession=true;
+ const context=internalContext;
  try{
-  await api.resume();
-  if(internalContext&&(await api.internalClientContext()).id!==internalContext.id){
+  const session=await api.resume();
+  if(!session.account||session.account.id!==account?.id){returnToLogin();return;}
+  if(context){
+   const current=await api.internalClientContext();
+   if(internalContext===context&&current.id!==context.id){internalContext=null;render();}
+  }
+ }catch(error){
+  if(isSessionLoss(error)||error.code==='USER_REVOKED'){returnToLogin();return;}
+  if(context&&internalContext===context&&[403,404].includes(error.status)){
    internalContext=null;
    render();
   }
- }catch(e){
-  if(internalContext){
-   internalContext=null;
-   render();
-  }else document.querySelector('#page-content')?.replaceChildren();
-  if(e.status!==404)showError(e.message);
- }
+  if(error.status!==404)showError(error.message);
+ }finally{checkingSession=false;}
 });
 void start();

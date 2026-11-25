@@ -5,7 +5,8 @@
       "review/cabinet-parity-pr51": false,
       "ui/sashatel-approved-cabinet": false,
       "review/internal-client-creation-web": false,
-      "review/admin-organization-directory": false
+      "review/admin-organization-directory": false,
+      "review/stale-session-login": false
     }
   }
 }
