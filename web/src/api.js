@@ -4,7 +4,9 @@ export class ApiError extends Error{
  constructor(code,message,retryAfter=0,status=0,requestId=null){super(message);Object.assign(this,{code,status,retryAfter,requestId});}
 }
 const messages={INVALID_DISPLAY_NAME:'Введите название организации от 1 до 180 символов.',IDEMPOTENCY_CONFLICT:'Данные запроса изменились. Проверьте форму и повторите попытку.',INVALID_PROFILE:'Проверьте имя и фамилию.',INVALID_PHONE:'Проверьте номер телефона и код страны.',INVALID_EMAIL:'Проверьте email.',INVALID_PASSWORD:'Пароль: от 8 до 128 символов.',INVALID_CREDENTIALS:'Проверьте email и пароль.',CODE_INVALID_OR_EXPIRED:'Код неверный или истёк. Запросите новый код.',RESET_INVALID_OR_EXPIRED:'Время восстановления истекло. Запросите новый код.',RATE_LIMITED:'Лимит запросов. Повторите позже.',RESOURCE_NOT_FOUND:'Данные не найдены или недоступны.',AUTH_UNAVAILABLE:'Сервис временно недоступен. Повторите позже.',EMAIL_DELIVERY_UNAVAILABLE:'Сервис отправки писем недоступен. Предыдущий код сохраняется.',ORGANIZATION_LOOKUP_UNAVAILABLE:'Сервис реквизитов временно недоступен.',INN_INVALID:'Проверьте ИНН.',LOOKUP_EXPIRED:'Реквизиты устарели. Повторите поиск.',ORGANIZATION_ALREADY_EXISTS:'Организация с этим ИНН уже существует.',SESSION_REVOKED:'Сессия завершена. Войдите снова.',REFRESH_REUSED:'Сессия завершена. Войдите снова.',REFRESH_EXPIRED:'Сессия истекла. Войдите снова.',ORGANIZATION_CONTEXT_CHANGED:'Активная организация изменилась в другой вкладке. Выберите организацию ещё раз.',ORGANIZATION_SUSPENDED:'Организация заблокирована.',INTERNAL_ACCESS_DENIED:'У вас нет доступа к админскому кабинету.',ALREADY_REVIEWED:'Заявку уже рассмотрели.',VERIFIED_ORGANIZATION_EXISTS:'Организация с этим ИНН уже верифицирована.',INVALID_REVIEW:'Проверьте основание и комментарий к решению.',PERMISSION_DENIED:'Недостаточно прав.',USER_REVOKED:'Доступ отозван.',EMAIL_UNVERIFIED:'Подтвердите email.',ALREADY_AUTHENTICATED:'Аккаунт уже авторизован. Обновите страницу.'};
-export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage=globalThis.sessionStorage}={}){
+export const isSessionLoss=error=>error?.status===401&&
+ ['ACCESS_EXPIRED','SESSION_REVOKED','REFRESH_EXPIRED','REFRESH_REUSED'].includes(error.code);
+export function createHttpApi({onSessionLoss,fetcher=globalThis.fetch.bind(globalThis),storage=globalThis.sessionStorage}={}){
  let csrf=null,csrfPromise=null,refreshPromise=null,context=null,account=null,generation=0;
  const device=(()=>{try{let id=localStorage.getItem('sashatel.web.device');if(!id){id=crypto.randomUUID();localStorage.setItem('sashatel.web.device',id);}return id;}catch{return crypto.randomUUID();}})();
  const pendingKey='sashatel.web.pending-organization';
@@ -23,11 +25,37 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
    refreshPromise=(globalThis.navigator?.locks?navigator.locks.request('sashatel.web.refresh',run):run()).finally(()=>{refreshPromise=null;});
   }return refreshPromise;
  }
- async function request(path,options={},attempt=0){const mark=generation;if(options.body!==undefined&&!csrf)await csrfToken();
-  try{const data=await raw(path,options);if(mark!==generation)throw new ApiError('STALE_RESPONSE','Ответ относится к завершённой сессии.');return data;}
-  catch(e){if(e.code==='CSRF_INVALID'&&attempt===0){await csrfToken();return request(path,options,1);}
-   if(e.code==='ACCESS_EXPIRED'&&attempt<2){await refresh();return request(path,options,2);}
-   if(['SESSION_REVOKED','REFRESH_EXPIRED','REFRESH_REUSED','USER_REVOKED'].includes(e.code))invalidate();throw e;}
+ async function request(path,options={}){
+  const mark=generation;
+  try{
+   if(options.body!==undefined&&!csrf)await csrfToken();
+   const send=()=>{
+    if(mark!==generation)throw new ApiError('STALE_RESPONSE','Ответ относится к завершённой сессии.');
+    return raw(path,options);
+   };
+   const sendWithCsrf=async()=>{
+    try{return await send();}catch(e){
+     if(e.code!=='CSRF_INVALID')throw e;
+     await csrfToken();return send();
+    }
+   };
+   let data;
+   try{data=await sendWithCsrf();}catch(e){
+    if(e.code!=='ACCESS_EXPIRED')throw e;
+    await refresh();
+    if(mark!==generation)throw new ApiError('STALE_RESPONSE','Ответ относится к завершённой сессии.');
+    data=await sendWithCsrf();
+   }
+   if(mark!==generation)throw new ApiError('STALE_RESPONSE','Ответ относится к завершённой сессии.');
+   return data;
+  }catch(e){
+   if(mark===generation&&(isSessionLoss(e)||e.code==='USER_REVOKED')){
+    const hadAccount=Boolean(account);
+    invalidate();
+    if(hadAccount)onSessionLoss?.();
+   }
+   throw e;
+  }
  }
  async function bootstrap(){/** @type {Bootstrap} */const data=await request('/auth/bootstrap');
   if(data.verification_completion_available&&!data.account){await request('/auth/email/complete',{body:{}});return bootstrap();}
@@ -70,6 +98,16 @@ export function createHttpApi({fetcher=globalThis.fetch.bind(globalThis),storage
   },
   async logout(){generation++;await request('/auth/logout',{body:{}});invalidate();},
   async internalSession(){return request('/internal/session');},
+  async renameOrganization(id,display_name){
+   const data=await request('/organizations/'+encodeURIComponent(id)+'/display-name',{method:'PATCH',body:{display_name}});
+   if(data?.organization?.id!==id||data.organization.display_name!==display_name)
+    throw new ApiError('INVALID_RESPONSE','Не удалось подтвердить сохранение названия.');
+   return data.organization;
+  },
+  async setStaffAccess(user_id,role){
+   if(await request('/internal/staff/access',{body:{user_id,role}})!==null)
+    throw new ApiError('INVALID_RESPONSE','Не удалось подтвердить обновление доступа.');
+  },
   async internalStaff(){return (await request('/internal/staff')).items;},
   async internalClientContext(){return (await request('/internal/client-context')).context;},
   async openInternalClientContext(organization_id){return (await request('/internal/client-context/open',{body:{organization_id}})).context;},

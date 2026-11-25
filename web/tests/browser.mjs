@@ -1,5 +1,6 @@
 import {chromium} from '../../brandbook/onboarding/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
 import {mkdir,readFile,readdir,writeFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import pg from '../../.integration/backend/node_modules/pg/lib/index.js';
@@ -7,7 +8,7 @@ import pg from '../../.integration/backend/node_modules/pg/lib/index.js';
 const evidence=process.env.EVIDENCE_DIR||'/tmp/sashatel-web-evidence';
 await mkdir(evidence,{recursive:true});
 const base='http://localhost:4174';
-const browser=await chromium.launch({chromiumSandbox:true});
+const browser=await chromium.launch({chromiumSandbox:true,executablePath:process.env.TEST_CHROMIUM_EXECUTABLE});
 const failures=[];
 const results=[];
 const widths=[1440,1024,768,390];
@@ -148,11 +149,8 @@ try {
   await page.reload();
   await heading(page,'Транки');
   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
-  await page.getByRole('button',{name:'Подключить транк'}).click();
-  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Закрыть'}).count(),1);
-  assert.deepEqual(await page.getByRole('dialog').locator('input').evaluateAll(inputs=>inputs.map(input=>input.name)),['name']);
-  assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Создать транк',exact:true}).isDisabled(),false);
-  await page.keyboard.press('Escape');
+  await heading(page,'Управление транками пока недоступно');
+  assert.equal(await page.getByRole('button',{name:'Подключить транк'}).count(),0);
   await page.locator('.workspace-control').click();
   const opening = page.waitForResponse(response=>response.url().endsWith('/v1/session/organization') && response.request().method()==='POST');
   await page.getByRole('group',{name:'Выбор организации'}).getByRole('button',{name:/ООО «Проверка интеграции»/}).click();
@@ -163,7 +161,7 @@ try {
   assert.equal(await page.getByRole('button',{name:'Сохранить настройки'}).isDisabled(),true);
   await page.getByRole('tab',{name:'Пользователи',exact:true}).click();
   assert.equal(await page.getByRole('tab',{name:'Пользователи',exact:true}).getAttribute('aria-selected'),'true');
-  results.push('Cabinet widths, persistent theme, deep-link trunks, safe trunk dialog, server-validated organization switch and settings tabs');
+  results.push('Cabinet widths, persistent theme, deep-link trunks, unsupported trunk action is absent, server-validated organization switch and settings tabs');
 
   // Internal permissions are derived from Backend, never a URL query or a client role.
   await page.goto(base+'/admin/');
@@ -189,6 +187,83 @@ try {
   await heading(page,'Статистика');
   assert.equal(await page.locator('.cabinet-notice').count(),0,'verified org remains marked unverified');
   results.push('Internal admin 403 for customer, DBA-gated reviewer role, verified organization persisted, customer sees updated status');
+
+  const reviewerStaff=await page.request.get(base+'/v1/internal/staff');
+  assert.equal(reviewerStaff.status(),403);
+
+  await page.goto(base+'/'+orgId+'/organization/');
+  const displayName=page.getByLabel('Название в кабинете');
+  const legalName=await page.getByLabel('Юридическое наименование').inputValue();
+  const renamePath=base+'/v1/organizations/'+orgId+'/display-name';
+  const newName='Проверка названия кабинета';
+  await displayName.fill(newName);
+  await page.route(renamePath,route=>route.abort('failed'),{times:1});
+  await page.getByRole('button',{name:'Сохранить настройки'}).click();
+  await page.getByRole('status').filter({hasText:'Ответ не получен'}).waitFor();
+  assert.equal(await displayName.inputValue(),newName);
+  assert.equal(await page.getByText('Название сохранено.',{exact:true}).count(),0);
+  const renameReply=page.waitForResponse(response=>response.url()===renamePath);
+  await page.getByRole('button',{name:'Сохранить настройки'}).click();
+  assert.equal((await renameReply).status(),200);
+  await page.getByRole('status').filter({hasText:'Название сохранено.'}).waitFor();
+  await page.reload();
+  await displayName.waitFor();
+  assert.equal(await displayName.inputValue(),newName);
+  assert.equal(await page.getByLabel('Юридическое наименование').inputValue(),legalName);
+  assert.equal(await page.getByLabel('ИНН').inputValue(),'7707083893');
+  await page.locator('.workspace-control').getByText(newName,{exact:true}).waitFor();
+  results.push('Display name saves through PATCH and persists on reload; legal name and INN are preserved; failed write leaves input intact');
+
+  await page.route(base+'/v1/auth/bootstrap',route=>route.abort('failed'),{times:1});
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange',{bubbles:true})));
+  await alert(page,'Ответ не получен');
+  assert.equal(await displayName.inputValue(),newName);
+  results.push('Transient bootstrap failure on tab return preserves the current screen');
+
+  const staffId=randomUUID(), staffEmail='staff-'+staffId+'@example.test';
+  const fixtureDb=new pg.Pool({connectionString:process.env.TEST_ADMIN_URL});
+  try{
+    await fixtureDb.query("UPDATE web_auth.internal_staff SET role='owner' WHERE user_id=(SELECT id FROM control.users WHERE login=$1)",[email]);
+    await fixtureDb.query("INSERT INTO control.users(id,login,password_hash,email_verified_at) VALUES($1,$2,'test-fixture-no-login',now())",[staffId,staffEmail]);
+  }finally{await fixtureDb.end();}
+  await page.goto(base+'/admin/employees/');
+  await heading(page,'Сотрудники');
+  await page.getByRole('button',{name:'Назначить доступ',exact:true}).click();
+  await page.getByLabel('ID аккаунта').fill(staffId);
+  await page.getByRole('dialog').getByRole('combobox').selectOption('manager');
+  const staffReply=()=>page.waitForResponse(response=>response.url().endsWith('/v1/internal/staff/access'));
+  let staffSaved=staffReply();
+  await page.getByRole('button',{name:'Сохранить',exact:true}).click();
+  assert.equal((await staffSaved).status(),204);
+  const staffRow=page.getByRole('row').filter({hasText:staffEmail});
+  await staffRow.getByText('Менеджер',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('row').filter({hasText:email}).getByRole('button').count(),0);
+  await page.reload();
+  await staffRow.getByText('Активен',{exact:true}).waitFor();
+  await staffRow.getByRole('button',{name:/Изменить доступ/}).click();
+  await page.getByRole('dialog').getByRole('combobox').selectOption('admin');
+  staffSaved=staffReply();
+  await page.getByRole('button',{name:'Сохранить',exact:true}).click();
+  assert.equal((await staffSaved).status(),204);
+  await staffRow.getByText('Администратор',{exact:true}).waitFor();
+  await staffRow.getByRole('button',{name:/Изменить доступ/}).click();
+  await page.getByRole('dialog').getByRole('combobox').selectOption('revoke');
+  staffSaved=staffReply();
+  await page.getByRole('button',{name:'Сохранить',exact:true}).click();
+  assert.equal((await staffSaved).status(),204);
+  await staffRow.getByText('Доступ отозван',{exact:true}).waitFor();
+  await page.reload();
+  await staffRow.getByText('Доступ отозван',{exact:true}).waitFor();
+  results.push('Owner grants by verified account UUID, changes role and revokes staff access; server-backed list survives reload and reviewer receives 403');
+
+  const sessionDb=new pg.Pool({connectionString:process.env.TEST_ADMIN_URL});
+  try{
+    await sessionDb.query('UPDATE web_auth.families SET revoked_at=now() WHERE user_id=(SELECT id FROM control.users WHERE login=$1)',[email]);
+  }finally{await sessionDb.end();}
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange',{bubbles:true})));
+  await page.waitForURL(base+'/login/');
+  await heading(page,'Добро пожаловать.');
+  results.push('A session rejected by the backend while the cabinet is open returns the tab to sign-in');
 
   const staleContext=await browser.newContext();
   try {
@@ -260,7 +335,7 @@ try {
   assert.deepEqual(failures,[]);
   await writeFile(evidence+'/results.json',JSON.stringify({
     ui_sha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),
-    backend_sha:'f953952b37da3415f19c7bd95f26f8aa5bba2917',
+    backend_sha:execFileSync('git',['-C','.integration','rev-parse','HEAD'],{encoding:'utf8'}).trim(),
     results,viewports:widths,pageErrors:failures,
     limitations:['DaData and email providers are test fixtures in this CI; YC real-provider acceptance is separate','Password reset mail delivery uses a test sink, not live Resend']
   },null,2));

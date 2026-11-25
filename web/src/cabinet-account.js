@@ -1,6 +1,6 @@
 import {esc, icon, link} from './components.js';
 
-export function renderAccountPage(section, account, url) {
+export function renderAccountPage(section, account, url, canPreviewEdit=false) {
  const navigation = '<nav class="account-tabs" aria-label="Настройки аккаунта">'+
   link(url('profile'),'Мой профиль',section==='profile')+
   link(url('security'),'Безопасность',section==='security')+'</nav>';
@@ -30,15 +30,15 @@ export function renderAccountPage(section, account, url) {
 
  return navigation+`<section class="account-panel" aria-labelledby="profile-heading">
   <header class="account-panel-head"><h2 id="profile-heading">Личные данные</h2>
-   <button class="button secondary" type="button" id="profile-edit" aria-controls="profile-form">Редактировать</button>
+   ${canPreviewEdit?'<button class="button secondary" type="button" id="profile-edit" aria-controls="profile-form">Редактировать</button>':''}
   </header>
   <dl id="profile-details" class="account-details">${readFields}</dl>
-  <form id="profile-form" hidden>
+  ${canPreviewEdit?`<form id="profile-form" hidden>
    <div class="account-edit-fields">${editFields}</div>
    <div class="account-edit-actions"><button class="button" type="submit" disabled>Сохранить</button>
     <button class="button secondary" type="button" id="profile-cancel">Отмена</button></div>
    <p class="account-feedback" role="status" hidden></p>
-  </form>
+  </form>`:'<p class="cabinet-muted">Изменение личных данных пока недоступно в веб-кабинете.</p>'}
  </section>`;
 }
 
