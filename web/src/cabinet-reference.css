@@ -638,7 +638,7 @@ body.platform { --sidebar:248px; }
 .people-picker {
   position: fixed;
   position-area: block-end span-inline-end;
-  position-try-fallbacks: flip-inline,flip-block;
+  position-try-fallbacks: flip-inline, flip-block, flip-block flip-inline;
   inset: auto;
   margin: 5px 0;
   width: min(278px,calc(100vw - 24px));
@@ -683,13 +683,30 @@ body.platform { --sidebar:248px; }
 .admin-staff-role:hover { background: var(--hover); }
 .admin-staff-role svg { width: 13px; height: 13px; }
 .admin-org-action-menu button:disabled { opacity: .5; cursor: default; background: transparent; }
-.admin-org-menu-note { margin: 3px 10px 7px; color: var(--sub); font-size: 12px; }
+.admin-org-menu-note { margin: 3px 10px 7px; color: var(--sub); font-size: 12px; white-space: normal; }
 .platform [id^="org-manager-"].people-picker-trigger {
   width: 100%;
   min-width: 0;
   justify-content: space-between;
 }
 .platform [id^="org-manager-"].people-picker-trigger span { overflow: hidden; text-overflow: ellipsis; }
+.cabinet-admin-organizations .people-picker {
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  white-space: normal;
+}
+.cabinet-admin-organizations .people-picker .manager-choices button {
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+@media (max-width: 768px) {
+  .cabinet-admin-organizations .people-picker {
+    position-area: none;
+    inset: 0;
+    margin: auto;
+    height: max-content;
+  }
+}
 .people-picker .manager-choices button:disabled { opacity: .65; cursor: default; }
 .internal-organization { max-width: 720px; }
 .internal-organization > .cabinet-muted { margin-top: 24px; }
