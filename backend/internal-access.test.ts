@@ -11,7 +11,18 @@ import { webHandler } from './web-http.ts';
 assert(process.env.DATABASE_URL && process.env.TEST_ADMIN_URL);
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL});
 const admin=new pg.Pool({connectionString:process.env.TEST_ADMIN_URL});
-const auth=new WebAuth(pool,randomBytes(32),{async send(){throw Error('Unexpected email');}},{async lookup(){return null;}});
+const sentInvitations:Array<{
+ id:string;
+ email:string;
+ code:string|null;
+ purpose?:string;
+}>=[];
+const auth=new WebAuth(pool,randomBytes(32),{async send(message){
+  assert.equal(message.purpose,'invitation');
+  assert.equal(message.code,null);
+  assert(message.email.endsWith('@example.test'));
+  sentInvitations.push(message);
+ }},{async lookup(){return null;}});
 const error=(code:string)=>(e:unknown)=>e instanceof Error&&'code' in e&&e.code===code;
 const newSession=async(userId:string)=>{
  const ctx={browser:await auth.browser(),requestId:randomUUID(),access:undefined as string|undefined};
@@ -787,6 +798,98 @@ test('staff transition, company display name and temporary access stay tenant-sc
    (await auth.pendingStaffInvitations(cancelled.ctx)).body.items.length,
    0
   );
+ });
+
+
+ await t.test('invitation mail queue, resend and outgoing directory',async()=>{
+  const email=randomUUID()+'@example.test';
+
+  const created=await auth.createStaffInvitation(
+   owner.ctx,null,{email,role:'manager'}
+  );
+
+  const id=created.body.invitation.id;
+
+  const outgoing=(await auth.outgoingStaffInvitations(
+   owner.ctx,null
+  )).body.items;
+
+  const item=outgoing.find((row:{id:string})=>row.id===id);
+
+  assert.equal(item.email,email);
+  assert.equal(item.status,'pending');
+  assert.equal(item.delivery,'queued');
+
+  await assert.rejects(
+   auth.outgoingStaffInvitations(manager.ctx,null),
+   error('INVITATION_ACCESS_DENIED')
+  );
+
+  const duplicate=await auth.resendStaffInvitation(
+   owner.ctx,null,{invitation_id:id}
+  );
+
+  assert.equal(duplicate.body.queued,false);
+
+  const {rows:[job]}=await admin.query(
+   'SELECT id FROM web_auth.invitation_mail_jobs WHERE invitation_id=$1',
+   [id]
+  );
+
+  assert.equal(job.id,id);
+
+  await admin.query(
+   "UPDATE web_auth.invitation_mail_jobs SET completed_at=clock_timestamp()-interval '2 minutes',delivery='failed' WHERE invitation_id=$1",
+   [id]
+  );
+
+  const retry=await auth.resendStaffInvitation(
+   owner.ctx,null,{invitation_id:id}
+  );
+
+  assert.equal(retry.body.queued,true);
+
+  const {rows:[count]}=await admin.query(
+   'SELECT count(*)::int AS n FROM web_auth.invitation_mail_jobs WHERE invitation_id=$1',
+   [id]
+  );
+
+  assert.equal(count.n,2);
+
+  await auth.revokeStaffInvitation(owner.ctx,null,{
+   invitation_id:id
+  });
+
+  await assert.rejects(
+   auth.resendStaffInvitation(owner.ctx,null,{invitation_id:id}),
+   error('INVITATION_UNAVAILABLE')
+  );
+
+  for(let i=0;i<10;i++)await auth.deliverInvitationOne();
+
+  const {rows:[last]}=await admin.query(
+   'SELECT delivery FROM web_auth.invitation_mail_jobs WHERE invitation_id=$1 AND id<>$1',
+   [id]
+  );
+
+  assert.equal(last.delivery,'cancelled');
+
+  const active=await auth.createStaffInvitation(
+   owner.ctx,null,{email:randomUUID()+'@example.test',role:'manager'}
+  );
+
+  await auth.deliverInvitationOne();
+
+  const {rows:[sent]}=await admin.query(
+   'SELECT delivery FROM web_auth.invitation_mail_jobs WHERE id=$1',
+   [active.body.invitation.id]
+  );
+
+  assert.equal(sent.delivery,'accepted');
+  assert.equal(sentInvitations.length,1);
+  assert.equal(sentInvitations[0].id,active.body.invitation.id);
+  assert.equal(sentInvitations[0].purpose,'invitation');
+
  });
 
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;

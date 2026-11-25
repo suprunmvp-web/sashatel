@@ -14,7 +14,7 @@ export function webHandler(auth:WebAuth,origin:string) {
     ).exec(path);
 
     const invitationRoute=new RegExp(
-      '^/v1/organizations/([^/]+)/invitations(?:/(revoke))?$'
+      '^/v1/organizations/([^/]+)/invitations(?:/(revoke|resend))?$'
     ).exec(path);
 
     if(!invitationRoute&&
@@ -50,6 +50,15 @@ export function webHandler(auth:WebAuth,origin:string) {
         send({status:200,body:{csrf_token:auth.csrf(browser)}});return true;
       }
       if(req.method==='GET') {
+        if(path==='/v1/internal/invitations'||invitationRoute) {
+          if(invitationRoute?.[2])
+            throw new ApiError(405,'METHOD_NOT_ALLOWED');
+
+          send(await auth.outgoingStaffInvitations(
+            ctx,invitationRoute?invitationRoute[1]:null
+          ));
+          return true;
+        }
         if(path==='/v1/account/invitations') {
           send(await auth.pendingStaffInvitations(ctx));
           return true;
@@ -167,7 +176,9 @@ export function webHandler(auth:WebAuth,origin:string) {
         return true;
       }
       if(invitationRoute) {
-        send(invitationRoute[2]
+        send(invitationRoute[2]==='resend'
+          ?await auth.resendStaffInvitation(ctx,invitationRoute[1],body)
+          :invitationRoute[2]==='revoke'
           ?await auth.revokeStaffInvitation(ctx,invitationRoute[1],body)
           :await auth.createStaffInvitation(ctx,invitationRoute[1],body));
         return true;
@@ -178,6 +189,8 @@ export function webHandler(auth:WebAuth,origin:string) {
           result=await auth.acceptStaffInvitation(ctx,body);break;
         case '/v1/internal/invitations':
           result=await auth.createStaffInvitation(ctx,null,body);break;
+        case '/v1/internal/invitations/resend':
+          result=await auth.resendStaffInvitation(ctx,null,body);break;
         case '/v1/internal/invitations/revoke':
           result=await auth.revokeStaffInvitation(ctx,null,body);break;
         case '/v1/auth/register':result=await auth.register(ctx,body,key);break;

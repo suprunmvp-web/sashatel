@@ -11,7 +11,7 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const token = () => randomBytes(32).toString('hex');
 const deadline = (seconds: number) => new Date(Date.now()+seconds*1000);
 export interface MailPort {
-  send(message: {id:string;email:string;code:string|null;purpose?:'verify'|'password_reset'}): Promise<void>;
+  send(message: {id:string;email:string;code:string|null;purpose?:'verify'|'password_reset'|'invitation'}): Promise<void>;
 }
 // Provider failures that must not be retried (invalid sender, forbidden API key, etc.).
 // Network timeouts and unknown outcomes remain retryable.
@@ -759,6 +759,59 @@ export class WebAuth {
     });
   }
 
+  async outgoingStaffInvitations(ctx:Context,org:string|null) {
+    if(org!==null&&!uuid.test(org))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx,true);
+
+      if(org!==null&&family.organization_id!==org)
+        throw new ApiError(403,'INVITATION_ACCESS_DENIED');
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.outgoing_staff_invitations($1,$2) AS items',
+          [user.id,org]
+        );
+        return {status:200,body:{items:row.items}};
+      } catch(error) {this.invitationError(error);}
+    },true);
+  }
+
+  async resendStaffInvitation(
+    ctx:Context,org:string|null,input:Record<string,unknown>
+  ) {
+    exact(input,['invitation_id']);
+    const id=required(input,'invitation_id',36);
+
+    if(!uuid.test(id)||(org!==null&&!uuid.test(org)))
+      throw new ApiError(404,'RESOURCE_NOT_FOUND');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+
+      if(org!==null&&family.organization_id!==org)
+        throw new ApiError(403,'INVITATION_ACCESS_DENIED');
+
+      await this.limit(db,'staff-invite-resend:'+user.id,30,3600);
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.resend_staff_invitation($1,$2,$3,$4) AS queued',
+          [user.id,org,id,randomUUID()]
+        );
+
+        if(row.queued)
+          await this.audit(
+            db,ctx,'staff.invitation_resent',user.id,org,id
+          );
+
+        return {status:200,body:{queued:row.queued}};
+      } catch(error) {this.invitationError(error);}
+    });
+  }
+
   async pendingStaffInvitations(ctx:Context) {
     return this.tx(ctx,async db=>{
       const {user}=await this.identity(db,ctx,true);
@@ -1403,6 +1456,74 @@ export class WebAuth {
     });
   }
   
+  async deliverInvitationOne() {
+    const lease=randomUUID();
+
+    const {rows:[job]}=await this.pool.query(`
+      WITH candidate AS (
+        SELECT id FROM web_auth.invitation_mail_jobs
+        WHERE completed_at IS NULL
+        AND available_at<=clock_timestamp()
+        AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+        ORDER BY available_at,id LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      )
+      UPDATE web_auth.invitation_mail_jobs j
+      SET lease_token=$1,
+          lease_until=clock_timestamp()+interval '30 seconds'
+      FROM candidate
+      WHERE j.id=candidate.id
+      RETURNING j.*
+    `,[lease]);
+
+    if(!job)return;
+
+    const {rows:[row]}=await this.pool.query(
+      'SELECT web_auth.invitation_mail_details($1) AS details',
+      [job.invitation_id]
+    );
+
+    if(!row.details) {
+      await this.pool.query(`
+        UPDATE web_auth.invitation_mail_jobs
+        SET completed_at=clock_timestamp(),
+            delivery='cancelled',lease_token=NULL,lease_until=NULL
+        WHERE id=$1 AND lease_token=$2
+      `,[job.id,lease]);
+      return;
+    }
+
+    try {
+      await this.mail.send({
+        id:job.id,email:row.details.email,
+        code:null,purpose:'invitation'
+      });
+
+      await this.pool.query(`
+        UPDATE web_auth.invitation_mail_jobs
+        SET completed_at=clock_timestamp(),
+            delivery='accepted',lease_token=NULL,lease_until=NULL
+        WHERE id=$1 AND lease_token=$2
+      `,[job.id,lease]);
+
+    } catch(error) {
+      const permanent=error instanceof MailDeliveryError&&!error.retryable;
+
+      await this.pool.query(`
+        UPDATE web_auth.invitation_mail_jobs
+        SET attempts=attempts+1,
+            available_at=clock_timestamp()+
+              make_interval(secs=>LEAST(240,60*power(2,LEAST(attempts,2)))::int),
+            completed_at=CASE WHEN $3::boolean OR attempts>=4
+              THEN clock_timestamp() ELSE NULL END,
+            delivery=CASE WHEN $3::boolean OR attempts>=4
+              THEN 'failed' ELSE 'queued' END,
+            lease_token=NULL,lease_until=NULL
+        WHERE id=$1 AND lease_token=$2
+      `,[job.id,lease,permanent]);
+    }
+  }
+
   async deliverOne() {
     const leaseToken = randomUUID();
 

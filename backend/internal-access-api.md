@@ -267,3 +267,26 @@ Existing memberships and internal staff records cannot
 be overwritten by accepting an invitation.
 
 Email delivery is implemented separately.
+
+
+## Invitation delivery
+
+GET /v1/internal/invitations
+GET /v1/organizations/{organization_id}/invitations
+
+POST /v1/internal/invitations/resend
+POST /v1/organizations/{organization_id}/invitations/resend
+
+Resend body: invitation_id.
+
+Invitations use the existing Resend provider and a durable
+outbox with lease-based claiming and bounded retry attempts.
+Resending does not extend the invitation expiry.
+Completed delivery attempts have a 60-second resend cooldown.
+
+Provider acceptance is not confirmation of inbox delivery.
+Cancelled, expired and unavailable invitations are checked
+before the worker sends a message.
+
+The email links to the platform, not to an authentication
+token. Acceptance remains bound to verified account email.
