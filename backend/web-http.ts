@@ -115,6 +115,12 @@ export function webHandler(auth:WebAuth,origin:string) {
           const {organization_id,...review}=body;
           result=await auth.reviewOrganization(ctx,organization_id,review);break;
         }
+        case '/v1/internal/organizations/revoke-verification':{
+          if(typeof body.organization_id!=='string')
+            throw new ApiError(400,'INVALID_REQUEST');
+          const {organization_id,...review}=body;
+          result=await auth.revokeOrganizationVerification(ctx,organization_id,review);break;
+        }
         case '/v1/internal/organizations/reopen':{
           if(typeof body.organization_id!=='string') throw new ApiError(400,'INVALID_REQUEST');
           const {organization_id,...review}=body;

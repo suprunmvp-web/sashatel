@@ -18,7 +18,7 @@ const control = new ControlPlane(pool, undefined, () => true);
 
 async function fixture({ limit = 10, balance = 100, role = 'manager', number = '+74950001001' } = {}) {
   const [tenant, user, member, trunk, device] = Array.from({ length: 5 }, () => randomUUID());
-  await admin.query('INSERT INTO control.organizations VALUES ($1,true,$2)', [tenant,limit]);
+  await admin.query("INSERT INTO control.organizations(id,active,max_calls,verification_status) VALUES ($1,true,$2,'verified')", [tenant,limit]);
   await admin.query('INSERT INTO control.users (id,login,password_hash) VALUES ($1,$1::uuid::text,$2)',
     [user,await hashPassword('test-password')]);
   await admin.query('INSERT INTO control.memberships VALUES ($1,$2,$3,$4,true)', [tenant,member,user,role]);
@@ -96,6 +96,51 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     const next = await control.login(b.tenant,a.user,'test-password',randomUUID());
     await admin.query('UPDATE control.organizations SET active=false WHERE id=$1',[b.tenant]);
     await assert.rejects(control.authorize(next.token,'suspended',destination),code('ORGANIZATION_SUSPENDED'));
+  });
+
+  await t.test('organization verification gates admission and dispatch',async()=>{
+    const a=await fixture({number:'+74950002987'});
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='unverified' WHERE id=$1",
+      [a.tenant]
+    );
+
+    await assert.rejects(
+      control.authorize(a.token,'unverified',destination),
+      code('ORGANIZATION_NOT_VERIFIED')
+    );
+
+    await assert.rejects(
+      control.prepareCommercialCall(a.token,'unverified-prepare',destination),
+      code('ORGANIZATION_NOT_VERIFIED')
+    );
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='verified' WHERE id=$1",
+      [a.tenant]
+    );
+
+    const call=await control.authorize(a.token,'verified',destination);
+
+    await admin.query(
+      "UPDATE control.organizations SET verification_status='unverified' WHERE id=$1",
+      [a.tenant]
+    );
+
+    const gateway=new FakeAri();
+
+    await control.processOne(a.tenant,gateway);
+
+    assert.equal(gateway.attempts.size,0);
+    assert.equal((await control.calls(a.token,call.call_id)).state,'failed');
+
+    const {rows:[quota]}=await admin.query(
+      'SELECT held,used FROM control.physical_caller_day WHERE e164=$1',
+      [a.number]
+    );
+
+    assert.deepEqual(quota,{held:0,used:0});
   });
 
   await t.test('unavailable worker cannot reserve or enqueue', async () => {

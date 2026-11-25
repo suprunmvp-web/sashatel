@@ -609,6 +609,8 @@ export class WebAuth {
       const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       const capabilities=['organizations:list'];
+      if(['owner','admin','manager'].includes(role.role))
+        capabilities.push('organizations:revoke_verification');
       if(['owner','admin','manager','reviewer'].includes(role.role)) capabilities.push('organizations:review');
       if(['owner','admin'].includes(role.role)) capabilities.push('organizations:reopen','organizations:create','organizations:assign_manager');
       if(['owner','admin','manager'].includes(role.role)) capabilities.push('client_context:read');
@@ -820,6 +822,32 @@ export class WebAuth {
         if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
         if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
         if(code==='23514') throw new ApiError(409,'REOPEN_REQUIRES_REJECTED');
+        if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
+        throw error;
+      }
+    });
+  }
+  async revokeOrganizationVerification(ctx:Context,orgId:string,input:Record<string,unknown>) {
+    if(!uuid.test(orgId)) throw new ApiError(404,'RESOURCE_NOT_FOUND');
+    exact(input,['evidence_reference','explanation']);
+    const evidence=required(input,'evidence_reference',500).trim();
+    const explanation=required(input,'explanation',2000).trim();
+    if(evidence.length<5||explanation.length<8) throw new ApiError(422,'INVALID_REVIEW');
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx),id=randomUUID();
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.revoke_organization_verification($1,$2,$3,$4,$5) AS status',
+          [user.id,orgId,evidence,explanation,id],
+        );
+        await this.audit(db,ctx,'internal.organization_verification_revoked',user.id,orgId,orgId,
+          {review_id:id,evidence_reference:evidence,explanation});
+        return {status:200,body:{organization_id:orgId,verification_status:row.status,review_id:id}};
+      } catch(error) {
+        const code=(error as {code?:string}).code;
+        if(code==='42501') throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
+        if(code==='P0002') throw new ApiError(404,'RESOURCE_NOT_FOUND');
+        if(code==='23514') throw new ApiError(409,'REVOCATION_REQUIRES_VERIFIED');
         if(code==='22023') throw new ApiError(422,'INVALID_REVIEW');
         throw error;
       }

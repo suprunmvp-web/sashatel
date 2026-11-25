@@ -87,3 +87,28 @@ Legacy reviewer remains limited to the existing review workflow.
 Manager can now perform organization reviews.
 
 New capability: staff:list.
+
+
+## Organization verification revocation
+
+POST /v1/internal/organizations/revoke-verification
+
+Capability: organizations:revoke_verification.
+Roles: Owner, Admin, Manager.
+
+Request:
+{organization_id: UUID, evidence_reference: string, explanation: string}
+
+Returns 200:
+{organization_id, verification_status: "unverified", review_id}
+
+Errors:
+- 403 INTERNAL_ACCESS_DENIED
+- 404 RESOURCE_NOT_FOUND
+- 409 REVOCATION_REQUIRES_VERIFIED
+- 422 INVALID_REVIEW
+
+Records both review history and application audit.
+New call admission requires verified organization status.
+Uncommitted reservations are revalidated before dispatch.
+Existing connected calls are not interrupted solely by verification revocation.

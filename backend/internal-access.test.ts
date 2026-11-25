@@ -248,6 +248,55 @@ test('staff transition, company display name and temporary access stay tenant-sc
   assert.equal((await auth.internalSession(manager.ctx)).body.role,'manager');
  });
 
+ await t.test('verification revocation is scoped and audited',async()=>{
+  const payload={
+   evidence_reference:'contract-revoked-123',
+   explanation:'Договор с организацией расторгнут'
+  };
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(customer.ctx,other,payload),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(reviewer.ctx,other,payload),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(manager.ctx,org,payload),
+   error('REVOCATION_REQUIRES_VERIFIED')
+  );
+
+  assert((await auth.internalSession(manager.ctx)).body.capabilities
+    .includes('organizations:revoke_verification'));
+
+  const result=await auth.revokeOrganizationVerification(manager.ctx,other,payload);
+  assert.equal(result.body.verification_status,'unverified');
+
+  await assert.rejects(
+   auth.revokeOrganizationVerification(manager.ctx,other,payload),
+   error('REVOCATION_REQUIRES_VERIFIED')
+  );
+
+  const {rows:[history]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.organization_reviews WHERE organization_id=$1 AND outcome='revoked'",
+   [other]
+  );
+
+  assert.equal(history.n,1);
+
+  const {rows:[event]}=await admin.query(
+   "SELECT count(*)::int AS n FROM web_auth.audit WHERE organization_id=$1 AND actor_user_id=$2 AND action='internal.organization_verification_revoked'",
+   [other,manager.id]
+  );
+
+  assert.equal(event.n,1);
+
+  await auth.reviewOrganization(internalAdmin.ctx,other,decision);
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);
