@@ -428,7 +428,7 @@ test('staff transition, company display name and temporary access stay tenant-sc
 
   assert.equal(invoices.length,2);
   assert(invoices.some((item:{status:string})=>item.status==='paid'));
-  assert(invoices.some((item:{status:string})=>item.status==='unpaid'));
+  assert(invoices.some((item:{status:string})=>item.status==='partially_paid'));
 
   const foreign=(await auth.billingInvoices(owner.ctx,other,true)).body.items;
   assert.equal(foreign.length,0);
@@ -500,6 +500,67 @@ test('staff transition, company display name and temporary access stay tenant-sc
   });
 
   assert.equal(post.status,403);
+ });
+
+
+ await t.test('advance allocation and internal overview use actual ledger data',async()=>{
+  const {rows:[settled]}=await admin.query(
+   "SELECT coalesce(sum(amount_kopeks),0)::text AS total FROM control.billing_payment_allocations WHERE organization_id=$1",
+   [org]
+  );
+
+  assert.equal(settled.total,'15000');
+
+  const {rows:[invoice]}=await admin.query(
+   "SELECT paid_kopeks::text FROM control.billing_obligations WHERE organization_id=$1 AND amount_kopeks=20000",
+   [org]
+  );
+
+  assert.equal(invoice.paid_kopeks,'5000');
+
+  const {rows:[date]}=await admin.query(
+   "SELECT (clock_timestamp() AT TIME ZONE 'Europe/Moscow')::date::text AS today"
+  );
+
+  const overview=(await auth.billingOverview(
+   owner.ctx,date.today,date.today
+  )).body.overview;
+
+  assert.equal(overview.payments_kopeks,'15000');
+  assert.equal(overview.debits_kopeks,'2000');
+  assert.equal(overview.daily.length,1);
+  assert.equal(overview.daily[0].payments_kopeks,'15000');
+  assert(overview.organizations_count>=2);
+
+  assert.equal((await auth.billingOverview(
+   manager.ctx,date.today,date.today
+  )).status,200);
+
+  await assert.rejects(
+   auth.billingOverview(customer.ctx,date.today,date.today),
+   error('INTERNAL_ACCESS_DENIED')
+  );
+
+  await assert.rejects(
+   auth.billingOverview(owner.ctx,'2026-02-30',date.today),
+   error('INVALID_DATE_RANGE')
+  );
+
+  const endpoint='http://127.0.0.1:'+address.port+
+   '/v1/internal/billing/overview?from='+date.today+'&to='+date.today;
+
+  const response=await fetch(endpoint,{
+   headers:{
+    cookie:'__Host-sashatel-browser='+owner.ctx.browser+
+     '; __Host-sashatel-access='+owner.ctx.access
+   }
+  });
+
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).overview.payments_kopeks,'15000');
+
+  const summary=(await auth.billingSummary(owner.ctx,org)).body.summary;
+  assert.equal(summary.balance_kopeks,'13000');
  });
 
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;

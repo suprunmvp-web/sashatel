@@ -60,6 +60,17 @@ export function webHandler(auth:WebAuth,origin:string) {
           const result=await auth.tx(ctx,async db=>({status:200,body:{account:auth.account((await auth.identity(db,ctx,true)).user)}}),true);
           send(result);
         } else if(path==='/v1/organizations') send(await auth.organizations(ctx));
+        else if(path==='/v1/internal/billing/overview') {
+          const query=new URL(req.url??path,'http://localhost').searchParams;
+
+          if([...query.keys()].some(k=>
+            !['from','to'].includes(k)||query.getAll(k).length!==1
+          )) throw new ApiError(422,'INVALID_DATE_RANGE');
+
+          send(await auth.billingOverview(
+            ctx,query.get('from')??'',query.get('to')??''
+          ));
+        }
         else if(path==='/v1/internal/session') send(await auth.internalSession(ctx));
         else if(path==='/v1/internal/responsible-managers')
           send(await auth.responsibleManagerCandidates(ctx));

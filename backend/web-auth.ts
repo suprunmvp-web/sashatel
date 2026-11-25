@@ -609,6 +609,8 @@ export class WebAuth {
       const {rows:[role]}=await db.query('SELECT web_auth.internal_staff_role($1) AS role',[user.id]);
       if(!role?.role) throw new ApiError(403,'INTERNAL_ACCESS_DENIED');
       const capabilities=['organizations:list'];
+      if(['owner','admin','manager'].includes(role.role))
+        capabilities.push('billing:overview');
       if(['owner','admin'].includes(role.role))
         capabilities.push('billing:read','billing:manage');
       if(['owner','admin','manager'].includes(role.role))
@@ -729,6 +731,35 @@ export class WebAuth {
         return {status:200,body:{next_period_end:date}};
       } catch(error) {this.billingError(error);}
     });
+  }
+
+  async billingOverview(ctx:Context,from:string,to:string) {
+    const valid=(value:string)=>{
+      if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value))
+        return false;
+      const date=new Date(value+'T00:00:00.000Z');
+      return Number.isFinite(date.getTime())&&
+        date.toISOString().slice(0,10)===value;
+    };
+
+    if(!valid(from)||!valid(to))
+      throw new ApiError(422,'INVALID_DATE_RANGE');
+
+    return this.tx(ctx,async db=>{
+      const {user}=await this.identity(db,ctx,true);
+
+      try {
+        const {rows:[row]}=await db.query(
+          'SELECT web_auth.internal_billing_overview($1,$2,$3) AS overview',
+          [user.id,from,to]
+        );
+        return {status:200,body:{overview:row.overview}};
+      } catch(error) {
+        if((error as {code?:string}).code==='22023')
+          throw new ApiError(422,'INVALID_DATE_RANGE');
+        this.billingError(error);
+      }
+    },true);
   }
 
   async billingSummary(ctx:Context,org:string) {

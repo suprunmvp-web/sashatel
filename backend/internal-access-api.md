@@ -181,3 +181,26 @@ These are accounting records, not downloadable legal documents.
 Automatic period closure, allocation of remaining advances,
 document issuance and bank reconciliation remain separate
 implementation requirements.
+
+
+## Internal billing overview
+
+GET /v1/internal/billing/overview?from=YYYY-MM-DD&to=YYYY-MM-DD
+
+Roles: Owner, Admin, Manager.
+Capability: billing:overview.
+
+Inclusive calendar dates in Europe/Moscow.
+Maximum range: 366 days.
+
+Organization counts describe the current organization directory.
+Usage is grouped by settlement recorded_at.
+Payments are grouped by ledger recorded_at.
+Historical bank receipt dates are not inferred.
+
+New issued invoice records automatically allocate previously
+unallocated confirmed payments. Allocation is not a second
+payment and must not increase cash receipts.
+
+Voided invoice allocations require explicit reconciliation.
+This migration does not issue invoices automatically.
