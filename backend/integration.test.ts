@@ -409,6 +409,186 @@ test('Control Plane against PostgreSQL with a non-owner runtime', async t => {
     assert.equal(dispatch.state,'released');
   });
 
+  await t.test('028: global LRU breaks equal-load ties across tenants',async()=>{
+    const first='+74950004801',second='+74950004802';
+    const a=await fixture({number:first});
+    const b=await fixture({number:first});
+
+    await admin.query(
+      'INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES($1,$2,$3,true)',
+      [b.tenant,second,b.trunk]);
+
+    for(const [f,n] of [[a,first],[b,first],[b,second]] as const){
+      await admin.query(
+        "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+        [f.tenant,n,f.trunk]);
+    }
+
+    const car=new GlobalCarousel();
+
+    const reserve=(f:typeof a,key:string)=>control.transaction(
+      f.tenant,db=>car.reserve(db,{
+        organizationId:f.tenant,
+        membershipId:f.member,
+        effectiveTrunkId:f.trunk,
+        requestKey:key,destination
+      }));
+
+    const initial=await reserve(a,'lru-first');
+
+    await control.transaction(a.tenant,db=>car.finalize(db,{
+      organizationId:a.tenant,
+      dispatchId:initial.id,
+      action:'commit'
+    }));
+
+    const history=await admin.query(
+      'SELECT last_initiated_at FROM control.physical_caller_rotation WHERE e164=$1',
+      [first]);
+
+    assert.equal(history.rowCount,1);
+
+    const older=await reserve(b,'lru-second');
+    assert.equal(older.caller_id,second);
+
+    await control.transaction(b.tenant,db=>car.finalize(db,{
+      organizationId:b.tenant,
+      dispatchId:older.id,
+      action:'commit'
+    }));
+
+    // Both numbers now have equal load.
+    // Make the larger E.164 explicitly older.
+    await admin.query(
+      "UPDATE control.physical_caller_rotation SET last_initiated_at=clock_timestamp()-interval '1 day' WHERE e164=$1",
+      [second]);
+
+    const next=await reserve(b,'lru-equal-load');
+    assert.equal(next.caller_id,second);
+
+    // Lower load must take precedence over older history.
+    const lowerLoad=await reserve(b,'lru-load-priority');
+    assert.equal(lowerLoad.caller_id,first);
+  });
+
+  await t.test('028: rotation advances only on first successful commit',async()=>{
+    const number='+74950004803';
+    const f=await fixture({number});
+
+    await admin.query(
+      "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+      [f.tenant,number,f.trunk]);
+
+    const car=new GlobalCarousel();
+
+    const reserve=(key:string)=>control.transaction(
+      f.tenant,db=>car.reserve(db,{
+        organizationId:f.tenant,
+        membershipId:f.member,
+        effectiveTrunkId:f.trunk,
+        requestKey:key,destination
+      }));
+
+    const rotation=async()=>(
+      await admin.query(
+        'SELECT last_initiated_at::text AS ts FROM control.physical_caller_rotation WHERE e164=$1',
+        [number])
+    ).rows[0]?.ts;
+
+    const finalize=(id:string,action:'commit'|'release')=>
+      control.transaction(f.tenant,db=>car.finalize(db,{
+        organizationId:f.tenant,dispatchId:id,action
+      }));
+
+    const cancelled=await reserve('rotation-cancel');
+    assert.equal(await rotation(),undefined);
+    assert.equal(await finalize(cancelled.id,'release'),'released');
+    assert.equal(await rotation(),undefined);
+
+    const committed=await reserve('rotation-commit');
+    assert.equal(await finalize(committed.id,'commit'),'committed');
+
+    const original=await rotation();
+    assert.ok(original);
+
+    await new Promise(resolve=>setTimeout(resolve,20));
+
+    assert.equal(await finalize(committed.id,'commit'),'committed');
+    assert.equal(await finalize(committed.id,'release'),'committed');
+    assert.equal(await rotation(),original);
+
+    const another=await reserve('rotation-release');
+    assert.equal(await finalize(another.id,'release'),'released');
+    assert.equal(await rotation(),original);
+  });
+
+  await t.test('028: runtime cannot directly read or mutate global rotation',async()=>{
+    const f=await fixture({number:'+74950004804'});
+
+    for(const sql of [
+      'SELECT * FROM control.physical_caller_rotation',
+      'DELETE FROM control.physical_caller_rotation',
+      'UPDATE control.physical_caller_rotation SET last_initiated_at=clock_timestamp()'
+    ]){
+      await assert.rejects(
+        control.transaction(f.tenant,db=>db.query(sql)),
+        /permission denied/
+      );
+    }
+  });
+
+  await t.test('028: parallel tenants distribute shared physical load evenly',async()=>{
+    const numbers=[
+      '+74950004811',
+      '+74950004812',
+      '+74950004813'
+    ];
+
+    const tenants=await Promise.all(
+      Array.from({length:3},()=>fixture({number:numbers[0]}))
+    );
+
+    for(const f of tenants){
+      for(const n of numbers){
+        await admin.query(
+          "INSERT INTO control.phone_numbers(organization_id,e164,trunk_id,active) VALUES($1,$2,$3,true) ON CONFLICT DO NOTHING",
+          [f.tenant,n,f.trunk]);
+        await admin.query(
+          "INSERT INTO control.carousel_numbers(organization_id,e164,trunk_id,status,provider_approved) VALUES($1,$2,$3,'active',true) ON CONFLICT DO NOTHING",
+          [f.tenant,n,f.trunk]);
+      }
+    }
+
+    const car=new GlobalCarousel();
+
+    const reservations=await Promise.all(
+      Array.from({length:12},(_,i)=>{
+        const f=tenants[i%tenants.length];
+        return control.transaction(f.tenant,db=>car.reserve(db,{
+          organizationId:f.tenant,
+          membershipId:f.member,
+          effectiveTrunkId:f.trunk,
+          requestKey:'parallel-fair-'+i,
+          destination
+        }));
+      })
+    );
+
+    const counts=numbers.map(n=>
+      reservations.filter(r=>r.caller_id===n).length
+    );
+
+    assert.deepEqual(counts,[4,4,4]);
+
+    const {rows}=await admin.query(
+      "SELECT e164,held,used FROM control.physical_caller_day WHERE e164=ANY($1::text[]) ORDER BY e164",
+      [numbers]);
+
+    assert.equal(rows.length,3);
+    assert.deepEqual(rows.map(r=>r.held),[4,4,4]);
+    assert.deepEqual(rows.map(r=>r.used),[0,0,0]);
+  });
+
   await t.test('parallel requests enforce concurrency without wallet gate; duplicate returns same call', async () => {
     const limited=await fixture({limit:1,balance:0,number:'+74950001010'});
     const limitedOutcomes=await Promise.allSettled([
