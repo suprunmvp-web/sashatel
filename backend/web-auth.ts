@@ -11,7 +11,7 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const token = () => randomBytes(32).toString('hex');
 const deadline = (seconds: number) => new Date(Date.now()+seconds*1000);
 export interface MailPort {
-  send(message: {id:string;email:string;code:string|null;purpose?:'verify'|'password_reset'|'invitation'}): Promise<void>;
+  send(message: {id:string;email:string;code:string|null;purpose?:'verify'|'password_reset'|'invitation'|'email_change'}): Promise<void>;
 }
 // Provider failures that must not be retried (invalid sender, forbidden API key, etc.).
 // Network timeouts and unknown outcomes remain retryable.
@@ -160,6 +160,167 @@ export class WebAuth {
       first_name:user.first_name,last_name:user.last_name,phone:user.phone,phone_verified:false,
       display_name:user.first_name??null};
   }
+  async requestEmailChange(
+    ctx:Context,input:Record<string,unknown>
+  ) {
+    exact(input,['email','password']);
+
+    const email=required(input,'email',254).trim().toLowerCase();
+    const password=required(input,'password',512);
+
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      throw new ApiError(422,'INVALID_EMAIL');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+
+      const {rows:[staff]}=await db.query(
+        'SELECT web_auth.is_protected_owner($1) AS protected_owner',
+        [user.id]
+      );
+
+      if(staff?.protected_owner)
+        throw new ApiError(403,'PROTECTED_OWNER');
+
+      await this.limit(db,'email-change:'+user.id,5,3600);
+
+      if(!await passwordValid(password,user.password_hash))
+        throw new CommitError(401,'INVALID_CREDENTIALS');
+
+      if(email===user.login.toLowerCase())
+        throw new CommitError(422,'INVALID_EMAIL');
+
+      const existing=await db.query(
+        'SELECT 1 FROM control.users WHERE lower(login)=$1',
+        [email]
+      );
+
+      if(existing.rowCount)
+        throw new CommitError(409,'EMAIL_UNAVAILABLE');
+
+      await db.query(
+        'UPDATE web_auth.email_changes SET consumed_at=clock_timestamp() WHERE user_id=$1 AND consumed_at IS NULL',
+        [user.id]
+      );
+
+      const id=randomUUID();
+      const code=randomInt(0,1000000).toString().padStart(6,'0');
+
+      await db.query(`
+        INSERT INTO web_auth.email_changes(
+          id,user_id,browser_hash,family_id,
+          old_email,email,password_fingerprint,
+          code_hash,expires_at
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `,[
+        id,user.id,hash(ctx.browser),family.id,
+        user.login.toLowerCase(),email,
+        this.fingerprint(user.password_hash),
+        hash(this.fingerprint([id,code])),deadline(600)
+      ]);
+
+      await db.query(`
+        INSERT INTO web_auth.email_change_mail_jobs(
+          reset_id,envelope
+        ) VALUES($1,$2)
+      `,[id,this.seal({email,code})]);
+
+      await this.audit(
+        db,ctx,'account.email_change_requested',
+        user.id,null,id
+      );
+
+      return {
+        status:202,
+        body:{challenge_id:id,expires_in:600}
+      };
+    });
+  }
+
+  async confirmEmailChange(
+    ctx:Context,input:Record<string,unknown>
+  ) {
+    exact(input,['challenge_id','code']);
+
+    const id=required(input,'challenge_id',36);
+    const code=required(input,'code',6);
+
+    if(!uuid.test(id)||!/^[0-9]{6}$/.test(code))
+      throw new ApiError(400,'INVALID_REQUEST');
+
+    return this.tx(ctx,async db=>{
+      const {family,user}=await this.identity(db,ctx);
+
+      await this.limit(
+        db,'email-change-confirm:'+user.id,30,3600
+      );
+
+      const {rows:[request]}=await db.query(`
+        SELECT * FROM web_auth.email_changes
+        WHERE id=$1 AND user_id=$2 AND browser_hash=$3
+        AND family_id=$4 AND consumed_at IS NULL
+        AND expires_at>clock_timestamp()
+        AND attempts<5
+        FOR UPDATE
+      `,[id,user.id,hash(ctx.browser),family.id]);
+
+      if(!request||
+         request.old_email!==user.login.toLowerCase()||
+         request.password_fingerprint!==
+           this.fingerprint(user.password_hash))
+        throw new CommitError(
+          400,'EMAIL_CHANGE_UNAVAILABLE'
+        );
+
+      const proof=this.fingerprint([id,code]);
+
+      if(request.code_hash!==hash(proof)) {
+        await db.query(
+          'UPDATE web_auth.email_changes SET attempts=attempts+1 WHERE id=$1',
+          [id]
+        );
+
+        throw new CommitError(400,'INVALID_CODE');
+      }
+
+      try {
+        await db.query(
+          'SELECT web_auth.apply_email_change($1,$2,$3)',
+          [user.id,id,proof]
+        );
+      } catch(error) {
+        const pg=error as {code?:string};
+
+        if(pg.code==='23505')
+          throw new ApiError(409,'EMAIL_UNAVAILABLE');
+
+        if(pg.code==='42501')
+          throw new ApiError(403,'PROTECTED_OWNER');
+
+        if(pg.code==='23514')
+          throw new ApiError(400,'EMAIL_CHANGE_UNAVAILABLE');
+
+        throw error;
+      }
+
+      await this.closeCompletion(db,ctx);
+
+      await this.audit(
+        db,ctx,'account.email_changed',
+        user.id,null,id
+      );
+
+      return {
+        status:200,
+        body:{
+          email_changed:true,
+          reauthenticate:true
+        },
+        cookies:{access:'',refresh:''}
+      };
+    });
+  }
+
   async updateAccount(
     ctx:Context,input:Record<string,unknown>
   ) {
@@ -433,7 +594,7 @@ export class WebAuth {
         [email,hash(ctx.browser),hash(reset_token)],
       );
       if(!row) throw new ApiError(400,'RESET_INVALID_OR_EXPIRED');
-      const {rows:[user]}=await db.query('SELECT id FROM control.users WHERE id=$1 AND active FOR UPDATE',[row.user_id]);
+      const {rows:[user]}=await db.query('SELECT id FROM control.users WHERE id=$1 AND active AND lower(login)=$2 FOR UPDATE',[row.user_id,email]);
       if(!user) throw new ApiError(400,'RESET_INVALID_OR_EXPIRED');
       await db.query('UPDATE control.users SET password_hash=$2 WHERE id=$1',[user.id,password_hash]);
       await db.query('UPDATE web_auth.families SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE user_id=$1',[user.id]);
@@ -486,6 +647,52 @@ export class WebAuth {
       const permanent=error instanceof MailDeliveryError&&!error.retryable;
       await this.pool.query(
         `UPDATE web_auth.password_reset_mail_jobs
+         SET attempts=attempts+1,
+             available_at=clock_timestamp()+make_interval(secs=>LEAST(240,60*power(2,LEAST(attempts,2)))::int),
+             completed_at=CASE WHEN $3::boolean OR attempts>=4 THEN clock_timestamp() ELSE NULL END,
+             envelope=CASE WHEN $3::boolean OR attempts>=4 THEN NULL ELSE envelope END,
+             lease_token=NULL,lease_until=NULL
+         WHERE reset_id=$1 AND lease_token=$2`,
+        [job.reset_id,leaseToken,permanent],
+      );
+    }
+  }
+  async deliverEmailChangeOne() {
+    const leaseToken=randomUUID();
+    const {rows:[job]}=await this.pool.query(
+      `WITH candidate AS (
+        SELECT j.reset_id FROM web_auth.email_change_mail_jobs j
+        WHERE j.completed_at IS NULL AND j.available_at<=clock_timestamp()
+          AND (j.lease_until IS NULL OR j.lease_until<=clock_timestamp())
+        ORDER BY j.available_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED
+       )
+       UPDATE web_auth.email_change_mail_jobs j
+       SET lease_token=$1,lease_until=clock_timestamp()+interval '30 seconds'
+       FROM candidate,web_auth.email_changes r
+       WHERE j.reset_id=candidate.reset_id AND r.id=j.reset_id
+       RETURNING j.reset_id,j.envelope,j.attempts,r.consumed_at,r.expires_at`,
+      [leaseToken],
+    );
+    if(!job)return;
+    const active=!job.consumed_at&&new Date(job.expires_at).getTime()>Date.now();
+    if(!active) {
+      await this.pool.query(
+        'UPDATE web_auth.email_change_mail_jobs SET completed_at=clock_timestamp(),envelope=NULL,lease_token=NULL,lease_until=NULL WHERE reset_id=$1 AND lease_token=$2',
+        [job.reset_id,leaseToken],
+      );
+      return;
+    }
+    try {
+      const message=this.open(job.envelope);
+      await this.mail.send({id:job.reset_id,email:message.email,code:message.code,purpose:'email_change'});
+      await this.pool.query(
+        'UPDATE web_auth.email_change_mail_jobs SET completed_at=clock_timestamp(),envelope=NULL,lease_token=NULL,lease_until=NULL WHERE reset_id=$1 AND lease_token=$2',
+        [job.reset_id,leaseToken],
+      );
+    } catch(error) {
+      const permanent=error instanceof MailDeliveryError&&!error.retryable;
+      await this.pool.query(
+        `UPDATE web_auth.email_change_mail_jobs
          SET attempts=attempts+1,
              available_at=clock_timestamp()+make_interval(secs=>LEAST(240,60*power(2,LEAST(attempts,2)))::int),
              completed_at=CASE WHEN $3::boolean OR attempts>=4 THEN clock_timestamp() ELSE NULL END,

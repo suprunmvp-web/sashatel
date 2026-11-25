@@ -53,7 +53,7 @@ let running=false;
 const timer=setInterval(async()=>{
   if(running) return;
   running=true;
-  try {await auth.deliverOne(); await auth.deliverPasswordResetOne(); await auth.deliverInvitationOne();} catch {console.error('Email outbox temporarily unavailable');} finally {running=false;}
+  try {await auth.deliverOne(); await auth.deliverPasswordResetOne(); await auth.deliverInvitationOne(); await auth.deliverEmailChangeOne();} catch {console.error('Email outbox temporarily unavailable');} finally {running=false;}
 },500);
 api.listen(Number(PORT),BIND_HOST);
 process.once('SIGTERM',()=>{

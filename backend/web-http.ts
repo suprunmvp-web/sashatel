@@ -208,6 +208,10 @@ export function webHandler(auth:WebAuth,origin:string) {
         case '/v1/auth/password/reset/request':result=await auth.requestPasswordReset(ctx,body);break;
         case '/v1/auth/password/reset/verify':result=await auth.verifyPasswordReset(ctx,body);break;
         case '/v1/auth/password/reset/complete':result=await auth.completePasswordReset(ctx,body);break;
+        case '/v1/auth/email-change/request':
+          result=await auth.requestEmailChange(ctx,body);break;
+        case '/v1/auth/email-change/confirm':
+          result=await auth.confirmEmailChange(ctx,body);break;
         case '/v1/auth/login':result=await auth.login(ctx,body);break;
         case '/v1/auth/refresh':result=await auth.refresh(ctx);break;
         case '/v1/auth/logout':result=await auth.logout(ctx);break;

@@ -1085,6 +1085,156 @@ test('staff transition, company display name and temporary access stay tenant-sc
   });
  });
 
+
+ await t.test('email change verification and session revocation',async()=>{
+  const oldEmail=randomUUID()+'@example.test';
+  const newEmail=randomUUID()+'@example.test';
+  const password='Isolated-test-password-123';
+
+  const browser=await auth.browser();
+  const ctx={
+   browser,
+   requestId:randomUUID(),
+   access:undefined as string|undefined
+  };
+
+  const registration=await auth.register(ctx,{
+   email:oldEmail,password,
+   first_name:'Иван',last_name:'Тест',
+   phone:'+79161234567'
+  },randomUUID());
+
+  const challenge=registration.body.challenge_id;
+
+  const {rows:[job]}=await admin.query(
+   'SELECT envelope FROM web_auth.mail_jobs WHERE challenge_id=$1',
+   [challenge]
+  );
+
+  await auth.verify(ctx,{
+   challenge_id:challenge,
+   code:auth.open(job.envelope).code
+  });
+
+  await admin.query(
+   `UPDATE web_auth.mail_jobs
+    SET completed_at=clock_timestamp(),
+        envelope=NULL,
+        lease_token=NULL,
+        lease_until=NULL
+    WHERE challenge_id=$1`,
+   [challenge]
+  );
+
+  const {rows:[user]}=await admin.query(
+   'SELECT id FROM control.users WHERE login=$1',
+   [oldEmail]
+  );
+
+  const session=await newSession(user.id);
+  const second=await newSession(user.id);
+
+  await assert.rejects(
+   auth.requestEmailChange(session.ctx,{
+    email:newEmail,password:'wrong-password'
+   }),error('INVALID_CREDENTIALS')
+  );
+
+  const requested=await auth.requestEmailChange(
+   session.ctx,{email:newEmail,password}
+  );
+
+  assert.equal(requested.status,202);
+
+  const id=requested.body.challenge_id;
+
+  const {rows:[queued]}=await admin.query(
+   'SELECT envelope FROM web_auth.email_change_mail_jobs WHERE reset_id=$1',
+   [id]
+  );
+
+
+  const {rows:[stored]}=await admin.query(
+   'SELECT code_hash FROM web_auth.email_changes WHERE id=$1',
+   [id]
+  );
+
+  await assert.rejects(
+   pool.query(
+    'SELECT web_auth.apply_email_change($1,$2,$3)',
+    [user.id,id,stored.code_hash]
+   ),
+   (err:unknown)=>(err as {code?:string}).code==='23514'
+  );
+
+  const {rows:[unchanged]}=await admin.query(
+   'SELECT login FROM control.users WHERE id=$1',
+   [user.id]
+  );
+
+  assert.equal(unchanged.login,oldEmail);
+
+  const message=auth.open(queued.envelope);
+
+  assert.equal(message.email,newEmail);
+
+  await assert.rejects(
+   auth.confirmEmailChange(second.ctx,{
+    challenge_id:id,code:message.code
+   }),error('EMAIL_CHANGE_UNAVAILABLE')
+  );
+
+  const wrong=message.code==='000000'?'111111':'000000';
+
+  await assert.rejects(
+   auth.confirmEmailChange(session.ctx,{
+    challenge_id:id,code:wrong
+   }),error('INVALID_CODE')
+  );
+
+  const result=await auth.confirmEmailChange(
+   session.ctx,{challenge_id:id,code:message.code}
+  );
+
+  assert.equal(result.body.email_changed,true);
+
+  await assert.rejects(
+   auth.organizations(session.ctx),
+   error('SESSION_REVOKED')
+  );
+
+  await assert.rejects(
+   auth.organizations(second.ctx),
+   error('SESSION_REVOKED')
+  );
+
+  const {rows:[updated]}=await admin.query(
+   'SELECT login,email_verified_at FROM control.users WHERE id=$1',
+   [user.id]
+  );
+
+  assert.equal(updated.login,newEmail);
+  assert(updated.email_verified_at);
+
+  await assert.rejects(
+   auth.login(ctx,{
+    email:oldEmail,password,device_id:randomUUID()
+   }),error('INVALID_CREDENTIALS')
+  );
+
+  const login=await auth.login(ctx,{
+   email:newEmail,password,device_id:randomUUID()
+  });
+
+  assert.equal(login.status,200);
+
+  await assert.rejects(
+   auth.requestEmailChange(owner.ctx,{
+    email:newEmail,password
+   }),error('PROTECTED_OWNER')
+  );
+ });
+
  const opened=(await auth.openInternalClient(manager.ctx,{organization_id:org})).body.context;
  assert.deepEqual(opened.permissions,['organization:read']);
  assert.equal(opened.organization.id,org);
